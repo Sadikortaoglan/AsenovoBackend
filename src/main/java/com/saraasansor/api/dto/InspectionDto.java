@@ -1,6 +1,7 @@
 package com.saraasansor.api.dto;
 
 import com.saraasansor.api.model.Inspection;
+import com.saraasansor.api.model.InspectionColor;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -15,12 +16,20 @@ public class InspectionDto {
     
     private String elevatorBuildingName;
     private String elevatorIdentityNumber;
+    private String elevatorCode; // elevatorNumber or identityNumber
+    private String elevatorName; // elevatorNumber or identityNumber (alias for frontend compatibility)
     
     @NotNull(message = "Date cannot be empty")
     private LocalDate date;
+    private LocalDate inspectionDate; // Alias for date field (for frontend compatibility)
     
     @NotBlank(message = "Result cannot be empty")
     private String result;
+    
+    @NotNull(message = "Inspection color is required")
+    private String inspectionColor; // GREEN, YELLOW, RED, ORANGE
+    
+    private String contactedPersonName; // Optional: name of person contacted during inspection
     
     private String description;
     private LocalDateTime createdAt;
@@ -92,14 +101,67 @@ public class InspectionDto {
         this.createdAt = createdAt;
     }
 
+    public String getInspectionColor() {
+        return inspectionColor;
+    }
+
+    public void setInspectionColor(String inspectionColor) {
+        this.inspectionColor = inspectionColor;
+    }
+
+    public String getContactedPersonName() {
+        return contactedPersonName;
+    }
+
+    public void setContactedPersonName(String contactedPersonName) {
+        this.contactedPersonName = contactedPersonName;
+    }
+
+    public String getElevatorCode() {
+        return elevatorCode;
+    }
+
+    public void setElevatorCode(String elevatorCode) {
+        this.elevatorCode = elevatorCode;
+    }
+
+    public String getElevatorName() {
+        return elevatorName;
+    }
+
+    public void setElevatorName(String elevatorName) {
+        this.elevatorName = elevatorName;
+    }
+
+    public LocalDate getInspectionDate() {
+        return inspectionDate;
+    }
+
+    public void setInspectionDate(LocalDate inspectionDate) {
+        this.inspectionDate = inspectionDate;
+    }
+
     public static InspectionDto fromEntity(Inspection inspection) {
         InspectionDto dto = new InspectionDto();
         dto.setId(inspection.getId());
-        dto.setElevatorId(inspection.getElevator().getId());
-        dto.setElevatorBuildingName(inspection.getElevator().getBuildingName());
-        dto.setElevatorIdentityNumber(inspection.getElevator().getIdentityNumber());
+        
+        if (inspection.getElevator() != null) {
+            dto.setElevatorId(inspection.getElevator().getId());
+            dto.setElevatorBuildingName(inspection.getElevator().getBuildingName());
+            dto.setElevatorIdentityNumber(inspection.getElevator().getIdentityNumber());
+            // Set elevatorCode and elevatorName (use elevatorNumber if available, otherwise identityNumber)
+            String elevatorCode = inspection.getElevator().getElevatorNumber() != null 
+                ? inspection.getElevator().getElevatorNumber() 
+                : inspection.getElevator().getIdentityNumber();
+            dto.setElevatorCode(elevatorCode);
+            dto.setElevatorName(elevatorCode);
+        }
+        
         dto.setDate(inspection.getDate());
+        dto.setInspectionDate(inspection.getDate()); // Alias for frontend compatibility
         dto.setResult(inspection.getResult());
+        dto.setInspectionColor(inspection.getInspectionColor() != null ? inspection.getInspectionColor().name() : null);
+        dto.setContactedPersonName(inspection.getContactedPersonName());
         dto.setDescription(inspection.getDescription());
         dto.setCreatedAt(inspection.getCreatedAt());
         return dto;

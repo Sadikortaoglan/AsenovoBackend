@@ -78,7 +78,7 @@ public class Elevator {
     @Column(name = "blue_label")
     private Boolean blueLabel;
 
-    @Column(name = "manager_name")
+    @Column(name = "manager_name", nullable = false)
     private String managerName;
 
     @Column(name = "manager_tc_identity_no", nullable = false, length = 11)

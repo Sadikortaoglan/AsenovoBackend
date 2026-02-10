@@ -22,6 +22,13 @@ public class Inspection {
     @Column(nullable = false)
     private String result;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inspection_color", nullable = false)
+    private InspectionColor inspectionColor;
+
+    @Column(name = "contacted_person_name")
+    private String contactedPersonName;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -31,11 +38,13 @@ public class Inspection {
     public Inspection() {
     }
 
-    public Inspection(Long id, Elevator elevator, LocalDate date, String result, String description, LocalDateTime createdAt) {
+    public Inspection(Long id, Elevator elevator, LocalDate date, String result, InspectionColor inspectionColor, String contactedPersonName, String description, LocalDateTime createdAt) {
         this.id = id;
         this.elevator = elevator;
         this.date = date;
         this.result = result;
+        this.inspectionColor = inspectionColor;
+        this.contactedPersonName = contactedPersonName;
         this.description = description;
         this.createdAt = createdAt;
     }
@@ -86,5 +95,21 @@ public class Inspection {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public InspectionColor getInspectionColor() {
+        return inspectionColor;
+    }
+
+    public void setInspectionColor(InspectionColor inspectionColor) {
+        this.inspectionColor = inspectionColor;
+    }
+
+    public String getContactedPersonName() {
+        return contactedPersonName;
+    }
+
+    public void setContactedPersonName(String contactedPersonName) {
+        this.contactedPersonName = contactedPersonName;
     }
 }

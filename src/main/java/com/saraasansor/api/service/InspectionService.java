@@ -3,6 +3,7 @@ package com.saraasansor.api.service;
 import com.saraasansor.api.dto.InspectionDto;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.Inspection;
+import com.saraasansor.api.model.InspectionColor;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.InspectionRepository;
 import com.saraasansor.api.util.AuditLogger;
@@ -30,18 +31,24 @@ public class InspectionService {
     private AuditLogger auditLogger;
     
     public List<InspectionDto> getAllInspections() {
-        return inspectionRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
+        // Sort by date DESC (newest first), then by id DESC for consistent ordering
+        return inspectionRepository.findAllWithElevator().stream()
                 .map(InspectionDto::fromEntity)
                 .collect(Collectors.toList());
     }
     
     public List<InspectionDto> getInspectionsByElevatorId(Long elevatorId) {
-        return inspectionRepository.findByElevatorIdOrderByDateDesc(elevatorId).stream()
+        return inspectionRepository.findByElevatorIdWithElevator(elevatorId).stream()
                 .map(InspectionDto::fromEntity)
                 .collect(Collectors.toList());
     }
     
     public InspectionDto createInspection(InspectionDto dto) {
+        // VALIDATION: Inspection color is REQUIRED
+        if (dto.getInspectionColor() == null || dto.getInspectionColor().trim().isEmpty()) {
+            throw new RuntimeException("Inspection color is required");
+        }
+        
         Elevator elevator = elevatorRepository.findById(dto.getElevatorId())
                 .orElseThrow(() -> new RuntimeException("Elevator not found"));
         
@@ -49,26 +56,46 @@ public class InspectionService {
         inspection.setElevator(elevator);
         inspection.setDate(dto.getDate());
         inspection.setResult(dto.getResult());
+        
+        // Parse inspection color from string to enum
+        try {
+            inspection.setInspectionColor(InspectionColor.valueOf(dto.getInspectionColor().toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid inspection color: " + dto.getInspectionColor() + ". Valid values: GREEN, YELLOW, RED, ORANGE");
+        }
+        
+        inspection.setContactedPersonName(dto.getContactedPersonName());
         inspection.setDescription(dto.getDescription());
         
         Inspection saved = inspectionRepository.save(inspection);
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("elevatorId", saved.getElevator().getId());
-        metadata.put("date", saved.getDate());
-        metadata.put("result", saved.getResult());
-        auditLogger.log("INSPECTION_CREATED", "INSPECTION", saved.getId(), metadata);
+        // Reload with elevator to avoid lazy loading issues
+        Inspection inspectionWithElevator = inspectionRepository.findByIdWithElevator(saved.getId())
+                .orElse(saved);
         
-        return InspectionDto.fromEntity(saved);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("elevatorId", inspectionWithElevator.getElevator().getId());
+        metadata.put("date", inspectionWithElevator.getDate());
+        metadata.put("result", inspectionWithElevator.getResult());
+        metadata.put("inspectionColor", inspectionWithElevator.getInspectionColor() != null ? inspectionWithElevator.getInspectionColor().name() : null);
+        metadata.put("contactedPersonName", inspectionWithElevator.getContactedPersonName());
+        auditLogger.log("INSPECTION_CREATED", "INSPECTION", inspectionWithElevator.getId(), metadata);
+        
+        return InspectionDto.fromEntity(inspectionWithElevator);
     }
     
     public InspectionDto getInspectionById(Long id) {
-        Inspection inspection = inspectionRepository.findById(id)
+        Inspection inspection = inspectionRepository.findByIdWithElevator(id)
                 .orElseThrow(() -> new RuntimeException("Inspection record not found"));
         return InspectionDto.fromEntity(inspection);
     }
     
     public InspectionDto updateInspection(Long id, InspectionDto dto) {
+        // VALIDATION: Inspection color is REQUIRED
+        if (dto.getInspectionColor() == null || dto.getInspectionColor().trim().isEmpty()) {
+            throw new RuntimeException("Inspection color is required");
+        }
+        
         Inspection inspection = inspectionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Inspection record not found"));
         
@@ -78,17 +105,32 @@ public class InspectionService {
         inspection.setElevator(elevator);
         inspection.setDate(dto.getDate());
         inspection.setResult(dto.getResult());
+        
+        // Parse inspection color from string to enum
+        try {
+            inspection.setInspectionColor(InspectionColor.valueOf(dto.getInspectionColor().toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid inspection color: " + dto.getInspectionColor() + ". Valid values: GREEN, YELLOW, RED, ORANGE");
+        }
+        
+        inspection.setContactedPersonName(dto.getContactedPersonName());
         inspection.setDescription(dto.getDescription());
         
         Inspection saved = inspectionRepository.save(inspection);
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("elevatorId", saved.getElevator().getId());
-        metadata.put("date", saved.getDate());
-        metadata.put("result", saved.getResult());
-        auditLogger.log("INSPECTION_UPDATED", "INSPECTION", saved.getId(), metadata);
+        // Reload with elevator to avoid lazy loading issues
+        Inspection inspectionWithElevator = inspectionRepository.findByIdWithElevator(saved.getId())
+                .orElse(saved);
         
-        return InspectionDto.fromEntity(saved);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("elevatorId", inspectionWithElevator.getElevator().getId());
+        metadata.put("date", inspectionWithElevator.getDate());
+        metadata.put("result", inspectionWithElevator.getResult());
+        metadata.put("inspectionColor", inspectionWithElevator.getInspectionColor() != null ? inspectionWithElevator.getInspectionColor().name() : null);
+        metadata.put("contactedPersonName", inspectionWithElevator.getContactedPersonName());
+        auditLogger.log("INSPECTION_UPDATED", "INSPECTION", inspectionWithElevator.getId(), metadata);
+        
+        return InspectionDto.fromEntity(inspectionWithElevator);
     }
     
     public void deleteInspection(Long id) {

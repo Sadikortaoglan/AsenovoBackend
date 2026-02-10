@@ -1,6 +1,7 @@
 package com.saraasansor.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.saraasansor.api.model.Elevator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -43,7 +44,9 @@ public class ElevatorDto {
     
     // End date (MANDATORY - must be provided by frontend)
     // Accepts both "expiryDate" and "endDate" from frontend
+    // Returns as "expiryDate" in API response
     @NotNull(message = "End date is required")
+    @JsonProperty("expiryDate")
     @JsonAlias("endDate")
     private LocalDate expiryDate;
     
@@ -51,6 +54,7 @@ public class ElevatorDto {
     private Boolean blueLabel; // Deprecated - kept for backward compatibility
     
     // Manager fields
+    @NotBlank(message = "Manager name is required")
     private String managerName;
     
     @NotBlank(message = "Manager TC Identity Number is required")
@@ -326,10 +330,12 @@ public class ElevatorDto {
         dto.setExpiryDate(elevator.getExpiryDate());
         dto.setStatus(elevator.getStatus() != null ? elevator.getStatus().name() : null);
         dto.setBlueLabel(elevator.getBlueLabel());
-        dto.setManagerName(elevator.getManagerName());
-        dto.setManagerTcIdentityNo(elevator.getManagerTcIdentityNo());
-        dto.setManagerPhone(elevator.getManagerPhone());
+        // Map manager fields - ensure they are not null
+        dto.setManagerName(elevator.getManagerName() != null ? elevator.getManagerName() : "");
+        dto.setManagerTcIdentityNo(elevator.getManagerTcIdentityNo() != null ? elevator.getManagerTcIdentityNo() : "");
+        dto.setManagerPhone(elevator.getManagerPhone() != null ? elevator.getManagerPhone() : "");
         dto.setManagerEmail(elevator.getManagerEmail());
+        
         return dto;
     }
 }

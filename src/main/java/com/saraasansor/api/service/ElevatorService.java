@@ -44,7 +44,17 @@ public class ElevatorService {
     public ElevatorDto getElevatorById(Long id) {
         Elevator elevator = elevatorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Elevator not found"));
-        return ElevatorDto.fromEntity(elevator);
+        
+        ElevatorDto dto = ElevatorDto.fromEntity(elevator);
+        
+        // Temporary log: Verify manager info is returned
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ElevatorService.class);
+        log.info("Returning manager info: tc={}, name={}, phone={}", 
+            dto.getManagerTcIdentityNo(), 
+            dto.getManagerName(), 
+            dto.getManagerPhone());
+        
+        return dto;
     }
     
     public ElevatorDto createElevator(ElevatorDto dto) {
@@ -439,6 +449,11 @@ public class ElevatorService {
             if (!dto.getExpiryDate().isAfter(dto.getLabelDate())) {
                 throw new RuntimeException("End date must be after label date");
             }
+        }
+        
+        // Manager validation: Name (mandatory)
+        if (dto.getManagerName() == null || dto.getManagerName().trim().isEmpty()) {
+            throw new RuntimeException("Manager name is required");
         }
         
         // Manager validation: TC Identity Number (mandatory)
