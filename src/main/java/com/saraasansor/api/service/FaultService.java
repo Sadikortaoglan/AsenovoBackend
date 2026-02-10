@@ -29,7 +29,7 @@ public class FaultService {
     private AuditLogger auditLogger;
     
     public List<FaultDto> getAllFaults() {
-        return faultRepository.findAll().stream()
+        return faultRepository.findAllWithElevator().stream()
                 .map(FaultDto::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -49,7 +49,7 @@ public class FaultService {
         
         try {
             Fault.Status statusEnum = Fault.Status.valueOf(normalizedStatus);
-            return faultRepository.findByStatusOrderByCreatedAtDesc(statusEnum).stream()
+            return faultRepository.findByStatusWithElevator(statusEnum).stream()
                     .map(FaultDto::fromEntity)
                     .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
@@ -58,6 +58,10 @@ public class FaultService {
     }
     
     public FaultDto createFault(FaultDto dto) {
+        if (dto.getElevatorId() == null) {
+            throw new RuntimeException("Elevator ID is required");
+        }
+        
         Elevator elevator = elevatorRepository.findById(dto.getElevatorId())
                 .orElseThrow(() -> new RuntimeException("Elevator not found"));
         
@@ -71,17 +75,21 @@ public class FaultService {
         
         Fault saved = faultRepository.save(fault);
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("elevatorId", saved.getElevator().getId());
-        metadata.put("faultSubject", saved.getFaultSubject());
-        metadata.put("status", saved.getStatus().name());
-        auditLogger.log("FAULT_CREATED", "FAULT", saved.getId(), metadata);
+        // Reload with elevator to avoid lazy loading issues
+        Fault faultWithElevator = faultRepository.findByIdWithElevator(saved.getId())
+                .orElse(saved);
         
-        return FaultDto.fromEntity(saved);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("elevatorId", faultWithElevator.getElevator().getId());
+        metadata.put("faultSubject", faultWithElevator.getFaultSubject());
+        metadata.put("status", faultWithElevator.getStatus().name());
+        auditLogger.log("FAULT_CREATED", "FAULT", faultWithElevator.getId(), metadata);
+        
+        return FaultDto.fromEntity(faultWithElevator);
     }
     
     public FaultDto updateFaultStatus(Long id, String status) {
-        Fault fault = faultRepository.findById(id)
+        Fault fault = faultRepository.findByIdWithElevator(id)
                 .orElseThrow(() -> new RuntimeException("Fault record not found"));
         
         Fault.Status oldStatus = fault.getStatus();
@@ -100,26 +108,34 @@ public class FaultService {
             
             Fault saved = faultRepository.save(fault);
             
+            // Reload with elevator to avoid lazy loading issues
+            Fault faultWithElevator = faultRepository.findByIdWithElevator(saved.getId())
+                    .orElse(saved);
+            
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("oldStatus", oldStatus.name());
             metadata.put("newStatus", newStatus.name());
-            auditLogger.log("FAULT_STATUS_UPDATED", "FAULT", saved.getId(), metadata);
+            auditLogger.log("FAULT_STATUS_UPDATED", "FAULT", faultWithElevator.getId(), metadata);
             
-            return FaultDto.fromEntity(saved);
+            return FaultDto.fromEntity(faultWithElevator);
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid status: " + status + " (accepted: ACIK/OPEN, TAMAMLANDI/COMPLETED)");
         }
     }
     
     public FaultDto getFaultById(Long id) {
-        Fault fault = faultRepository.findById(id)
+        Fault fault = faultRepository.findByIdWithElevator(id)
                 .orElseThrow(() -> new RuntimeException("Fault record not found"));
         return FaultDto.fromEntity(fault);
     }
     
     public FaultDto updateFault(Long id, FaultDto dto) {
-        Fault fault = faultRepository.findById(id)
+        Fault fault = faultRepository.findByIdWithElevator(id)
                 .orElseThrow(() -> new RuntimeException("Fault record not found"));
+        
+        if (dto.getElevatorId() == null) {
+            throw new RuntimeException("Elevator ID is required");
+        }
         
         Elevator elevator = elevatorRepository.findById(dto.getElevatorId())
                 .orElseThrow(() -> new RuntimeException("Elevator not found"));
@@ -147,12 +163,16 @@ public class FaultService {
         
         Fault saved = faultRepository.save(fault);
         
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("elevatorId", saved.getElevator().getId());
-        metadata.put("faultSubject", saved.getFaultSubject());
-        auditLogger.log("FAULT_UPDATED", "FAULT", saved.getId(), metadata);
+        // Reload with elevator to avoid lazy loading issues
+        Fault faultWithElevator = faultRepository.findByIdWithElevator(saved.getId())
+                .orElse(saved);
         
-        return FaultDto.fromEntity(saved);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("elevatorId", faultWithElevator.getElevator().getId());
+        metadata.put("faultSubject", faultWithElevator.getFaultSubject());
+        auditLogger.log("FAULT_UPDATED", "FAULT", faultWithElevator.getId(), metadata);
+        
+        return FaultDto.fromEntity(faultWithElevator);
     }
     
     public void deleteFault(Long id) {

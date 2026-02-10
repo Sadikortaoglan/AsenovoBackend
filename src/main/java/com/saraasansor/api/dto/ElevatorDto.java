@@ -1,5 +1,6 @@
 package com.saraasansor.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.saraasansor.api.model.Elevator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -40,8 +41,11 @@ public class ElevatorDto {
     @NotBlank(message = "Label type is required")
     private String labelType; // GREEN, YELLOW, RED, ORANGE, BLUE (BLUE kept for backward compatibility)
     
+    // End date (MANDATORY - must be provided by frontend)
+    // Accepts both "expiryDate" and "endDate" from frontend
     @NotNull(message = "End date is required")
-    private LocalDate expiryDate; // End date (can be explicitly set or calculated from labelDate + duration)
+    @JsonAlias("endDate")
+    private LocalDate expiryDate;
     
     private String status; // ACTIVE, EXPIRED
     private Boolean blueLabel; // Deprecated - kept for backward compatibility
@@ -54,7 +58,7 @@ public class ElevatorDto {
     private String managerTcIdentityNo;
     
     @NotBlank(message = "Manager phone number is required")
-    @Pattern(regexp = "^[0-9]{10,11}$", message = "Phone number must be 10-11 digits (Turkish format)")
+    @Pattern(regexp = "^(0?[0-9]{10})$", message = "Phone number must be 10 or 11 digits (Turkish format, digits only)")
     private String managerPhone;
     
     private String managerEmail;
@@ -267,7 +271,26 @@ public class ElevatorDto {
     }
 
     public void setManagerPhone(String managerPhone) {
-        this.managerPhone = managerPhone;
+        if (managerPhone != null) {
+            // Normalize phone number: remove spaces, dashes, parentheses, and leading +90
+            String normalized = managerPhone.trim()
+                    .replaceAll("\\s+", "")  // Remove all whitespace
+                    .replaceAll("-", "")     // Remove dashes
+                    .replaceAll("\\(", "")   // Remove opening parentheses
+                    .replaceAll("\\)", "")   // Remove closing parentheses
+                    .replaceAll("\\+90", "") // Remove +90 prefix
+                    .replaceAll("^90", "");  // Remove 90 prefix (if at start)
+            
+            // Temporary debug logging
+            if (!normalized.equals(managerPhone)) {
+                org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ElevatorDto.class);
+                log.debug("Phone number normalized: '{}' -> '{}'", managerPhone, normalized);
+            }
+            
+            this.managerPhone = normalized;
+        } else {
+            this.managerPhone = null;
+        }
     }
 
     public String getManagerEmail() {

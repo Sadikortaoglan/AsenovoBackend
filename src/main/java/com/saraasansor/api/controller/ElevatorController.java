@@ -49,6 +49,17 @@ public class ElevatorController {
     @PostMapping
     public ResponseEntity<ApiResponse<ElevatorDto>> createElevator(@Valid @RequestBody ElevatorDto dto) {
         try {
+            // Debug log: Log incoming payload for troubleshooting
+            org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ElevatorController.class);
+            log.info("Incoming Elevator DTO: identityNumber={}, buildingName={}, labelDate={}, labelType={}, expiryDate={}, managerTcIdentityNo={}, managerPhone={}", 
+                dto.getIdentityNumber(), 
+                dto.getBuildingName(), 
+                dto.getLabelDate(), 
+                dto.getLabelType(), 
+                dto.getExpiryDate(), 
+                dto.getManagerTcIdentityNo(), 
+                dto.getManagerPhone());
+            
             ElevatorDto created = elevatorService.createElevator(dto);
             return ResponseEntity.ok(ApiResponse.success("Elevator successfully added", created));
         } catch (Exception e) {

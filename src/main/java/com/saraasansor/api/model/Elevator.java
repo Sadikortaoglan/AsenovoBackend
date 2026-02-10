@@ -1,6 +1,8 @@
 package com.saraasansor.api.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -61,14 +63,16 @@ public class Elevator {
     private LocalDate labelDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "label_type", nullable = false)
+    @Column(name = "label_type", nullable = false, columnDefinition = "label_type")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private LabelType labelType;
 
     @Column(name = "expiry_date", nullable = false)
     private LocalDate expiryDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "elevator_status")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Status status = Status.ACTIVE;
 
     @Column(name = "blue_label")

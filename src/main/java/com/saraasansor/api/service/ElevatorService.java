@@ -68,27 +68,18 @@ public class ElevatorService {
             throw new RuntimeException("Label type is required");
         }
         
-        // VALIDATION: End date must be after label date
-        if (elevator.getExpiryDate() != null && elevator.getLabelDate() != null) {
-            if (!elevator.getExpiryDate().isAfter(elevator.getLabelDate())) {
-                throw new RuntimeException("End date must be after label date");
-            }
+        // VALIDATION: Expiry date is REQUIRED
+        if (elevator.getExpiryDate() == null) {
+            throw new RuntimeException("End date is required");
         }
         
-        // Option A: If endDate is explicitly provided, use it
-        // Option B: If endDate is not provided, calculate from labelDate + duration
-        if (elevator.getExpiryDate() == null) {
-            // Calculate endDate = labelDate + labelDuration
-            LabelDurationCalculator.StatusResult result = LabelDurationCalculator.calculateStatusAndEndDate(
-                elevator.getLabelDate(), 
-                elevator.getLabelType()
-            );
-            elevator.setExpiryDate(result.getEndDate());
-            elevator.setStatus(result.getStatus());
-        } else {
-            // End date is explicitly provided - validate and calculate status
-            elevator.setStatus(LabelDurationCalculator.calculateStatus(elevator.getExpiryDate()));
+        // VALIDATION: End date must be after label date
+        if (elevator.getLabelDate() != null && !elevator.getExpiryDate().isAfter(elevator.getLabelDate())) {
+            throw new RuntimeException("End date must be after label date");
         }
+        
+        // Calculate status from expiryDate (duration calculation removed - expiryDate must be provided)
+        elevator.setStatus(LabelDurationCalculator.calculateStatus(elevator.getExpiryDate()));
         
         Elevator saved = elevatorRepository.save(elevator);
         
@@ -143,27 +134,18 @@ public class ElevatorService {
             throw new RuntimeException("Label type is required");
         }
         
-        // VALIDATION: End date must be after label date
-        if (elevator.getExpiryDate() != null && elevator.getLabelDate() != null) {
-            if (!elevator.getExpiryDate().isAfter(elevator.getLabelDate())) {
-                throw new RuntimeException("End date must be after label date");
-            }
+        // VALIDATION: Expiry date is REQUIRED
+        if (elevator.getExpiryDate() == null) {
+            throw new RuntimeException("End date is required");
         }
         
-        // Option A: If endDate is explicitly provided, use it
-        // Option B: If endDate is not provided, calculate from labelDate + duration
-        if (elevator.getExpiryDate() == null) {
-            // Calculate endDate = labelDate + labelDuration
-            LabelDurationCalculator.StatusResult result = LabelDurationCalculator.calculateStatusAndEndDate(
-                elevator.getLabelDate(), 
-                elevator.getLabelType()
-            );
-            elevator.setExpiryDate(result.getEndDate());
-            elevator.setStatus(result.getStatus());
-        } else {
-            // End date is explicitly provided - validate and calculate status
-            elevator.setStatus(LabelDurationCalculator.calculateStatus(elevator.getExpiryDate()));
+        // VALIDATION: End date must be after label date
+        if (elevator.getLabelDate() != null && !elevator.getExpiryDate().isAfter(elevator.getLabelDate())) {
+            throw new RuntimeException("End date must be after label date");
         }
+        
+        // Calculate status from expiryDate (duration calculation removed - expiryDate must be provided)
+        elevator.setStatus(LabelDurationCalculator.calculateStatus(elevator.getExpiryDate()));
         
         Elevator saved = elevatorRepository.save(elevator);
         
@@ -366,7 +348,17 @@ public class ElevatorService {
         entity.setControlSystem(dto.getControlSystem());
         entity.setRope(dto.getRope());
         entity.setModernization(dto.getModernization());
-        entity.setInspectionDate(dto.getInspectionDate());
+        // Map inspectionDate - if not provided, use labelDate as fallback (inspection_date is NOT NULL)
+        if (dto.getInspectionDate() != null) {
+            entity.setInspectionDate(dto.getInspectionDate());
+        } else if (dto.getLabelDate() != null) {
+            // Fallback: use labelDate as inspectionDate (inspection_date is NOT NULL)
+            entity.setInspectionDate(dto.getLabelDate());
+        } else {
+            // Both are null - this should not happen due to validation, but set a default
+            throw new RuntimeException("Inspection date is required. Please provide inspectionDate or labelDate.");
+        }
+        
         entity.setBlueLabel(dto.getBlueLabel());
         
         // Map label fields
@@ -375,6 +367,9 @@ public class ElevatorService {
         } else if (dto.getInspectionDate() != null) {
             // Fallback: use inspectionDate as labelDate
             entity.setLabelDate(dto.getInspectionDate());
+        } else {
+            // This should not happen due to validation
+            throw new RuntimeException("Label date is required");
         }
         
         // Label type is REQUIRED - parse from DTO
@@ -395,7 +390,12 @@ public class ElevatorService {
         entity.setManagerPhone(dto.getManagerPhone());
         entity.setManagerEmail(dto.getManagerEmail());
         
-        // expiryDate and status will be calculated from labelDate and labelType
+        // Map expiryDate if provided (otherwise will be calculated from labelDate + duration)
+        if (dto.getExpiryDate() != null) {
+            entity.setExpiryDate(dto.getExpiryDate());
+        }
+        
+        // Status will be calculated from expiryDate (either provided or calculated)
     }
     
     /**
@@ -423,8 +423,22 @@ public class ElevatorService {
             throw new RuntimeException("Label date is required");
         }
         
+        // VALIDATION: Inspection date is REQUIRED (or use labelDate as fallback)
+        // Note: inspection_date column is NOT NULL in database
+        if (dto.getInspectionDate() == null && dto.getLabelDate() == null) {
+            throw new RuntimeException("Inspection date is required. Please provide inspectionDate or labelDate.");
+        }
+        
+        // VALIDATION: Expiry date is REQUIRED (must be provided by frontend)
         if (dto.getExpiryDate() == null) {
             throw new RuntimeException("End date is required");
+        }
+        
+        // VALIDATION: End date must be after label date
+        if (dto.getLabelDate() != null && dto.getExpiryDate() != null) {
+            if (!dto.getExpiryDate().isAfter(dto.getLabelDate())) {
+                throw new RuntimeException("End date must be after label date");
+            }
         }
         
         // Manager validation: TC Identity Number (mandatory)
@@ -439,14 +453,21 @@ public class ElevatorService {
         }
         
         // Manager validation: Phone Number (mandatory)
+        // Note: Phone number is already normalized in DTO setter
         if (dto.getManagerPhone() == null || dto.getManagerPhone().trim().isEmpty()) {
             throw new RuntimeException("Manager phone number is required");
         }
         
-        // Phone Number: Numeric, 10-11 digits (Turkish format)
-        String phone = dto.getManagerPhone().trim();
-        if (!phone.matches("^[0-9]{10,11}$")) {
-            throw new RuntimeException("Manager phone number must be 10-11 digits (Turkish format)");
+        // Phone Number: 10 or 11 digits (Turkish format, digits only)
+        // Normalization already done in DTO setter (spaces, dashes, parentheses removed)
+        String phone = dto.getManagerPhone();
+        
+        // Temporary debug logging
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ElevatorService.class);
+        log.debug("Validating manager phone number: '{}' (length: {})", phone, phone != null ? phone.length() : 0);
+        
+        if (!phone.matches("^(0?[0-9]{10})$")) {
+            throw new RuntimeException("Phone number must be 10 or 11 digits (Turkish format, digits only)");
         }
         
         // Validate endDate > labelDate

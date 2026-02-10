@@ -12,8 +12,12 @@ public class FaultDto {
     @NotNull(message = "Elevator ID cannot be empty")
     private Long elevatorId;
     
-    private String elevatorBuildingName;
+    private String elevatorName;
     private String elevatorIdentityNumber;
+    private String elevatorNumber;
+    
+    private String buildingName;
+    private String buildingAddress;
     
     @NotBlank(message = "Fault subject cannot be empty")
     private String faultSubject;
@@ -45,12 +49,12 @@ public class FaultDto {
         this.elevatorId = elevatorId;
     }
 
-    public String getElevatorBuildingName() {
-        return elevatorBuildingName;
+    public String getElevatorName() {
+        return elevatorName;
     }
 
-    public void setElevatorBuildingName(String elevatorBuildingName) {
-        this.elevatorBuildingName = elevatorBuildingName;
+    public void setElevatorName(String elevatorName) {
+        this.elevatorName = elevatorName;
     }
 
     public String getElevatorIdentityNumber() {
@@ -59,6 +63,30 @@ public class FaultDto {
 
     public void setElevatorIdentityNumber(String elevatorIdentityNumber) {
         this.elevatorIdentityNumber = elevatorIdentityNumber;
+    }
+
+    public String getElevatorNumber() {
+        return elevatorNumber;
+    }
+
+    public void setElevatorNumber(String elevatorNumber) {
+        this.elevatorNumber = elevatorNumber;
+    }
+
+    public String getBuildingName() {
+        return buildingName;
+    }
+
+    public void setBuildingName(String buildingName) {
+        this.buildingName = buildingName;
+    }
+
+    public String getBuildingAddress() {
+        return buildingAddress;
+    }
+
+    public void setBuildingAddress(String buildingAddress) {
+        this.buildingAddress = buildingAddress;
     }
 
     public String getFaultSubject() {
@@ -112,14 +140,23 @@ public class FaultDto {
     public static FaultDto fromEntity(Fault fault) {
         FaultDto dto = new FaultDto();
         dto.setId(fault.getId());
-        dto.setElevatorId(fault.getElevator().getId());
-        dto.setElevatorBuildingName(fault.getElevator().getBuildingName());
-        dto.setElevatorIdentityNumber(fault.getElevator().getIdentityNumber());
+        
+        if (fault.getElevator() != null) {
+            dto.setElevatorId(fault.getElevator().getId());
+            dto.setElevatorIdentityNumber(fault.getElevator().getIdentityNumber());
+            dto.setElevatorNumber(fault.getElevator().getElevatorNumber());
+            dto.setElevatorName(fault.getElevator().getElevatorNumber() != null 
+                ? fault.getElevator().getElevatorNumber() 
+                : fault.getElevator().getIdentityNumber());
+            dto.setBuildingName(fault.getElevator().getBuildingName());
+            dto.setBuildingAddress(fault.getElevator().getAddress());
+        }
+        
         dto.setFaultSubject(fault.getFaultSubject());
         dto.setContactPerson(fault.getContactPerson());
         dto.setBuildingAuthorizedMessage(fault.getBuildingAuthorizedMessage());
         dto.setDescription(fault.getDescription());
-        dto.setStatus(fault.getStatus().name());
+        dto.setStatus(fault.getStatus() != null ? fault.getStatus().name() : null);
         dto.setCreatedAt(fault.getCreatedAt());
         return dto;
     }
