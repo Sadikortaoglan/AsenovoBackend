@@ -4,7 +4,7 @@
 # Usage: ./test-api.sh [base_url]
 # Default: http://localhost:8081/api
 
-BASE_URL="${1:-http://localhost:8081/api}"
+BASE_URL="${1:-http://localhost:8080/api}"
 TOKEN_FILE="/tmp/sara_api_token.txt"
 
 echo "🔵 Testing Sara Asansör API"
