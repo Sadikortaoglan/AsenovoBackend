@@ -12,6 +12,10 @@ import java.util.List;
 public interface ElevatorRepository extends JpaRepository<Elevator, Long> {
     boolean existsByIdentityNumber(String identityNumber);
     
+    java.util.Optional<Elevator> findByIdentityNumber(String identityNumber);
+    
+    java.util.Optional<Elevator> findByElevatorNumber(String elevatorNumber);
+    
     @Query("SELECT e FROM Elevator e WHERE e.expiryDate < :now")
     List<Elevator> findExpiredElevators(LocalDate now);
     

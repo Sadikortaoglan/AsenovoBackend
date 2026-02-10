@@ -67,6 +67,13 @@ app:
       secret-key: ${AWS_SECRET_KEY:}
       bucket: ${AWS_BUCKET:sara-asansor-files}
       region: ${AWS_REGION:us-east-1}
+  
+  qr:
+    secret-key: ${QR_SECRET_KEY:default-secret-key-change-in-production}
+    token-ttl-minutes: ${QR_TOKEN_TTL_MINUTES:3}  # Token expiration in minutes
+  
+  maintenance:
+    min-duration-minutes: ${MAINTENANCE_MIN_DURATION_MINUTES:3}  # Minimum session duration in minutes
 
 springdoc:
   api-docs:
