@@ -1,13 +1,23 @@
 package com.saraasansor.api.dto;
 
 import com.saraasansor.api.model.Elevator;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
 public class ElevatorDto {
     private Long id;
+    
+    @NotBlank(message = "Identity number is required")
     private String identityNumber;
+    
+    @NotBlank(message = "Building name is required")
     private String buildingName;
+    
+    @NotBlank(message = "Address is required")
     private String address;
     private String elevatorNumber;
     private Integer floorCount;
@@ -23,8 +33,31 @@ public class ElevatorDto {
     private String rope;
     private String modernization;
     private LocalDate inspectionDate;
-    private LocalDate expiryDate;
-    private Boolean blueLabel;
+    
+    @NotNull(message = "Label date is required")
+    private LocalDate labelDate; // Generic label date (not blue-specific)
+    
+    @NotBlank(message = "Label type is required")
+    private String labelType; // GREEN, YELLOW, RED, ORANGE, BLUE (BLUE kept for backward compatibility)
+    
+    @NotNull(message = "End date is required")
+    private LocalDate expiryDate; // End date (can be explicitly set or calculated from labelDate + duration)
+    
+    private String status; // ACTIVE, EXPIRED
+    private Boolean blueLabel; // Deprecated - kept for backward compatibility
+    
+    // Manager fields
+    private String managerName;
+    
+    @NotBlank(message = "Manager TC Identity Number is required")
+    @Pattern(regexp = "^[0-9]{11}$", message = "TC Identity Number must be exactly 11 digits")
+    private String managerTcIdentityNo;
+    
+    @NotBlank(message = "Manager phone number is required")
+    @Pattern(regexp = "^[0-9]{10,11}$", message = "Phone number must be 10-11 digits (Turkish format)")
+    private String managerPhone;
+    
+    private String managerEmail;
 
     public ElevatorDto() {
     }
@@ -189,6 +222,62 @@ public class ElevatorDto {
         this.blueLabel = blueLabel;
     }
 
+    public LocalDate getLabelDate() {
+        return labelDate;
+    }
+
+    public void setLabelDate(LocalDate labelDate) {
+        this.labelDate = labelDate;
+    }
+
+    public String getLabelType() {
+        return labelType;
+    }
+
+    public void setLabelType(String labelType) {
+        this.labelType = labelType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getManagerName() {
+        return managerName;
+    }
+
+    public void setManagerName(String managerName) {
+        this.managerName = managerName;
+    }
+
+    public String getManagerTcIdentityNo() {
+        return managerTcIdentityNo;
+    }
+
+    public void setManagerTcIdentityNo(String managerTcIdentityNo) {
+        this.managerTcIdentityNo = managerTcIdentityNo;
+    }
+
+    public String getManagerPhone() {
+        return managerPhone;
+    }
+
+    public void setManagerPhone(String managerPhone) {
+        this.managerPhone = managerPhone;
+    }
+
+    public String getManagerEmail() {
+        return managerEmail;
+    }
+
+    public void setManagerEmail(String managerEmail) {
+        this.managerEmail = managerEmail;
+    }
+
     public static ElevatorDto fromEntity(Elevator elevator) {
         ElevatorDto dto = new ElevatorDto();
         dto.setId(elevator.getId());
@@ -209,8 +298,15 @@ public class ElevatorDto {
         dto.setRope(elevator.getRope());
         dto.setModernization(elevator.getModernization());
         dto.setInspectionDate(elevator.getInspectionDate());
+        dto.setLabelDate(elevator.getLabelDate());
+        dto.setLabelType(elevator.getLabelType() != null ? elevator.getLabelType().name() : null);
         dto.setExpiryDate(elevator.getExpiryDate());
+        dto.setStatus(elevator.getStatus() != null ? elevator.getStatus().name() : null);
         dto.setBlueLabel(elevator.getBlueLabel());
+        dto.setManagerName(elevator.getManagerName());
+        dto.setManagerTcIdentityNo(elevator.getManagerTcIdentityNo());
+        dto.setManagerPhone(elevator.getManagerPhone());
+        dto.setManagerEmail(elevator.getManagerEmail());
         return dto;
     }
 }

@@ -9,7 +9,10 @@ public class MaintenanceDto {
     private Long elevatorId;
     private String elevatorBuildingName;
     private LocalDate date;
+    private String labelType; // GREEN, BLUE, YELLOW, RED
     private String description;
+    // technicianUserId and technicianUsername are READ-ONLY (response only)
+    // They are NOT accepted in request body - technician is auto-assigned from SecurityContext
     private Long technicianUserId;
     private String technicianUsername;
     private Double amount;
@@ -99,12 +102,21 @@ public class MaintenanceDto {
         this.paymentDate = paymentDate;
     }
 
+    public String getLabelType() {
+        return labelType;
+    }
+
+    public void setLabelType(String labelType) {
+        this.labelType = labelType;
+    }
+
     public static MaintenanceDto fromEntity(Maintenance maintenance) {
         MaintenanceDto dto = new MaintenanceDto();
         dto.setId(maintenance.getId());
         dto.setElevatorId(maintenance.getElevator().getId());
         dto.setElevatorBuildingName(maintenance.getElevator().getBuildingName());
         dto.setDate(maintenance.getDate());
+        dto.setLabelType(maintenance.getLabelType() != null ? maintenance.getLabelType().name() : null);
         dto.setDescription(maintenance.getDescription());
         if (maintenance.getTechnician() != null) {
             dto.setTechnicianUserId(maintenance.getTechnician().getId());

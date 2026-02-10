@@ -3,12 +3,17 @@ package com.saraasansor.api.service;
 import com.saraasansor.api.dto.MaintenanceDto;
 import com.saraasansor.api.dto.MaintenanceSummaryDto;
 import com.saraasansor.api.model.Elevator;
+import com.saraasansor.api.model.LabelType;
 import com.saraasansor.api.model.Maintenance;
 import com.saraasansor.api.model.User;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.MaintenanceRepository;
 import com.saraasansor.api.repository.UserRepository;
+import com.saraasansor.api.util.LabelDurationCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,18 +60,54 @@ public class MaintenanceService {
         Maintenance maintenance = new Maintenance();
         maintenance.setElevator(elevator);
         maintenance.setDate(dto.getDate());
+        
+        // Set labelType from DTO
+        if (dto.getLabelType() != null) {
+            try {
+                maintenance.setLabelType(LabelType.valueOf(dto.getLabelType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                maintenance.setLabelType(LabelType.BLUE); // Default
+            }
+        } else {
+            maintenance.setLabelType(LabelType.BLUE); // Default
+        }
+        
         maintenance.setDescription(dto.getDescription());
         maintenance.setAmount(dto.getAmount());
         maintenance.setIsPaid(dto.getIsPaid() != null ? dto.getIsPaid() : false);
         maintenance.setPaymentDate(dto.getPaymentDate());
         
-        if (dto.getTechnicianUserId() != null) {
-            User technician = userRepository.findById(dto.getTechnicianUserId())
-                    .orElseThrow(() -> new RuntimeException("Technician not found"));
+        // AUTO-ASSIGN TECHNICIAN: Get from SecurityContext (logged-in user)
+        // Business rule: Technician must be set automatically as the currently authenticated user
+        // Do NOT accept technicianId or technicianName from request body
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String username = userDetails.getUsername();
+            User technician = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("Authenticated user not found: " + username));
             maintenance.setTechnician(technician);
+        } else {
+            throw new RuntimeException("User not authenticated. Cannot assign technician.");
         }
         
         Maintenance saved = maintenanceRepository.save(maintenance);
+        
+        // AUTO-UPDATE ELEVATOR: Update elevator's labelType, labelDate, endDate, and status
+        // Business rule: When maintenance is created with a label, update elevator automatically
+        elevator.setLabelType(saved.getLabelType());
+        elevator.setLabelDate(saved.getDate()); // Use maintenance date as new label date
+        
+        // Recalculate endDate and status
+        LabelDurationCalculator.StatusResult result = LabelDurationCalculator.calculateStatusAndEndDate(
+            elevator.getLabelDate(), 
+            elevator.getLabelType()
+        );
+        elevator.setExpiryDate(result.getEndDate());
+        elevator.setStatus(result.getStatus());
+        
+        elevatorRepository.save(elevator);
+        
         return MaintenanceDto.fromEntity(saved);
     }
     
@@ -80,11 +121,8 @@ public class MaintenanceService {
         maintenance.setIsPaid(dto.getIsPaid());
         maintenance.setPaymentDate(dto.getPaymentDate());
         
-        if (dto.getTechnicianUserId() != null) {
-            User technician = userRepository.findById(dto.getTechnicianUserId())
-                    .orElseThrow(() -> new RuntimeException("Technician not found"));
-            maintenance.setTechnician(technician);
-        }
+        // Business rule: Technician must NOT be changeable via API
+        // Do NOT update technician - it remains as originally assigned during creation
         
         Maintenance saved = maintenanceRepository.save(maintenance);
         return MaintenanceDto.fromEntity(saved);

@@ -3,13 +3,24 @@ package com.saraasansor.api.controller;
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.MaintenanceDto;
 import com.saraasansor.api.dto.MaintenanceSummaryDto;
+import com.saraasansor.api.model.FileAttachment;
+import com.saraasansor.api.model.User;
+import com.saraasansor.api.repository.FileAttachmentRepository;
+import com.saraasansor.api.repository.MaintenanceRepository;
+import com.saraasansor.api.repository.UserRepository;
+import com.saraasansor.api.service.FileStorageService;
 import com.saraasansor.api.service.MaintenanceService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -19,6 +30,18 @@ public class MaintenanceController {
     
     @Autowired
     private MaintenanceService maintenanceService;
+    
+    @Autowired
+    private FileStorageService fileStorageService;
+    
+    @Autowired
+    private FileAttachmentRepository fileAttachmentRepository;
+    
+    @Autowired
+    private MaintenanceRepository maintenanceRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
     
     @GetMapping
     public ResponseEntity<ApiResponse<List<MaintenanceDto>>> getAllMaintenances(
@@ -113,6 +136,75 @@ public class MaintenanceController {
             MaintenanceDto updated = maintenanceService.markPaid(id, paid);
             return ResponseEntity.ok(ApiResponse.success(
                 paid ? "Marked as paid" : "Payment mark removed", updated));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * Upload photos for maintenance
+     * Business rule: Maintenance must include at least 4 photos
+     */
+    @PostMapping("/{id}/photos")
+    public ResponseEntity<ApiResponse<String>> uploadPhotos(
+            @PathVariable Long id,
+            @RequestParam("files") MultipartFile[] files) {
+        try {
+            // Validate maintenance exists
+            if (!maintenanceRepository.existsById(id)) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Maintenance record not found"));
+            }
+            
+            // MINIMUM PHOTO VALIDATION: Must include at least 4 photos
+            if (files == null || files.length < 4) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Maintenance must include at least 4 photos. Provided: " + 
+                            (files != null ? files.length : 0)));
+            }
+            
+            // Get authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            User uploadedBy = null;
+            if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+                UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                String username = userDetails.getUsername();
+                uploadedBy = userRepository.findByUsername(username)
+                        .orElse(null);
+            }
+            
+            // Save each file
+            int savedCount = 0;
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        // Save file to storage
+                        String storageKey = fileStorageService.saveFile(file, "MAINTENANCE", id);
+                        String url = fileStorageService.getFileUrl(storageKey);
+                        
+                        // Create FileAttachment record
+                        FileAttachment attachment = new FileAttachment();
+                        attachment.setEntityType(FileAttachment.EntityType.MAINTENANCE);
+                        attachment.setEntityId(id);
+                        attachment.setFileName(file.getOriginalFilename());
+                        attachment.setContentType(file.getContentType());
+                        attachment.setSize(file.getSize());
+                        attachment.setStorageKey(storageKey);
+                        attachment.setUrl(url);
+                        attachment.setUploadedBy(uploadedBy);
+                        
+                        fileAttachmentRepository.save(attachment);
+                        savedCount++;
+                    } catch (IOException e) {
+                        return ResponseEntity.badRequest()
+                                .body(ApiResponse.error("Failed to save file: " + file.getOriginalFilename() + " - " + e.getMessage()));
+                    }
+                }
+            }
+            
+            return ResponseEntity.ok(ApiResponse.success(
+                "Successfully uploaded " + savedCount + " photos", null));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));

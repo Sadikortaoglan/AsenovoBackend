@@ -57,11 +57,34 @@ public class Elevator {
     @Column(name = "inspection_date", nullable = false)
     private LocalDate inspectionDate;
 
+    @Column(name = "label_date", nullable = false)
+    private LocalDate labelDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "label_type", nullable = false)
+    private LabelType labelType;
+
     @Column(name = "expiry_date", nullable = false)
     private LocalDate expiryDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private Status status = Status.ACTIVE;
+
     @Column(name = "blue_label")
     private Boolean blueLabel;
+
+    @Column(name = "manager_name")
+    private String managerName;
+
+    @Column(name = "manager_tc_identity_no", nullable = false, length = 11)
+    private String managerTcIdentityNo;
+
+    @Column(name = "manager_phone", nullable = false)
+    private String managerPhone;
+
+    @Column(name = "manager_email")
+    private String managerEmail;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -69,10 +92,14 @@ public class Elevator {
     @Column(nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    public enum Status {
+        ACTIVE, EXPIRED
+    }
+
     public Elevator() {
     }
 
-    public Elevator(Long id, String identityNumber, String buildingName, String address, String elevatorNumber, Integer floorCount, Integer capacity, Double speed, String technicalNotes, String driveType, String machineBrand, String doorType, Integer installationYear, String serialNumber, String controlSystem, String rope, String modernization, LocalDate inspectionDate, LocalDate expiryDate, Boolean blueLabel, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Elevator(Long id, String identityNumber, String buildingName, String address, String elevatorNumber, Integer floorCount, Integer capacity, Double speed, String technicalNotes, String driveType, String machineBrand, String doorType, Integer installationYear, String serialNumber, String controlSystem, String rope, String modernization, LocalDate inspectionDate, LocalDate labelDate, LabelType labelType, LocalDate expiryDate, Status status, Boolean blueLabel, String managerName, String managerTcIdentityNo, String managerPhone, String managerEmail, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.identityNumber = identityNumber;
         this.buildingName = buildingName;
@@ -91,8 +118,15 @@ public class Elevator {
         this.rope = rope;
         this.modernization = modernization;
         this.inspectionDate = inspectionDate;
+        this.labelDate = labelDate;
+        this.labelType = labelType;
         this.expiryDate = expiryDate;
+        this.status = status;
         this.blueLabel = blueLabel;
+        this.managerName = managerName;
+        this.managerTcIdentityNo = managerTcIdentityNo;
+        this.managerPhone = managerPhone;
+        this.managerEmail = managerEmail;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -276,5 +310,61 @@ public class Elevator {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDate getLabelDate() {
+        return labelDate;
+    }
+
+    public void setLabelDate(LocalDate labelDate) {
+        this.labelDate = labelDate;
+    }
+
+    public LabelType getLabelType() {
+        return labelType;
+    }
+
+    public void setLabelType(LabelType labelType) {
+        this.labelType = labelType;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public String getManagerName() {
+        return managerName;
+    }
+
+    public void setManagerName(String managerName) {
+        this.managerName = managerName;
+    }
+
+    public String getManagerTcIdentityNo() {
+        return managerTcIdentityNo;
+    }
+
+    public void setManagerTcIdentityNo(String managerTcIdentityNo) {
+        this.managerTcIdentityNo = managerTcIdentityNo;
+    }
+
+    public String getManagerPhone() {
+        return managerPhone;
+    }
+
+    public void setManagerPhone(String managerPhone) {
+        this.managerPhone = managerPhone;
+    }
+
+    public String getManagerEmail() {
+        return managerEmail;
+    }
+
+    public void setManagerEmail(String managerEmail) {
+        this.managerEmail = managerEmail;
     }
 }

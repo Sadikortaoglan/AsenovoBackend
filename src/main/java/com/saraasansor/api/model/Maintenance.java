@@ -19,6 +19,10 @@ public class Maintenance {
     @Column(nullable = false)
     private LocalDate date;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "label_type", nullable = false)
+    private LabelType labelType = LabelType.BLUE;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -40,10 +44,11 @@ public class Maintenance {
     public Maintenance() {
     }
 
-    public Maintenance(Long id, Elevator elevator, LocalDate date, String description, User technician, Double amount, Boolean isPaid, LocalDate paymentDate, LocalDateTime createdAt) {
+    public Maintenance(Long id, Elevator elevator, LocalDate date, LabelType labelType, String description, User technician, Double amount, Boolean isPaid, LocalDate paymentDate, LocalDateTime createdAt) {
         this.id = id;
         this.elevator = elevator;
         this.date = date;
+        this.labelType = labelType;
         this.description = description;
         this.technician = technician;
         this.amount = amount;
@@ -122,5 +127,13 @@ public class Maintenance {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LabelType getLabelType() {
+        return labelType;
+    }
+
+    public void setLabelType(LabelType labelType) {
+        this.labelType = labelType;
     }
 }
