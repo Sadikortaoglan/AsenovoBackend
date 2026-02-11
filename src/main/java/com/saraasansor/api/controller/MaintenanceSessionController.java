@@ -96,94 +96,10 @@ public class MaintenanceSessionController {
         }
     }
     
-    @GetMapping("/completed")
-    public ResponseEntity<ApiResponse<Page<MaintenancePlan>>> getCompletedPlans(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        try {
-            // Default date range: last 30 days if not provided
-            if (from == null) {
-                from = LocalDate.now().minusDays(30);
-            }
-            if (to == null) {
-                to = LocalDate.now();
-            }
-            
-            // Get completed plans
-            List<MaintenancePlan> plans = sessionService.getUpcomingPlans(from, to, MaintenancePlan.PlanStatus.COMPLETED);
-           
-            // Convert to Page
-            Pageable pageable = PageRequest.of(page, size);
-            int start = (int) pageable.getOffset();
-            int end = Math.min(start + pageable.getPageSize(), plans.size());
-            List<MaintenancePlan> paginatedPlans = plans.subList(Math.min(start, plans.size()), end);
-            Page<MaintenancePlan> pageResult = new PageImpl<>(
-                    paginatedPlans, pageable, plans.size());
-            
-            return ResponseEntity.ok(ApiResponse.success(pageResult));
-        } catch (Exception e) {
-            System.err.println("getCompletedPlans error: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @GetMapping("/upcoming")
-    public ResponseEntity<ApiResponse<List<MaintenancePlan>>> getUpcomingPlans(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        try {
-            System.out.println("========================================");
-            System.out.println("GET /api/maintenances/upcoming CALLED");
-            System.out.println("Parameters: from=" + from + ", to=" + to + ", status=" + status);
-            System.out.println("========================================");
-            
-            // Parse status if provided
-            MaintenancePlan.PlanStatus planStatus = null;
-            if (status != null && !status.isEmpty()) {
-                try {
-                    planStatus = MaintenancePlan.PlanStatus.valueOf(status.toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    return ResponseEntity.badRequest()
-                            .body(ApiResponse.error("Invalid status: " + status + ". Valid values: PLANNED, IN_PROGRESS, COMPLETED, CANCELLED"));
-                }
-            }
-            
-            List<MaintenancePlan> plans = sessionService.getUpcomingPlans(from, to, planStatus);
-            
-            System.out.println("========================================");
-            System.out.println("CONTROLLER RESPONSE: " + plans.size() + " plans");
-            System.out.println("Plan IDs: " + plans.stream().map(p -> p.getId()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("Plan statuses: " + plans.stream().map(p -> p.getStatus().name()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("Plan dates: " + plans.stream().map(p -> p.getPlannedDate().toString()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("========================================");
-            
-            // Simple pagination (can be improved)
-            int start = page * size;
-            int end = Math.min(start + size, plans.size());
-            List<MaintenancePlan> paginatedPlans = plans.subList(Math.min(start, plans.size()), end);
-            
-            System.out.println("========================================");
-            System.out.println("PAGINATED RESULT: " + paginatedPlans.size() + " plans (page=" + page + ", size=" + size + ")");
-            System.out.println("Paginated Plan IDs: " + paginatedPlans.stream().map(p -> p.getId()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("========================================");
-            
-            return ResponseEntity.ok(ApiResponse.success(paginatedPlans));
-        } catch (Exception e) {
-            System.err.println("getUpcomingPlans error: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
+    // REMOVED: /completed and /upcoming endpoints
+    // These are now handled by MaintenancePlanController:
+    // - GET /api/maintenance-plans/completed
+    // - GET /api/maintenance-plans?month=YYYY-MM (returns PLANNED + IN_PROGRESS only)
     
     // Request DTOs
     public static class StartSessionRequest {

@@ -235,77 +235,10 @@ public class MaintenanceSessionService {
                 MaintenanceSession.SessionStatus.COMPLETED, from, to, pageable);
     }
     
-    /**
-     * Get upcoming sessions (from plans)
-     * Returns PLANNED, IN_PROGRESS plans with plannedDate >= CURRENT_DATE
-     * CANCELLED and COMPLETED are excluded
-     */
-    public List<MaintenancePlan> getUpcomingPlans(LocalDate from, LocalDate to, MaintenancePlan.PlanStatus status) {
-        System.out.println("========================================");
-        System.out.println("MaintenanceSessionService.getUpcomingPlans CALLED");
-        System.out.println("Parameters: from=" + from + ", to=" + to + ", status=" + status);
-        System.out.println("========================================");
-        
-        // If no date range provided, default to today and future
-        LocalDate today = LocalDate.now();
-        if (from == null) {
-            from = today; // CRITICAL: Only future and today's plans
-        }
-        if (to == null) {
-            to = LocalDate.now().plusYears(10); // Far future
-        }
-        
-        // CRITICAL: Ensure from >= today (no past dates)
-        if (from.isBefore(today)) {
-            from = today;
-        }
-        
-        System.out.println("========================================");
-        System.out.println("Date range after adjustment: from=" + from + ", to=" + to);
-        System.out.println("Today: " + today);
-        System.out.println("Filter: status IN (PLANNED, IN_PROGRESS) AND plannedDate >= " + from);
-        System.out.println("========================================");
-        
-        // If status is null, return PLANNED and IN_PROGRESS (upcoming)
-        if (status == null) {
-            // Use repository method that filters by status IN (PLANNED, IN_PROGRESS) at SQL level
-            List<MaintenancePlan> result = planRepository.findByPlannedDateBetweenOrderByPlannedDateAsc(
-                    from, to, 
-                    java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
-            
-            // Additional filter: plannedDate >= today (double check)
-            result = result.stream()
-                    .filter(p -> !p.getPlannedDate().isBefore(today))
-                    .collect(java.util.stream.Collectors.toList());
-            
-            System.out.println("========================================");
-            System.out.println("QUERY RESULT: " + result.size() + " plans returned");
-            System.out.println("Plan IDs: " + result.stream().map(p -> p.getId()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("Plan statuses: " + result.stream().map(p -> p.getStatus().name()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("Plan dates: " + result.stream().map(p -> p.getPlannedDate()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("========================================");
-            
-            return result;
-        } else {
-            // Specific status requested - but must be PLANNED or IN_PROGRESS for upcoming
-            if (status != MaintenancePlan.PlanStatus.PLANNED && status != MaintenancePlan.PlanStatus.IN_PROGRESS) {
-                System.out.println("WARNING: Status " + status + " requested for upcoming plans. Returning empty list.");
-                return new java.util.ArrayList<>();
-            }
-            
-            List<MaintenancePlan> result = planRepository.findWithFilters(status, from, to);
-            result = result.stream()
-                    .filter(p -> !p.getPlannedDate().isBefore(today))
-                    .collect(java.util.stream.Collectors.toList());
-            
-            System.out.println("========================================");
-            System.out.println("QUERY RESULT: " + result.size() + " plans with status " + status);
-            System.out.println("Plan IDs: " + result.stream().map(p -> p.getId()).collect(java.util.stream.Collectors.toList()));
-            System.out.println("========================================");
-            
-            return result;
-        }
-    }
+    // REMOVED: getUpcomingPlans and getCompletedPlans methods
+    // These are now handled by MaintenancePlanService:
+    // - getAllPlans() - returns PLANNED + IN_PROGRESS (SQL-level filtering)
+    // - getCompletedPlans() - returns COMPLETED (SQL-level filtering)
     
     /**
      * Hash token (same as QrProofService)

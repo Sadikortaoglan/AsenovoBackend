@@ -46,6 +46,19 @@ public class MaintenancePlan {
     
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
+    
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "qr_proof_id")
+    private com.saraasansor.api.model.QrProof qrProof;
+    
+    @Column(name = "note", columnDefinition = "TEXT")
+    private String note;
+    
+    @Column(name = "price", precision = 14, scale = 2)
+    private java.math.BigDecimal price;
 
     public enum PlanStatus {
         PLANNED, IN_PROGRESS, COMPLETED, CANCELLED
@@ -141,5 +154,37 @@ public class MaintenancePlan {
     
     public void setCancelledAt(LocalDateTime cancelledAt) {
         this.cancelledAt = cancelledAt;
+    }
+    
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+    
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+    
+    public com.saraasansor.api.model.QrProof getQrProof() {
+        return qrProof;
+    }
+    
+    public void setQrProof(com.saraasansor.api.model.QrProof qrProof) {
+        this.qrProof = qrProof;
+    }
+    
+    public String getNote() {
+        return note;
+    }
+    
+    public void setNote(String note) {
+        this.note = note;
+    }
+    
+    public java.math.BigDecimal getPrice() {
+        return price;
+    }
+    
+    public void setPrice(java.math.BigDecimal price) {
+        this.price = price;
     }
 }

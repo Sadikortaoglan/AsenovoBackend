@@ -5,13 +5,16 @@ import com.saraasansor.api.dto.CompleteMaintenancePlanRequest;
 import com.saraasansor.api.dto.CreateMaintenancePlanRequest;
 import com.saraasansor.api.dto.MaintenancePlanResponseDto;
 import com.saraasansor.api.dto.RescheduleMaintenancePlanRequest;
+import com.saraasansor.api.dto.StartMaintenancePlanRequest;
 import com.saraasansor.api.dto.UpdateMaintenancePlanRequest;
 import com.saraasansor.api.service.MaintenancePlanService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -127,16 +130,53 @@ public class MaintenancePlanController {
     }
     
     /**
-     * COMPLETE WITH QR - QR Kod ile Tamamlama
+     * START - Start maintenance (PLANNED → IN_PROGRESS)
+     * POST /api/maintenance-plans/{id}/start
+     * Requires QR proof
+     */
+    @PostMapping("/{id}/start")
+    public ResponseEntity<ApiResponse<MaintenancePlanResponseDto>> startPlan(
+            @PathVariable Long id,
+            @Valid @RequestBody StartMaintenancePlanRequest request) {
+        try {
+            MaintenancePlanResponseDto started = planService.startPlan(id, request.getQrToken());
+            return ResponseEntity.ok(ApiResponse.success("Maintenance started successfully", started));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * COMPLETE - Complete maintenance (IN_PROGRESS → COMPLETED)
      * POST /api/maintenance-plans/{id}/complete
+     * Requires QR proof ID and at least 4 photos
      */
     @PostMapping("/{id}/complete")
-    public ResponseEntity<ApiResponse<MaintenancePlanResponseDto>> completePlanWithQr(
+    public ResponseEntity<ApiResponse<MaintenancePlanResponseDto>> completePlan(
             @PathVariable Long id,
             @Valid @RequestBody CompleteMaintenancePlanRequest request) {
         try {
-            MaintenancePlanResponseDto completed = planService.completePlanWithQr(id, request.getQrCode());
-            return ResponseEntity.ok(ApiResponse.success("Plan completed successfully", completed));
+            MaintenancePlanResponseDto completed = planService.completePlan(
+                id, request.getQrProofId(), request.getPhotoUrls(), request.getNote(), request.getPrice());
+            return ResponseEntity.ok(ApiResponse.success("Maintenance completed successfully", completed));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * GET COMPLETED - Get completed maintenance plans
+     * GET /api/maintenance-plans/completed
+     */
+    @GetMapping("/completed")
+    public ResponseEntity<ApiResponse<List<MaintenancePlanResponseDto>>> getCompletedPlans(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        try {
+            List<MaintenancePlanResponseDto> completed = planService.getCompletedPlans(from, to);
+            return ResponseEntity.ok(ApiResponse.success("Completed plans retrieved successfully", completed));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));

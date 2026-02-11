@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -103,4 +104,26 @@ public interface MaintenancePlanRepository extends JpaRepository<MaintenancePlan
         @Param("status") MaintenancePlan.PlanStatus status,
         @Param("from") LocalDate from,
         @Param("to") LocalDate to);
+    
+    @Query("SELECT p FROM MaintenancePlan p " +
+           "LEFT JOIN FETCH p.elevator " +
+           "LEFT JOIN FETCH p.template " +
+           "LEFT JOIN FETCH p.assignedTechnician " +
+           "WHERE p.status = :status " +
+           "ORDER BY p.completedAt DESC NULLS LAST, p.updatedAt DESC")
+    List<MaintenancePlan> findByStatusOrderByCompletedAtDesc(
+        @Param("status") MaintenancePlan.PlanStatus status);
+    
+    @Query("SELECT p FROM MaintenancePlan p " +
+           "LEFT JOIN FETCH p.elevator " +
+           "LEFT JOIN FETCH p.template " +
+           "LEFT JOIN FETCH p.assignedTechnician " +
+           "WHERE p.status = :status " +
+           "AND p.completedAt >= :from " +
+           "AND p.completedAt <= :to " +
+           "ORDER BY p.completedAt DESC")
+    List<MaintenancePlan> findByStatusAndCompletedAtBetweenOrderByCompletedAtDesc(
+        @Param("status") MaintenancePlan.PlanStatus status,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to);
 }

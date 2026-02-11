@@ -115,6 +115,17 @@ public class DashboardService {
         System.out.println("Count: " + upcomingPlans);
         System.out.println("========================================");
         
+        // Completed plans (status = COMPLETED, no date filter)
+        long completedPlans = maintenancePlanRepository.findByStatusOrderByCompletedAtDesc(
+                MaintenancePlan.PlanStatus.COMPLETED).size();
+        counts.setMaintenancePlansCompleted(completedPlans);
+        
+        System.out.println("========================================");
+        System.out.println("DashboardService.getCounts - Completed Plans");
+        System.out.println("Status filter: COMPLETED");
+        System.out.println("Count: " + completedPlans);
+        System.out.println("========================================");
+        
         // Completed sessions (last 30 days)
         LocalDateTime from = LocalDateTime.now().minusDays(30);
         LocalDateTime to = LocalDateTime.now();

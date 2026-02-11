@@ -12,6 +12,7 @@ public class CountsDto {
     private Long warnings;
     private Long maintenanceTemplates;
     private Long maintenancePlansUpcoming;
+    private Long maintenancePlansCompleted;
     private Long maintenanceSessionsCompleted;
     
     public CountsDto() {
@@ -80,6 +81,14 @@ public class CountsDto {
     
     public void setMaintenancePlansUpcoming(Long maintenancePlansUpcoming) {
         this.maintenancePlansUpcoming = maintenancePlansUpcoming;
+    }
+    
+    public Long getMaintenancePlansCompleted() {
+        return maintenancePlansCompleted;
+    }
+    
+    public void setMaintenancePlansCompleted(Long maintenancePlansCompleted) {
+        this.maintenancePlansCompleted = maintenancePlansCompleted;
     }
     
     public Long getMaintenanceSessionsCompleted() {

@@ -41,6 +41,12 @@ public class MaintenancePlanService {
     @Autowired
     private UserRepository userRepository;
     
+    @Autowired
+    private com.saraasansor.api.service.QrProofService qrProofService;
+    
+    @Autowired
+    private com.saraasansor.api.repository.QrProofRepository qrProofRepository;
+    
     public List<MaintenancePlan> getPlansByDateRange(LocalDate from, LocalDate to) {
         return planRepository.findByPlannedDateBetweenOrderByPlannedDateAsc(
             from, to, 
@@ -154,96 +160,69 @@ public class MaintenancePlanService {
     }
     
     /**
-     * Get all maintenance plans with filtering
-     * Default behavior: Only return PLANNED and IN_PROGRESS (active plans) for calendar view
-     * If status parameter is provided, return plans with that specific status
+     * Get all maintenance plans (PLANNED + IN_PROGRESS only)
+     * SQL-level filtering - CANCELLED and COMPLETED never returned
+     * Used for calendar view
      */
     public List<MaintenancePlanResponseDto> getAllPlans(String month, Integer year, Long elevatorId, String status) {
-        try {
-            LocalDate from;
-            LocalDate to;
-            
-            if (month != null && !month.isEmpty()) {
-                // Parse YYYY-MM format
-                try {
-                    YearMonth yearMonth = YearMonth.parse(month);
-                    from = yearMonth.atDay(1);
-                    to = yearMonth.atEndOfMonth();
-                } catch (Exception e) {
-                    throw new RuntimeException("Invalid month format. Expected YYYY-MM (e.g., 2026-02)");
-                }
-            } else if (year != null) {
-                from = LocalDate.of(year, 1, 1);
-                to = LocalDate.of(year, 12, 31);
-            } else {
-                // Default: current month
-                YearMonth currentMonth = YearMonth.now();
-                from = currentMonth.atDay(1);
-                to = currentMonth.atEndOfMonth();
+        LocalDate from;
+        LocalDate to;
+        
+        if (month != null && !month.isEmpty()) {
+            try {
+                YearMonth yearMonth = YearMonth.parse(month);
+                from = yearMonth.atDay(1);
+                to = yearMonth.atEndOfMonth();
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid month format. Expected YYYY-MM (e.g., 2026-02)");
             }
-            
-            List<MaintenancePlan> plans;
-            
-            if (elevatorId != null && status != null) {
-                // Specific status requested - use all statuses query
-                try {
-                    MaintenancePlan.PlanStatus planStatus = MaintenancePlan.PlanStatus.valueOf(status.toUpperCase());
-                    plans = planRepository.findByElevatorIdAndPlannedDateBetweenAllStatuses(elevatorId, from, to)
-                        .stream()
-                        .filter(p -> p.getStatus() == planStatus)
-                        .collect(Collectors.toList());
-                } catch (IllegalArgumentException e) {
-                    throw new RuntimeException("Invalid status: " + status + ". Valid values: PLANNED, IN_PROGRESS, COMPLETED, CANCELLED");
-                }
-            } else if (elevatorId != null) {
-                // Elevator filter without status - default to active plans only
-                // Repository query already filters by status IN ('PLANNED', 'IN_PROGRESS')
-                plans = planRepository.findByElevatorIdAndPlannedDateBetweenOrderByPlannedDateAsc(
-                    elevatorId, from, to, 
-                    java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
-            } else if (status != null) {
-                // Specific status requested
-                try {
-                    MaintenancePlan.PlanStatus planStatus = MaintenancePlan.PlanStatus.valueOf(status.toUpperCase());
-                    plans = planRepository.findByPlannedDateBetweenAndStatusOrderByPlannedDateAsc(from, to, planStatus);
-                } catch (IllegalArgumentException e) {
-                    throw new RuntimeException("Invalid status: " + status + ". Valid values: PLANNED, IN_PROGRESS, COMPLETED, CANCELLED");
-                }
-            } else {
-                // No filters - default to active plans only (PLANNED and IN_PROGRESS)
-                // Repository query already filters by status IN ('PLANNED', 'IN_PROGRESS')
-                // CANCELLED and COMPLETED are excluded at SQL level
-                System.out.println("========================================");
-                System.out.println("CALLING: planRepository.findByPlannedDateBetweenOrderByPlannedDateAsc");
-                System.out.println("Date range: from=" + from + ", to=" + to);
-                System.out.println("This method filters: status IN (PLANNED, IN_PROGRESS)");
-                System.out.println("========================================");
-                plans = planRepository.findByPlannedDateBetweenOrderByPlannedDateAsc(
-                    from, to, 
-                    java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
-                System.out.println("========================================");
-                System.out.println("QUERY RESULT: " + plans.size() + " plans returned from database");
-                System.out.println("Plan IDs: " + plans.stream().map(p -> p.getId()).collect(Collectors.toList()));
-                System.out.println("Plan statuses: " + plans.stream().map(p -> p.getStatus().name()).collect(Collectors.toList()));
-                System.out.println("========================================");
-            }
-            
-            List<MaintenancePlanResponseDto> result = plans.stream()
-                .map(MaintenancePlanResponseDto::fromEntity)
-                .collect(Collectors.toList());
-            
-            System.out.println("========================================");
-            System.out.println("FINAL RESULT: " + result.size() + " DTOs");
-            System.out.println("DTO IDs: " + result.stream().map(d -> d.getId()).collect(Collectors.toList()));
-            System.out.println("DTO statuses: " + result.stream().map(d -> d.getStatus()).collect(Collectors.toList()));
-            System.out.println("========================================");
-            
-            return result;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Error retrieving maintenance plans: " + e.getMessage(), e);
+        } else if (year != null) {
+            from = LocalDate.of(year, 1, 1);
+            to = LocalDate.of(year, 12, 31);
+        } else {
+            YearMonth currentMonth = YearMonth.now();
+            from = currentMonth.atDay(1);
+            to = currentMonth.atEndOfMonth();
         }
+        
+        List<MaintenancePlan> plans;
+        
+        // SQL-level filtering: Only PLANNED and IN_PROGRESS
+        // CANCELLED and COMPLETED excluded at SQL level
+        if (elevatorId != null) {
+            plans = planRepository.findByElevatorIdAndPlannedDateBetweenOrderByPlannedDateAsc(
+                elevatorId, from, to, 
+                java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
+        } else {
+            plans = planRepository.findByPlannedDateBetweenOrderByPlannedDateAsc(
+                from, to, 
+                java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
+        }
+        
+        return plans.stream()
+            .map(MaintenancePlanResponseDto::fromEntity)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Get completed maintenance plans
+     * SQL-level filtering: Only COMPLETED status
+     * Ordered by completedAt DESC
+     */
+    public List<MaintenancePlanResponseDto> getCompletedPlans(LocalDateTime from, LocalDateTime to) {
+        List<MaintenancePlan> plans;
+        
+        if (from != null && to != null) {
+            plans = planRepository.findByStatusAndCompletedAtBetweenOrderByCompletedAtDesc(
+                MaintenancePlan.PlanStatus.COMPLETED, from, to);
+        } else {
+            plans = planRepository.findByStatusOrderByCompletedAtDesc(
+                MaintenancePlan.PlanStatus.COMPLETED);
+        }
+        
+        return plans.stream()
+            .map(MaintenancePlanResponseDto::fromEntity)
+            .collect(Collectors.toList());
     }
     
     /**
@@ -332,18 +311,87 @@ public class MaintenancePlanService {
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
     
-    public MaintenancePlanResponseDto completePlanWithQr(Long id, String qrCode) {
+    /**
+     * Start maintenance plan (PLANNED → IN_PROGRESS)
+     * RULE 1: Requires QR proof
+     */
+    public MaintenancePlanResponseDto startPlan(Long id, String qrToken) {
         MaintenancePlan plan = getPlanById(id);
         
-        // TODO: Validate QR code
-        // For now, just mark as completed
-        plan.setStatus(MaintenancePlan.PlanStatus.COMPLETED);
+        // Validation: Only PLANNED can be started
+        if (plan.getStatus() != MaintenancePlan.PlanStatus.PLANNED) {
+            throw new RuntimeException("Only PLANNED maintenance plans can be started. Current status: " + plan.getStatus());
+        }
+        
+        // Validation: QR proof required
+        if (qrToken == null || qrToken.isEmpty()) {
+            throw new RuntimeException("QR token is required to start maintenance");
+        }
+        
+        // Validate and use QR token
+        User currentUser = getCurrentUser();
+        com.saraasansor.api.model.QrProof qrProof = qrProofService.validateAndUseToken(qrToken, currentUser.getId());
+        
+        // Verify QR proof is for the same elevator
+        if (!qrProof.getElevator().getId().equals(plan.getElevator().getId())) {
+            throw new RuntimeException("QR token is for a different elevator");
+        }
+        
+        // Update plan
+        plan.setStatus(MaintenancePlan.PlanStatus.IN_PROGRESS);
+        plan.setQrProof(qrProof);
+        plan.setUpdatedBy(currentUser);
+        plan.setUpdatedAt(LocalDateTime.now());
         
         MaintenancePlan saved = planRepository.save(plan);
-        MaintenancePlanResponseDto dto = MaintenancePlanResponseDto.fromEntity(saved);
-        dto.setQrCode(qrCode);
-        dto.setCompletedDate(java.time.LocalDateTime.now());
-        return dto;
+        return MaintenancePlanResponseDto.fromEntity(saved);
+    }
+    
+    /**
+     * Complete maintenance plan (IN_PROGRESS → COMPLETED)
+     * RULE 2: Only IN_PROGRESS can be completed
+     * RULE 3: Requires QR proof ID and at least 4 photos
+     */
+    public MaintenancePlanResponseDto completePlan(Long id, Long qrProofId, java.util.List<String> photoUrls, String note, java.math.BigDecimal price) {
+        MaintenancePlan plan = getPlanById(id);
+        
+        // Validation: Only IN_PROGRESS can be completed
+        if (plan.getStatus() != MaintenancePlan.PlanStatus.IN_PROGRESS) {
+            throw new RuntimeException("Only IN_PROGRESS maintenance plans can be completed. Current status: " + plan.getStatus());
+        }
+        
+        // Validation: QR proof required
+        if (qrProofId == null) {
+            throw new RuntimeException("QR proof ID is required to complete maintenance");
+        }
+        
+        // Validation: At least 4 photos required
+        if (photoUrls == null || photoUrls.size() < 4) {
+            throw new RuntimeException("At least 4 photos are required to complete maintenance");
+        }
+        
+        // Verify QR proof exists and matches plan
+        com.saraasansor.api.model.QrProof qrProof = qrProofRepository.findById(qrProofId)
+            .orElseThrow(() -> new RuntimeException("QR proof not found"));
+        
+        if (!qrProof.getElevator().getId().equals(plan.getElevator().getId())) {
+            throw new RuntimeException("QR proof is for a different elevator");
+        }
+        
+        // Update plan
+        plan.setStatus(MaintenancePlan.PlanStatus.COMPLETED);
+        plan.setQrProof(qrProof);
+        plan.setCompletedAt(LocalDateTime.now());
+        plan.setNote(note);
+        plan.setPrice(price);
+        plan.setUpdatedBy(getCurrentUser());
+        plan.setUpdatedAt(LocalDateTime.now());
+        
+        MaintenancePlan saved = planRepository.save(plan);
+        
+        // TODO: Save photos to maintenance_plan_photos table
+        
+        return MaintenancePlanResponseDto.fromEntity(saved);
     }
     
     public MaintenancePlanResponseDto cancelPlan(Long id) {
