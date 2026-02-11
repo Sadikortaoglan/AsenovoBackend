@@ -1,6 +1,7 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.PaymentReceiptDto;
+import com.saraasansor.api.dto.PaymentSummaryDto;
 import com.saraasansor.api.model.Maintenance;
 import com.saraasansor.api.model.PaymentReceipt;
 import com.saraasansor.api.repository.MaintenanceRepository;
@@ -116,5 +117,20 @@ public class PaymentReceiptService {
         metadata.put("amount", receipt.getAmount());
         metadata.put("payerName", receipt.getPayerName());
         auditLogger.log("PAYMENT_RECEIPT_DELETED", "PAYMENT_RECEIPT", id, metadata);
+    }
+    
+    public PaymentSummaryDto getSummary() {
+        List<PaymentReceipt> allReceipts = paymentReceiptRepository.findAll();
+        
+        PaymentSummaryDto summary = new PaymentSummaryDto();
+        summary.setTotalCount(allReceipts.size());
+        
+        double totalAmount = allReceipts.stream()
+                .filter(r -> r.getAmount() != null)
+                .mapToDouble(PaymentReceipt::getAmount)
+                .sum();
+        summary.setTotalAmount(totalAmount);
+        
+        return summary;
     }
 }

@@ -2,6 +2,7 @@ package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.PaymentReceiptDto;
+import com.saraasansor.api.dto.PaymentSummaryDto;
 import com.saraasansor.api.service.PaymentReceiptService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,12 @@ public class PaymentReceiptController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
         List<PaymentReceiptDto> receipts = paymentReceiptService.getPaymentReceiptsByDateRange(dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.success(receipts));
+    }
+    
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<PaymentSummaryDto>> getSummary() {
+        PaymentSummaryDto summary = paymentReceiptService.getSummary();
+        return ResponseEntity.ok(ApiResponse.success(summary));
     }
     
     @GetMapping("/{id}")
