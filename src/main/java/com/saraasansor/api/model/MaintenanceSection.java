@@ -21,6 +21,9 @@ public class MaintenanceSection {
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
+    
+    @Column(nullable = false)
+    private Boolean active = true;
 
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
@@ -63,6 +66,14 @@ public class MaintenanceSection {
 
     public void setSortOrder(Integer sortOrder) {
         this.sortOrder = sortOrder;
+    }
+    
+    public Boolean getActive() {
+        return active;
+    }
+    
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public List<MaintenanceItem> getItems() {

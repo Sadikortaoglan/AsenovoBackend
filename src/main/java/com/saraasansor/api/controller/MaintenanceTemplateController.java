@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/maintenance/templates")
+@RequestMapping("/maintenance-templates")
 public class MaintenanceTemplateController {
     
     @Autowired
@@ -99,84 +99,15 @@ public class MaintenanceTemplateController {
     }
     
     @PostMapping("/{templateId}/sections")
-    public ResponseEntity<ApiResponse<MaintenanceSection>> createSection(
+    public ResponseEntity<ApiResponse<MaintenanceTemplate>> createSection(
             @PathVariable Long templateId, @RequestBody MaintenanceSection section) {
         try {
-            MaintenanceSection created = templateService.createSection(templateId, section);
-            return ResponseEntity.ok(ApiResponse.success("Section created successfully", created));
+            MaintenanceTemplate updatedTemplate = templateService.createSection(templateId, section);
+            return ResponseEntity.status(201).body(ApiResponse.success("Section created successfully", updatedTemplate));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
     }
     
-    @PutMapping("/sections/{id}")
-    public ResponseEntity<ApiResponse<MaintenanceSection>> updateSection(
-            @PathVariable Long id, @RequestBody MaintenanceSection section) {
-        try {
-            MaintenanceSection updated = templateService.updateSection(id, section);
-            return ResponseEntity.ok(ApiResponse.success("Section updated successfully", updated));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @DeleteMapping("/sections/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteSection(@PathVariable Long id) {
-        try {
-            templateService.deleteSection(id);
-            return ResponseEntity.ok(ApiResponse.success("Section deleted successfully", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    // Items
-    @GetMapping("/sections/{sectionId}/items")
-    public ResponseEntity<ApiResponse<List<MaintenanceItem>>> getItems(@PathVariable Long sectionId) {
-        try {
-            List<MaintenanceItem> items = templateService.getItemsBySectionId(sectionId);
-            return ResponseEntity.ok(ApiResponse.success(items));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @PostMapping("/sections/{sectionId}/items")
-    public ResponseEntity<ApiResponse<MaintenanceItem>> createItem(
-            @PathVariable Long sectionId, @RequestBody MaintenanceItem item) {
-        try {
-            MaintenanceItem created = templateService.createItem(sectionId, item);
-            return ResponseEntity.ok(ApiResponse.success("Item created successfully", created));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @PutMapping("/items/{id}")
-    public ResponseEntity<ApiResponse<MaintenanceItem>> updateItem(
-            @PathVariable Long id, @RequestBody MaintenanceItem item) {
-        try {
-            MaintenanceItem updated = templateService.updateItem(id, item);
-            return ResponseEntity.ok(ApiResponse.success("Item updated successfully", updated));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @PatchMapping("/items/{id}/toggle-active")
-    public ResponseEntity<ApiResponse<MaintenanceItem>> toggleItemActive(@PathVariable Long id) {
-        try {
-            MaintenanceItem updated = templateService.toggleItemActive(id);
-            return ResponseEntity.ok(ApiResponse.success("Item status updated", updated));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
 }
