@@ -7,6 +7,7 @@ import com.saraasansor.api.model.MaintenanceStepResult;
 import com.saraasansor.api.service.MaintenanceSessionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -96,17 +97,34 @@ public class MaintenanceSessionController {
     }
     
     @GetMapping("/completed")
-    public ResponseEntity<ApiResponse<Page<MaintenanceSession>>> getCompletedSessions(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+    public ResponseEntity<ApiResponse<Page<MaintenancePlan>>> getCompletedPlans(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
+            // Default date range: last 30 days if not provided
+            if (from == null) {
+                from = LocalDate.now().minusDays(30);
+            }
+            if (to == null) {
+                to = LocalDate.now();
+            }
+            
+           
+            // Convert to Page
             Pageable pageable = PageRequest.of(page, size);
-            Page<MaintenanceSession> sessions = sessionService.getCompletedSessions(from, to, pageable);
-            return ResponseEntity.ok(ApiResponse.success(sessions));
+            int start = (int) pageable.getOffset();
+            int end = Math.min(start + pageable.getPageSize(), plans.size());
+            List<MaintenancePlan> paginatedPlans = plans.subList(Math.min(start, plans.size()), end);
+            Page<MaintenancePlan> pageResult = new PageImpl<>(
+                    paginatedPlans, pageable, plans.size());
+            
+            return ResponseEntity.ok(ApiResponse.success(pageResult));
         } catch (Exception e) {
+            System.err.println("getCompletedPlans error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -114,19 +132,37 @@ public class MaintenanceSessionController {
     
     @GetMapping("/upcoming")
     public ResponseEntity<ApiResponse<List<MaintenancePlan>>> getUpcomingPlans(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
-            List<MaintenancePlan> plans = sessionService.getUpcomingPlans(from, to);
+            // Parse status if provided
+            MaintenancePlan.PlanStatus planStatus = null;
+            if (status != null && !status.isEmpty()) {
+                try {
+                    planStatus = MaintenancePlan.PlanStatus.valueOf(status.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest()
+                            .body(ApiResponse.error("Invalid status: " + status + ". Valid values: PLANNED, IN_PROGRESS, COMPLETED, CANCELLED"));
+                }
+            }
+            
+            
+            List<MaintenancePlan> plans = sessionService.getUpcomingPlans(from, to, planStatus);
+            
+        
             // Simple pagination (can be improved)
             int start = page * size;
             int end = Math.min(start + size, plans.size());
             List<MaintenancePlan> paginatedPlans = plans.subList(Math.min(start, plans.size()), end);
+            
             return ResponseEntity.ok(ApiResponse.success(paginatedPlans));
         } catch (Exception e) {
+            System.err.println("getUpcomingPlans error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

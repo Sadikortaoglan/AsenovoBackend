@@ -32,6 +32,20 @@ public class MaintenancePlan {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by")
+    private User cancelledBy;
+    
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
 
     public enum PlanStatus {
         PLANNED, IN_PROGRESS, COMPLETED, CANCELLED
@@ -95,5 +109,37 @@ public class MaintenancePlan {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public User getUpdatedBy() {
+        return updatedBy;
+    }
+    
+    public void setUpdatedBy(User updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+    
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+    
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+    
+    public User getCancelledBy() {
+        return cancelledBy;
+    }
+    
+    public void setCancelledBy(User cancelledBy) {
+        this.cancelledBy = cancelledBy;
+    }
+    
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+    
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
     }
 }

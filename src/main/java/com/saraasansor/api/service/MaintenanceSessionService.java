@@ -237,10 +237,41 @@ public class MaintenanceSessionService {
     
     /**
      * Get upcoming sessions (from plans)
+     * Returns PLANNED, IN_PROGRESS, and optionally COMPLETED plans
      */
-    public List<MaintenancePlan> getUpcomingPlans(LocalDate from, LocalDate to) {
-        return planRepository.findByPlannedDateBetweenAndStatusOrderByPlannedDateAsc(
-                from, to, MaintenancePlan.PlanStatus.PLANNED);
+    public List<MaintenancePlan> getUpcomingPlans(LocalDate from, LocalDate to, MaintenancePlan.PlanStatus status) {
+        // If no date range provided, default to today and future
+        if (from == null) {
+            from = LocalDate.now();
+        }
+        if (to == null) {
+            to = LocalDate.now().plusYears(10); // Far future
+        }
+        
+        // If status is null, return PLANNED and IN_PROGRESS (upcoming)
+        if (status == null) {
+            List<MaintenancePlan> planned = planRepository.findWithFilters(
+                    MaintenancePlan.PlanStatus.PLANNED, from, to);
+            List<MaintenancePlan> inProgress = planRepository.findWithFilters(
+                    MaintenancePlan.PlanStatus.IN_PROGRESS, from, to);
+            
+            // Combine and sort
+            java.util.List<MaintenancePlan> result = new java.util.ArrayList<>();
+            result.addAll(planned);
+            result.addAll(inProgress);
+            result.sort((a, b) -> a.getPlannedDate().compareTo(b.getPlannedDate()));
+            
+            // Log for debugging
+            System.out.println("getUpcomingPlans: Found " + result.size() + " plans (PLANNED: " + 
+                    planned.size() + ", IN_PROGRESS: " + inProgress.size() + ")");
+            
+            return result;
+        } else {
+            // Specific status requested
+            List<MaintenancePlan> result = planRepository.findWithFilters(status, from, to);
+            System.out.println("getUpcomingPlans: Found " + result.size() + " plans with status " + status);
+            return result;
+        }
     }
     
     /**

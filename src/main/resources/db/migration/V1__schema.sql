@@ -230,7 +230,11 @@ CREATE TABLE maintenance_plans (
     planned_date DATE NOT NULL,
     assigned_technician_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PLANNED' CHECK (status IN ('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMP,
+    cancelled_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    cancelled_at TIMESTAMP
 );
 
 -- 19. QR PROOFS
