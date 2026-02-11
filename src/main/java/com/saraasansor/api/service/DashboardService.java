@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class DashboardService {
@@ -96,10 +97,23 @@ public class DashboardService {
         // Maintenance module counts
         counts.setMaintenanceTemplates(maintenanceTemplateRepository.count());
         
-        // Upcoming plans (PLANNED status, plannedDate >= today)
-        long upcomingPlans = maintenancePlanRepository.findByPlannedDateBetweenAndStatusOrderByPlannedDateAsc(
-                now, now.plusYears(1), MaintenancePlan.PlanStatus.PLANNED).size();
+        // Upcoming plans (PLANNED and IN_PROGRESS status, plannedDate >= today)
+        // MUST use same logic as /maintenances/upcoming endpoint
+        List<MaintenancePlan> upcomingPlansList = maintenancePlanRepository.findByPlannedDateBetweenOrderByPlannedDateAsc(
+                now, now.plusYears(1),
+                java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
+        // Additional filter: plannedDate >= today (no past dates)
+        long upcomingPlans = upcomingPlansList.stream()
+                .filter(p -> !p.getPlannedDate().isBefore(now))
+                .count();
         counts.setMaintenancePlansUpcoming(upcomingPlans);
+        
+        System.out.println("========================================");
+        System.out.println("DashboardService.getCounts - Upcoming Plans");
+        System.out.println("Date range: from=" + now + ", to=" + now.plusYears(1));
+        System.out.println("Status filter: PLANNED, IN_PROGRESS");
+        System.out.println("Count: " + upcomingPlans);
+        System.out.println("========================================");
         
         // Completed sessions (last 30 days)
         LocalDateTime from = LocalDateTime.now().minusDays(30);
