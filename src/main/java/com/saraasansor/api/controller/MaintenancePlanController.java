@@ -114,8 +114,9 @@ public class MaintenancePlanController {
     }
     
     /**
-     * DELETE - Plan Silme (Soft Delete - Status = CANCELLED)
+     * DELETE - Cancel Plan (Reset to NOT_PLANNED)
      * DELETE /api/maintenance-plans/{id}
+     * Sets: status = NOT_PLANNED, plannedDate = null, assignedTechnician = null
      * Returns updated plan for frontend refresh
      */
     @DeleteMapping("/{id}")

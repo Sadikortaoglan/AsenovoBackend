@@ -19,7 +19,7 @@ public class MaintenancePlan {
     @JoinColumn(name = "template_id", nullable = false)
     private MaintenanceTemplate template;
 
-    @Column(name = "planned_date", nullable = false)
+    @Column(name = "planned_date")
     private LocalDate plannedDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,7 +28,7 @@ public class MaintenancePlan {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PlanStatus status = PlanStatus.PLANNED;
+    private PlanStatus status = PlanStatus.NOT_PLANNED;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -61,7 +61,7 @@ public class MaintenancePlan {
     private java.math.BigDecimal price;
 
     public enum PlanStatus {
-        PLANNED, IN_PROGRESS, COMPLETED, CANCELLED
+        NOT_PLANNED, PLANNED, IN_PROGRESS, COMPLETED
     }
 
     public MaintenancePlan() {

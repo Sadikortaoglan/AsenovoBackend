@@ -110,8 +110,8 @@ public class MaintenancePlanService {
      * Validate monthly uniqueness for maintenance plans
      * Rules:
      * - Only PLANNED and IN_PROGRESS plans count as "active"
-     * - COMPLETED and CANCELLED plans don't count (can have multiple)
-     * - Same elevator can have multiple plans in same month if others are COMPLETED/CANCELLED
+     * - COMPLETED and NOT_PLANNED plans don't count (can have multiple)
+     * - Same elevator can have multiple plans in same month if others are COMPLETED/NOT_PLANNED
      */
     private void validateMonthlyUniqueness(Long elevatorId, LocalDate plannedDate) {
         YearMonth yearMonth = YearMonth.from(plannedDate);
@@ -161,7 +161,7 @@ public class MaintenancePlanService {
     
     /**
      * Get all maintenance plans (PLANNED + IN_PROGRESS only)
-     * SQL-level filtering - CANCELLED and COMPLETED never returned
+     * SQL-level filtering - NOT_PLANNED and COMPLETED never returned
      * Used for calendar view
      */
     public List<MaintenancePlanResponseDto> getAllPlans(String month, Integer year, Long elevatorId, String status) {
@@ -188,7 +188,7 @@ public class MaintenancePlanService {
         List<MaintenancePlan> plans;
         
         // SQL-level filtering: Only PLANNED and IN_PROGRESS
-        // CANCELLED and COMPLETED excluded at SQL level
+        // NOT_PLANNED and COMPLETED excluded at SQL level (NOT_PLANNED has plannedDate = null, so won't match date range)
         if (elevatorId != null) {
             plans = planRepository.findByElevatorIdAndPlannedDateBetweenOrderByPlannedDateAsc(
                 elevatorId, from, to, 
@@ -394,37 +394,36 @@ public class MaintenancePlanService {
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
     
-    public MaintenancePlanResponseDto cancelPlan(Long id) {
-        MaintenancePlan plan = getPlanById(id);
-        plan.setStatus(MaintenancePlan.PlanStatus.CANCELLED);
-        MaintenancePlan saved = planRepository.save(plan);
-        return MaintenancePlanResponseDto.fromEntity(saved);
-    }
-    
     public MaintenancePlanResponseDto getPlanByIdDto(Long id) {
         MaintenancePlan plan = getPlanById(id);
         return MaintenancePlanResponseDto.fromEntity(plan);
     }
     
     /**
-     * Soft delete maintenance plan (set status to CANCELLED)
+     * Cancel maintenance plan (reset to NOT_PLANNED)
+     * Business rule: Cancelled plan behaves as if it was never planned
      * Rules:
-     * - Only PLANNED status can be deleted
-     * - IN_PROGRESS and COMPLETED cannot be deleted
+     * - Only PLANNED status can be cancelled
+     * - IN_PROGRESS and COMPLETED cannot be cancelled
+     * - Sets: plannedDate = null, assignedTechnician = null, status = NOT_PLANNED
      * Returns updated plan for frontend refresh
      */
+    @Transactional
     public MaintenancePlanResponseDto deletePlan(Long id) {
         MaintenancePlan plan = getPlanById(id);
         
-        // Validation: Only PLANNED status can be deleted
+        // Validation: Only PLANNED status can be cancelled
         if (plan.getStatus() == MaintenancePlan.PlanStatus.IN_PROGRESS || 
             plan.getStatus() == MaintenancePlan.PlanStatus.COMPLETED) {
-            throw new RuntimeException("Cannot delete maintenance plan with status: " + plan.getStatus() + 
-                    ". Only PLANNED plans can be deleted.");
+            throw new RuntimeException("Cannot cancel maintenance plan with status: " + plan.getStatus() + 
+                    ". Only PLANNED plans can be cancelled.");
         }
         
-        // Soft delete: Set status to CANCELLED
-        plan.setStatus(MaintenancePlan.PlanStatus.CANCELLED);
+        // Cancel: Reset to NOT_PLANNED state
+        // This makes the plan behave as if it was never planned
+        plan.setStatus(MaintenancePlan.PlanStatus.NOT_PLANNED);
+        plan.setPlannedDate(null);
+        plan.setAssignedTechnician(null);
         
         // Audit log
         User currentUser = getCurrentUser();
@@ -433,21 +432,20 @@ public class MaintenancePlanService {
         plan.setUpdatedBy(currentUser);
         plan.setUpdatedAt(LocalDateTime.now());
         
-        // Save and flush to ensure immediate database write
         System.out.println("========================================");
         System.out.println("CANCELLING PLAN ID: " + id);
-        System.out.println("Current status: " + plan.getStatus());
-        System.out.println("Setting status to: CANCELLED");
+        System.out.println("Setting: status = NOT_PLANNED, plannedDate = null, assignedTechnician = null");
         System.out.println("========================================");
         
+        // Save and flush to ensure immediate database write
         MaintenancePlan saved = planRepository.save(plan);
-        planRepository.flush(); // Force immediate database write - CRITICAL for status persistence
+        planRepository.flush(); // Force immediate database write - CRITICAL for persistence
         
         System.out.println("========================================");
         System.out.println("SAVED AND FLUSHED. Verifying persistence...");
         System.out.println("========================================");
         
-        // Verify status was persisted
+        // Verify all fields were persisted correctly
         MaintenancePlan verify = planRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Plan not found after cancellation"));
         
@@ -455,15 +453,28 @@ public class MaintenancePlanService {
         System.out.println("VERIFICATION QUERY RESULT:");
         System.out.println("Plan ID: " + verify.getId());
         System.out.println("Plan Status: " + verify.getStatus());
-        System.out.println("Expected: CANCELLED");
+        System.out.println("Plan PlannedDate: " + verify.getPlannedDate());
+        System.out.println("Plan AssignedTechnician: " + (verify.getAssignedTechnician() == null ? "null" : verify.getAssignedTechnician().getId()));
+        System.out.println("Expected: status = NOT_PLANNED, plannedDate = null, assignedTechnician = null");
         System.out.println("========================================");
         
-        if (verify.getStatus() != MaintenancePlan.PlanStatus.CANCELLED) {
-            throw new RuntimeException("CRITICAL: Status was not persisted. Expected CANCELLED, got: " + verify.getStatus());
+        // Verify status
+        if (verify.getStatus() != MaintenancePlan.PlanStatus.NOT_PLANNED) {
+            throw new RuntimeException("CRITICAL: Status was not persisted. Expected NOT_PLANNED, got: " + verify.getStatus());
+        }
+        
+        // Verify plannedDate is null
+        if (verify.getPlannedDate() != null) {
+            throw new RuntimeException("CRITICAL: PlannedDate was not cleared. Expected null, got: " + verify.getPlannedDate());
+        }
+        
+        // Verify assignedTechnician is null
+        if (verify.getAssignedTechnician() != null) {
+            throw new RuntimeException("CRITICAL: AssignedTechnician was not cleared. Expected null, got: " + verify.getAssignedTechnician().getId());
         }
         
         System.out.println("========================================");
-        System.out.println("STATUS PERSISTENCE VERIFIED: CANCELLED");
+        System.out.println("PERSISTENCE VERIFIED: NOT_PLANNED, plannedDate = null, assignedTechnician = null");
         System.out.println("========================================");
         
         return MaintenancePlanResponseDto.fromEntity(saved);
