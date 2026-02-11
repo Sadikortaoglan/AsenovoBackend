@@ -1,12 +1,16 @@
 package com.saraasansor.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "maintenance_templates")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MaintenanceTemplate {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,7 +27,10 @@ public class MaintenanceTemplate {
     private Integer frequencyDays; // Optional: e.g., 30 for monthly
 
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderColumn(name = "sections_order")
+    @BatchSize(size = 50)
     @OrderBy("sortOrder ASC")
+    @JsonManagedReference("template-sections")
     private List<MaintenanceSection> sections = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)

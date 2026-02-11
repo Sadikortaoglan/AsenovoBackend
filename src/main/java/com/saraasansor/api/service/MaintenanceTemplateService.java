@@ -111,11 +111,6 @@ public class MaintenanceTemplateService {
     
     @Transactional
     public MaintenanceTemplate createSection(Long templateId, MaintenanceSection section) {
-        System.out.println("========================================");
-        System.out.println("CREATE SECTION: templateId=" + templateId);
-        System.out.println("Section name: " + section.getName());
-        System.out.println("========================================");
-        
         // Validation: Template must exist
         MaintenanceTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new RuntimeException("Maintenance template not found: " + templateId));
@@ -143,24 +138,31 @@ public class MaintenanceTemplateService {
             section.setSortOrder(maxSortOrder + 1);
         }
         
-        MaintenanceSection saved = sectionRepository.save(section);
-        sectionRepository.flush(); // Force immediate persistence
+        // IMPORTANT: Add section to template's collection so @OrderColumn index is set automatically
+        // Hibernate only sets @OrderColumn index when element is added via parent collection
+        template.getSections().add(section);
+        templateRepository.save(template);
+        templateRepository.flush(); // Force immediate persistence
         
-        System.out.println("========================================");
-        System.out.println("SECTION CREATED: id=" + saved.getId() + ", name=" + saved.getName());
-        System.out.println("========================================");
+        // Reload template to get section with proper @OrderColumn index
+        MaintenanceTemplate reloadedTemplate = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("Template not found after save"));
         
+        // Find the newly added section (last one with matching name and sortOrder)
+        MaintenanceSection saved = reloadedTemplate.getSections().stream()
+                .filter(s -> s.getName().equals(section.getName()) && 
+                           s.getSortOrder().equals(section.getSortOrder()))
+                .reduce((first, second) -> second) // Get last match (newest)
+                .orElseThrow(() -> new RuntimeException("Section not found after save"));
+        
+
         // Return full template with sections and items
         return getTemplateById(templateId);
     }
     
     @Transactional
     public MaintenanceTemplate updateSection(Long sectionId, MaintenanceSection sectionData) {
-        System.out.println("========================================");
-        System.out.println("UPDATE SECTION: sectionId=" + sectionId);
-        System.out.println("New name: " + sectionData.getName());
-        System.out.println("========================================");
-        
+    
         MaintenanceSection section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new RuntimeException("Maintenance section not found: " + sectionId));
         
@@ -184,20 +186,14 @@ public class MaintenanceTemplateService {
         sectionRepository.save(section);
         sectionRepository.flush(); // Force immediate persistence
         
-        System.out.println("========================================");
-        System.out.println("SECTION UPDATED: id=" + section.getId());
-        System.out.println("========================================");
-        
+
         // Return full template with sections and items
         return getTemplateById(templateId);
     }
     
     @Transactional
     public MaintenanceTemplate deleteSection(Long sectionId) {
-        System.out.println("========================================");
-        System.out.println("DELETE SECTION: sectionId=" + sectionId);
-        System.out.println("========================================");
-        
+
         MaintenanceSection section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new RuntimeException("Maintenance section not found: " + sectionId));
         
@@ -205,10 +201,6 @@ public class MaintenanceTemplateService {
         
         sectionRepository.delete(section);
         sectionRepository.flush(); // Force immediate persistence
-        
-        System.out.println("========================================");
-        System.out.println("SECTION DELETED: id=" + sectionId);
-        System.out.println("========================================");
         
         // Return full template with sections and items
         return getTemplateById(templateId);
@@ -220,11 +212,7 @@ public class MaintenanceTemplateService {
     
     @Transactional
     public MaintenanceTemplate createItem(Long sectionId, MaintenanceItem item) {
-        System.out.println("========================================");
-        System.out.println("CREATE ITEM: sectionId=" + sectionId);
-        System.out.println("Item title: " + item.getTitle());
-        System.out.println("========================================");
-        
+
         // Validation: Section must exist
         MaintenanceSection section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new RuntimeException("Maintenance section not found: " + sectionId));
@@ -261,12 +249,22 @@ public class MaintenanceTemplateService {
             item.setAllowNote(true);
         }
         
-        MaintenanceItem saved = itemRepository.save(item);
-        itemRepository.flush(); // Force immediate persistence
+        // IMPORTANT: Add item to section's collection so @OrderColumn index is set automatically
+        // Hibernate only sets @OrderColumn index when element is added via parent collection
+        section.getItems().add(item);
+        sectionRepository.save(section);
+        sectionRepository.flush(); // Force immediate persistence
         
-        System.out.println("========================================");
-        System.out.println("ITEM CREATED: id=" + saved.getId() + ", title=" + saved.getTitle());
-        System.out.println("========================================");
+        // Reload section to get item with proper @OrderColumn index
+        MaintenanceSection reloadedSection = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new RuntimeException("Section not found after save"));
+        
+        // Find the newly added item (last one with matching title and sortOrder)
+        MaintenanceItem saved = reloadedSection.getItems().stream()
+                .filter(i -> i.getTitle().equals(item.getTitle()) && 
+                           i.getSortOrder().equals(item.getSortOrder()))
+                .reduce((first, second) -> second) // Get last match (newest)
+                .orElseThrow(() -> new RuntimeException("Item not found after save"));
         
         // Return full template with sections and items
         return getTemplateById(templateId);
@@ -274,11 +272,7 @@ public class MaintenanceTemplateService {
     
     @Transactional
     public MaintenanceTemplate updateItem(Long itemId, MaintenanceItem itemData) {
-        System.out.println("========================================");
-        System.out.println("UPDATE ITEM: itemId=" + itemId);
-        System.out.println("New title: " + itemData.getTitle());
-        System.out.println("========================================");
-        
+
         MaintenanceItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Maintenance item not found: " + itemId));
         
@@ -314,20 +308,14 @@ public class MaintenanceTemplateService {
         itemRepository.save(item);
         itemRepository.flush(); // Force immediate persistence
         
-        System.out.println("========================================");
-        System.out.println("ITEM UPDATED: id=" + item.getId());
-        System.out.println("========================================");
-        
+
         // Return full template with sections and items
         return getTemplateById(templateId);
     }
     
     @Transactional
     public MaintenanceTemplate deleteItem(Long itemId) {
-        System.out.println("========================================");
-        System.out.println("DELETE ITEM: itemId=" + itemId);
-        System.out.println("========================================");
-        
+
         MaintenanceItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Maintenance item not found: " + itemId));
         
@@ -336,20 +324,14 @@ public class MaintenanceTemplateService {
         itemRepository.delete(item);
         itemRepository.flush(); // Force immediate persistence
         
-        System.out.println("========================================");
-        System.out.println("ITEM DELETED: id=" + itemId);
-        System.out.println("========================================");
-        
+
         // Return full template with sections and items
         return getTemplateById(templateId);
     }
     
     @Transactional
     public MaintenanceTemplate toggleItemActive(Long itemId) {
-        System.out.println("========================================");
-        System.out.println("TOGGLE ITEM ACTIVE: itemId=" + itemId);
-        System.out.println("========================================");
-        
+  
         MaintenanceItem item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Maintenance item not found: " + itemId));
         
@@ -359,10 +341,7 @@ public class MaintenanceTemplateService {
         itemRepository.save(item);
         itemRepository.flush(); // Force immediate persistence
         
-        System.out.println("========================================");
-        System.out.println("ITEM ACTIVE TOGGLED: id=" + itemId + ", active=" + item.getIsActive());
-        System.out.println("========================================");
-        
+
         // Return full template with sections and items
         return getTemplateById(templateId);
     }

@@ -3,12 +3,15 @@ package com.saraasansor.api.service;
 import com.saraasansor.api.dto.MaintenanceDto;
 import com.saraasansor.api.dto.MaintenanceSummaryDto;
 import com.saraasansor.api.model.Elevator;
+import com.saraasansor.api.model.FileAttachment;
 import com.saraasansor.api.model.LabelType;
 import com.saraasansor.api.model.Maintenance;
 import com.saraasansor.api.model.User;
 import com.saraasansor.api.repository.ElevatorRepository;
+import com.saraasansor.api.repository.FileAttachmentRepository;
 import com.saraasansor.api.repository.MaintenanceRepository;
 import com.saraasansor.api.repository.UserRepository;
+import com.saraasansor.api.service.FileStorageService;
 import com.saraasansor.api.util.LabelDurationCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -16,7 +19,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -34,6 +39,12 @@ public class MaintenanceService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private FileStorageService fileStorageService;
+    
+    @Autowired
+    private FileAttachmentRepository fileAttachmentRepository;
     
     public List<MaintenanceDto> getAllMaintenances() {
         return maintenanceRepository.findAll().stream()
@@ -109,6 +120,50 @@ public class MaintenanceService {
         elevatorRepository.save(elevator);
         
         return MaintenanceDto.fromEntity(saved);
+    }
+    
+    @Transactional
+    public MaintenanceDto createMaintenanceWithPhotos(MaintenanceDto dto, MultipartFile[] photos) {
+        // 1. Create maintenance record (reuse existing logic)
+        MaintenanceDto created = createMaintenance(dto);
+        
+        // 2. Get authenticated user for file attachments
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User uploadedBy = null;
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String username = userDetails.getUsername();
+            uploadedBy = userRepository.findByUsername(username).orElse(null);
+        }
+        
+        // 3. Save photos (atomic transaction - if any fails, entire operation rolls back)
+        for (MultipartFile photo : photos) {
+            if (photo != null && !photo.isEmpty()) {
+                try {
+                    // Save file to storage
+                    String storageKey = fileStorageService.saveFile(photo, "MAINTENANCE", created.getId());
+                    String url = fileStorageService.getFileUrl(storageKey);
+                    
+                    // Create FileAttachment record
+                    FileAttachment attachment = new FileAttachment();
+                    attachment.setEntityType(FileAttachment.EntityType.MAINTENANCE);
+                    attachment.setEntityId(created.getId());
+                    attachment.setFileName(photo.getOriginalFilename());
+                    attachment.setContentType(photo.getContentType());
+                    attachment.setSize(photo.getSize());
+                    attachment.setStorageKey(storageKey);
+                    attachment.setUrl(url);
+                    attachment.setUploadedBy(uploadedBy);
+                    
+                    fileAttachmentRepository.save(attachment);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to save photo: " + photo.getOriginalFilename() + " - " + e.getMessage());
+                }
+            }
+        }
+        
+        // 4. Return created maintenance (photos are linked via FileAttachment records)
+        return created;
     }
     
     public MaintenanceDto updateMaintenance(Long id, MaintenanceDto dto) {

@@ -13,15 +13,20 @@ import com.saraasansor.api.service.MaintenanceService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -94,15 +99,62 @@ public class MaintenanceController {
         }
     }
     
-    @PostMapping
+    @PostMapping(
+        consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Transactional
     public ResponseEntity<ApiResponse<MaintenanceDto>> createMaintenance(
-            @Valid @RequestBody MaintenanceDto dto) {
+            @RequestPart(value = "data", required = true) @Valid MaintenanceDto dto,
+            @RequestPart(value = "photos", required = true) MultipartFile[] photos) {
         try {
-            MaintenanceDto created = maintenanceService.createMaintenance(dto);
-            return ResponseEntity.ok(ApiResponse.success("Maintenance record successfully added", created));
+            // Validation: Minimum 4 photos
+            if (photos == null || photos.length < 4) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(
+                        "Maintenance must include at least 4 photos. Provided: " + 
+                        (photos != null ? photos.length : 0)
+                    ));
+            }
+            
+            // Validate non-empty files
+            long validPhotoCount = Arrays.stream(photos)
+                .filter(file -> file != null && !file.isEmpty())
+                .count();
+            
+            if (validPhotoCount < 4) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(
+                        "Maintenance must include at least 4 valid photos. Valid photos: " + validPhotoCount
+                    ));
+            }
+            
+            // Create maintenance with photos
+            MaintenanceDto created = maintenanceService.createMaintenanceWithPhotos(dto, photos);
+            
+            return ResponseEntity.status(201)
+                .body(ApiResponse.success(
+                    "Maintenance created successfully with " + validPhotoCount + " photos", 
+                    created
+                ));
+                
+        } catch (MaxUploadSizeExceededException e) {
+            return ResponseEntity.status(413)
+                .body(ApiResponse.error("File size exceeds maximum allowed size of 10MB"));
+        } catch (MultipartException e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Multipart request processing failed: " + e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            // Catches MissingServletRequestPartException and other argument exceptions
+            if (e.getMessage() != null && e.getMessage().contains("Required part")) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Missing required part in multipart request: " + e.getMessage()));
+            }
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
+                .body(ApiResponse.error(e.getMessage()));
         }
     }
     

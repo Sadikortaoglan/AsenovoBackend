@@ -13,10 +13,10 @@ import java.util.Optional;
 public interface MaintenanceTemplateRepository extends JpaRepository<MaintenanceTemplate, Long> {
     List<MaintenanceTemplate> findByStatusOrderByNameAsc(MaintenanceTemplate.TemplateStatus status);
     
-    @Query("SELECT t FROM MaintenanceTemplate t " +
+    @Query("SELECT DISTINCT t FROM MaintenanceTemplate t " +
            "LEFT JOIN FETCH t.sections s " +
-           "LEFT JOIN FETCH s.items " +
+           "LEFT JOIN FETCH s.items i " +
            "WHERE t.id = :id " +
-           "ORDER BY s.sortOrder ASC")
+           "ORDER BY s.sortOrder ASC, i.sortOrder ASC")
     Optional<MaintenanceTemplate> findByIdWithSectionsAndItems(@Param("id") Long id);
 }

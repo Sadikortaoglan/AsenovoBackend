@@ -1,10 +1,13 @@
 package com.saraasansor.api.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "maintenance_items")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MaintenanceItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -12,6 +15,7 @@ public class MaintenanceItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id", nullable = false)
+    @JsonBackReference("section-items")
     private MaintenanceSection section;
 
     @Column(nullable = false)

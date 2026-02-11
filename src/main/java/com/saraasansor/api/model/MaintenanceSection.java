@@ -1,12 +1,17 @@
 package com.saraasansor.api.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "maintenance_sections")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MaintenanceSection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -14,6 +19,7 @@ public class MaintenanceSection {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "template_id", nullable = false)
+    @JsonBackReference("template-sections")
     private MaintenanceTemplate template;
 
     @Column(nullable = false)
@@ -26,7 +32,10 @@ public class MaintenanceSection {
     private Boolean active = true;
 
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderColumn(name = "items_order")
+    @BatchSize(size = 50)
     @OrderBy("sortOrder ASC")
+    @JsonManagedReference("section-items")
     private List<MaintenanceItem> items = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
