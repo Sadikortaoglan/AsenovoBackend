@@ -57,7 +57,7 @@ logging:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
+    secret: ${JWT_SECRET}
     access-token-expiration: 900000  # 15 minutes
     refresh-token-expiration: 604800000  # 7 days
   
@@ -73,8 +73,11 @@ app:
       region: ${AWS_REGION:us-east-1}
   
   qr:
-    secret-key: ${QR_SECRET_KEY:default-secret-key-change-in-production}
+    secret-key: ${QR_SECRET_KEY}
     token-ttl-minutes: ${QR_TOKEN_TTL_MINUTES:3}  # Token expiration in minutes
+    base-url: ${QR_BASE_URL:https://app.saraasansor.com}
+    size: 300  # QR code image size in pixels
+    session-token-ttl-minutes: ${QR_SESSION_TOKEN_TTL_MINUTES:5}  # QR session token expiration in minutes
   
   maintenance:
     min-duration-minutes: ${MAINTENANCE_MIN_DURATION_MINUTES:3}  # Minimum session duration in minutes

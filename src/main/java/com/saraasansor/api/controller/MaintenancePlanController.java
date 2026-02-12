@@ -9,6 +9,8 @@ import com.saraasansor.api.dto.StartMaintenancePlanRequest;
 import com.saraasansor.api.dto.UpdateMaintenancePlanRequest;
 import com.saraasansor.api.service.MaintenancePlanService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/maintenance-plans")
 public class MaintenancePlanController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MaintenancePlanController.class);
     
     @Autowired
     private MaintenancePlanService planService;
@@ -57,8 +61,7 @@ public class MaintenancePlanController {
         
             return ResponseEntity.ok(ApiResponse.success("Plans retrieved successfully", plans));
         } catch (Exception e) {
-            System.err.println("ERROR in getAllPlans: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in getAllPlans: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -93,18 +96,13 @@ public class MaintenancePlanController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateMaintenancePlanRequest request) {
         try {
-            // Log incoming request body for debugging
-            System.out.println("=== PUT /maintenance-plans/" + id + " ===");
-            System.out.println("Request body: plannedDate=" + request.getPlannedDate() + 
-                             ", templateId=" + request.getTemplateId() + 
-                             ", technicianId=" + request.getTechnicianId() + 
-                             ", note=" + request.getNote());
+            logger.debug("Updating plan ID: {}, plannedDate: {}, templateId: {}, technicianId: {}", 
+                id, request.getPlannedDate(), request.getTemplateId(), request.getTechnicianId());
             
             MaintenancePlanResponseDto updated = planService.updatePlan(id, request);
             return ResponseEntity.ok(ApiResponse.success("Plan updated successfully", updated));
         } catch (Exception e) {
-            System.err.println("ERROR in updatePlan: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in updatePlan: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -126,18 +124,13 @@ public class MaintenancePlanController {
             @RequestBody UpdateMaintenancePlanRequest request) {
         try {
             // Log incoming request body for debugging
-            System.out.println("=== PATCH /maintenance-plans/" + id + " ===");
-            System.out.println("Request body: plannedDate=" + request.getPlannedDate() + 
-                             ", templateId=" + request.getTemplateId() + 
-                             ", technicianId=" + request.getTechnicianId() + 
-                             ", note=" + request.getNote());
+            logger.debug("Patching plan ID: {}, plannedDate: {}", id, request.getPlannedDate());
             
             // PATCH uses the same service method as PUT (both support partial updates)
             MaintenancePlanResponseDto updated = planService.updatePlan(id, request);
             return ResponseEntity.ok(ApiResponse.success("Plan updated successfully", updated));
         } catch (Exception e) {
-            System.err.println("ERROR in partialUpdatePlan: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in partialUpdatePlan: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -180,16 +173,45 @@ public class MaintenancePlanController {
     /**
      * START - Start maintenance (PLANNED → IN_PROGRESS)
      * POST /api/maintenance-plans/{id}/start
-     * Requires QR proof
+     * 
+     * Business Rules:
+     * - TECHNICIAN: QR token is REQUIRED
+     * - ADMIN: Can start remotely (remoteStart = true) without QR, or with QR (remoteStart = false)
+     * 
+     * Request Body:
+     * {
+     *   "qrToken": "optional-for-admin-remote-start",
+     *   "remoteStart": false
+     * }
      */
     @PostMapping("/{id}/start")
     public ResponseEntity<ApiResponse<MaintenancePlanResponseDto>> startPlan(
             @PathVariable Long id,
-            @Valid @RequestBody StartMaintenancePlanRequest request) {
+            @RequestBody StartMaintenancePlanRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
         try {
-            MaintenancePlanResponseDto started = planService.startPlan(id, request.getQrToken());
+            // Extract IP address from request
+            String ipAddress = httpRequest.getRemoteAddr();
+            
+            // Handle X-Forwarded-For header (if behind proxy/load balancer)
+            String xForwardedFor = httpRequest.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                // Take first IP from comma-separated list
+                ipAddress = xForwardedFor.split(",")[0].trim();
+            }
+            
+            logger.debug("Starting maintenance plan - Plan ID: {}, Remote Start: {}", id, request.getRemoteStart());
+            
+            MaintenancePlanResponseDto started = planService.startPlan(
+                id, 
+                request.getQrToken(), 
+                request.getRemoteStart(), 
+                ipAddress
+            );
+            
             return ResponseEntity.ok(ApiResponse.success("Maintenance started successfully", started));
         } catch (Exception e) {
+            logger.error("Error in startPlan: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

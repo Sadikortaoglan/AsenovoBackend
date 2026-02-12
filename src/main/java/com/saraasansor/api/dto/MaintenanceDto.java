@@ -19,6 +19,14 @@ public class MaintenanceDto {
     private Boolean isPaid;
     private LocalDate paymentDate;
     
+    /**
+     * QR token for maintenance creation validation
+     * Required for TECHNICIAN (PERSONEL) role
+     * Optional for ADMIN role (can omit for remote start)
+     * Format: "e={elevatorCode}&s={signature}" or full URL
+     */
+    private String qrToken;
+    
     public MaintenanceDto() {
     }
 
@@ -100,6 +108,14 @@ public class MaintenanceDto {
 
     public void setPaymentDate(LocalDate paymentDate) {
         this.paymentDate = paymentDate;
+    }
+    
+    public String getQrToken() {
+        return qrToken;
+    }
+    
+    public void setQrToken(String qrToken) {
+        this.qrToken = qrToken;
     }
 
     public String getLabelType() {

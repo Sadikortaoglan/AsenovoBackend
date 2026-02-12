@@ -22,6 +22,7 @@ import org.springframework.web.filter.CorsFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.core.env.Environment;
 import org.springframework.core.Ordered;
+import org.springframework.core.env.Profiles;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -110,9 +111,12 @@ public class SecurityConfig {
         // Build allowed origin patterns
         List<String> allowedOriginPatterns = new java.util.ArrayList<>();
         
-        // Local development origins (always allowed)
-        allowedOriginPatterns.add("http://localhost:*");
-        allowedOriginPatterns.add("http://127.0.0.1:*");
+        // Local development origins (only in dev profile)
+        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default"));
+        if (isDevProfile) {
+            allowedOriginPatterns.add("http://localhost:*");
+            allowedOriginPatterns.add("http://127.0.0.1:*");
+        }
         
         // Load production origins from environment variable
         String corsOrigins = environment.getProperty("CORS_ALLOWED_ORIGINS");
@@ -153,9 +157,12 @@ public class SecurityConfig {
         // Build allowed origin patterns (supports wildcards with credentials)
         java.util.List<String> allowedOriginPatterns = new java.util.ArrayList<>();
         
-        // Local development origins (always allowed)
-        allowedOriginPatterns.add("http://localhost:*");          // Any localhost port
-        allowedOriginPatterns.add("http://127.0.0.1:*");          // Any 127.0.0.1 port
+        // Local development origins (only in dev profile)
+        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default"));
+        if (isDevProfile) {
+            allowedOriginPatterns.add("http://localhost:*");          // Any localhost port
+            allowedOriginPatterns.add("http://127.0.0.1:*");          // Any 127.0.0.1 port
+        }
         
         // Load production origins from environment variable (comma-separated)
         // Example: CORS_ALLOWED_ORIGINS=http://51.21.3.85,http://51.21.3.85:80

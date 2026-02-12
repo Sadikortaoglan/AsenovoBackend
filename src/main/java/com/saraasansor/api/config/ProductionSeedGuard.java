@@ -1,5 +1,7 @@
 package com.saraasansor.api.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -20,6 +22,8 @@ import jakarta.annotation.PostConstruct;
  */
 @Configuration
 public class ProductionSeedGuard {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ProductionSeedGuard.class);
     
     private final Environment environment;
     
@@ -67,12 +71,11 @@ public class ProductionSeedGuard {
         
         // Log guard status
         if (isProduction) {
-            System.out.println("✅ Production Seed Guard: ACTIVE - Seed data is BLOCKED");
-            System.out.println("   - app.seed.enabled: " + seedEnabled);
-            String flywayLoc = environment.getProperty("spring.flyway.locations", "not set");
-            System.out.println("   - spring.flyway.locations: " + flywayLoc);
+            logger.info("Production Seed Guard: ACTIVE - Seed data is BLOCKED");
+            logger.info("app.seed.enabled: {}, spring.flyway.locations: {}", 
+                seedEnabled, environment.getProperty("spring.flyway.locations", "not set"));
         } else {
-            System.out.println("ℹ️  Production Seed Guard: INACTIVE - Seed data allowed (dev/test)");
+            logger.debug("Production Seed Guard: INACTIVE - Seed data allowed (dev/test)");
         }
     }
 }

@@ -5,6 +5,8 @@ import com.saraasansor.api.dto.DashboardSummaryDto;
 import com.saraasansor.api.model.MaintenancePlan;
 import com.saraasansor.api.model.MaintenanceSession;
 import com.saraasansor.api.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,8 @@ import java.util.List;
 
 @Service
 public class DashboardService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(DashboardService.class);
     
     @Autowired
     private ElevatorRepository elevatorRepository;
@@ -108,24 +112,12 @@ public class DashboardService {
                 .count();
         counts.setMaintenancePlansUpcoming(upcomingPlans);
         
-        System.out.println("========================================");
-        System.out.println("DashboardService.getCounts - Upcoming Plans");
-        System.out.println("Date range: from=" + now + ", to=" + now.plusYears(1));
-        System.out.println("Status filter: PLANNED, IN_PROGRESS");
-        System.out.println("Count: " + upcomingPlans);
-        System.out.println("========================================");
-        
         // Completed plans (status = COMPLETED, no date filter)
         long completedPlans = maintenancePlanRepository.findByStatusOrderByCompletedAtDesc(
                 MaintenancePlan.PlanStatus.COMPLETED).size();
         counts.setMaintenancePlansCompleted(completedPlans);
         
-        System.out.println("========================================");
-        System.out.println("DashboardService.getCounts - Completed Plans");
-        System.out.println("Status filter: COMPLETED");
-        System.out.println("Count: " + completedPlans);
-        System.out.println("========================================");
-        
+
         // Completed sessions (last 30 days)
         LocalDateTime from = LocalDateTime.now().minusDays(30);
         LocalDateTime to = LocalDateTime.now();

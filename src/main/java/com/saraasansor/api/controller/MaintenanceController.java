@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -32,6 +34,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/maintenances")
 public class MaintenanceController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MaintenanceController.class);
     
     @Autowired
     private MaintenanceService maintenanceService;
@@ -47,6 +51,12 @@ public class MaintenanceController {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private com.saraasansor.api.service.ElevatorQrService elevatorQrService;
+    
+    @Autowired
+    private com.saraasansor.api.service.QrSessionService qrSessionService;
     
     @GetMapping
     public ResponseEntity<ApiResponse<List<MaintenanceDto>>> getAllMaintenances(
@@ -105,9 +115,107 @@ public class MaintenanceController {
     )
     @Transactional
     public ResponseEntity<ApiResponse<MaintenanceDto>> createMaintenance(
-            @RequestPart(value = "data", required = true) @Valid MaintenanceDto dto,
-            @RequestPart(value = "photos", required = true) MultipartFile[] photos) {
+            @RequestPart(value = "elevatorId", required = true) Long elevatorId,
+            @RequestPart(value = "date", required = true) String date,
+            @RequestPart(value = "labelType", required = true) String labelType,
+            @RequestPart(value = "description", required = true) String description,
+            @RequestPart(value = "amount", required = true) String amount, // Accept as String, convert to Double
+            @RequestPart(value = "photos", required = true) MultipartFile[] photos,
+            @RequestPart(value = "technicianId", required = false) Long technicianId,
+            @RequestHeader(value = "X-QR-SESSION-TOKEN", required = false) String qrSessionToken) {
         try {
+            // Get current user and role
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !(authentication.getPrincipal() instanceof UserDetails)) {
+                return ResponseEntity.status(403)
+                    .body(ApiResponse.error("User not authenticated"));
+            }
+            
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User currentUser = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            User.Role userRole = currentUser.getRole();
+            
+            logger.debug("Creating maintenance - User: {}, Role: {}, Date: {}, LabelType: {}", 
+                currentUser.getUsername(), userRole, date, labelType);
+            
+            // QR Session Token Validation Guard
+            boolean startedRemotely = false;
+            
+            if (userRole == User.Role.PERSONEL) {
+                // TECHNICIAN: QR session token is REQUIRED
+                if (qrSessionToken == null || qrSessionToken.trim().isEmpty()) {
+                    logger.warn("TECHNICIAN attempted to create maintenance without QR session token");
+                    return ResponseEntity.status(403)
+                        .body(ApiResponse.error("QR validation required. Please scan QR code first."));
+                }
+                
+                // Validate session token
+                com.saraasansor.api.service.QrSessionService.TokenValidationResult validation = 
+                    qrSessionService.validateToken(qrSessionToken, currentUser.getId(), elevatorId);
+                
+                if (!validation.isValid()) {
+                    logger.warn("Invalid QR session token: {}", validation.getError());
+                    return ResponseEntity.status(403)
+                        .body(ApiResponse.error("QR validation required: " + validation.getError()));
+                }
+                
+                startedRemotely = validation.isStartedRemotely();
+                logger.debug("QR session token validated successfully");
+                
+                // Update MaintenancePlan status to IN_PROGRESS when QR is validated
+                try {
+                    LocalDate maintenanceDate = java.time.LocalDate.parse(date);
+                    maintenanceService.markPlanAsInProgress(elevatorId, maintenanceDate);
+                } catch (Exception e) {
+                    logger.warn("Failed to update plan status to IN_PROGRESS: {}", e.getMessage());
+                    // Don't fail the request, just log the warning
+                }
+                
+                // Invalidate token after use (one-time use)
+                qrSessionService.invalidateToken(qrSessionToken);
+                
+            } else if (userRole == User.Role.ADMIN || userRole == User.Role.PATRON) {
+                // TODO: Sadık production'da admin QR zorunlu yapmayı isteyebilir. Şimdilik bilinçli olarak açık bırakıldı.
+                // ADMIN/PATRON: QR session token is optional
+                if (qrSessionToken != null && !qrSessionToken.trim().isEmpty()) {
+                    // Validate session token if provided
+                    com.saraasansor.api.service.QrSessionService.TokenValidationResult validation = 
+                        qrSessionService.validateToken(qrSessionToken, currentUser.getId(), elevatorId);
+                    
+                    if (!validation.isValid()) {
+                        logger.warn("Invalid QR session token: {}", validation.getError());
+                        return ResponseEntity.status(403)
+                            .body(ApiResponse.error("Invalid QR session token: " + validation.getError()));
+                    }
+                    
+                    startedRemotely = validation.isStartedRemotely();
+                    logger.debug("QR session token validated successfully (optional for ADMIN)");
+                    
+                    // Update MaintenancePlan status to IN_PROGRESS when QR is validated
+                    try {
+                        LocalDate maintenanceDate = java.time.LocalDate.parse(date);
+                        maintenanceService.markPlanAsInProgress(elevatorId, maintenanceDate);
+                    } catch (Exception e) {
+                        logger.warn("Failed to update plan status to IN_PROGRESS: {}", e.getMessage());
+                        // Don't fail the request, just log the warning
+                    }
+                    
+                    // Invalidate token after use
+                    qrSessionService.invalidateToken(qrSessionToken);
+                } else {
+                    // ADMIN can create without QR (remote start)
+                    startedRemotely = true;
+                    logger.debug("ADMIN creating maintenance without QR (remote start allowed)");
+                }
+            }
+            
+            // Log startedRemotely flag (for audit)
+            if (startedRemotely) {
+                logger.debug("Maintenance created with remote start flag");
+            }
+            
             // Validation: Minimum 4 photos
             if (photos == null || photos.length < 4) {
                 return ResponseEntity.badRequest()
@@ -129,8 +237,25 @@ public class MaintenanceController {
                     ));
             }
             
+            // Build MaintenanceDto from request parts
+            MaintenanceDto dto = new MaintenanceDto();
+            dto.setElevatorId(elevatorId);
+            dto.setDate(java.time.LocalDate.parse(date));
+            dto.setLabelType(labelType);
+            dto.setDescription(description);
+            // Parse amount from String to Double
+            try {
+                dto.setAmount(Double.parseDouble(amount));
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid amount format: " + amount));
+            }
+            // technicianId is optional - service will auto-assign from SecurityContext
+            
             // Create maintenance with photos
             MaintenanceDto created = maintenanceService.createMaintenanceWithPhotos(dto, photos);
+            
+            logger.info("Maintenance created successfully with {} photos", validPhotoCount);
             
             return ResponseEntity.status(201)
                 .body(ApiResponse.success(
@@ -153,6 +278,7 @@ public class MaintenanceController {
             return ResponseEntity.badRequest()
                 .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
+            logger.error("Error in createMaintenance: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
                 .body(ApiResponse.error(e.getMessage()));
         }

@@ -59,6 +59,23 @@ public class MaintenancePlan {
     
     @Column(name = "price", precision = 14, scale = 2)
     private java.math.BigDecimal price;
+    
+    // Audit fields for maintenance start
+    @Column(name = "started_remotely", nullable = false)
+    private Boolean startedRemotely = false;
+    
+    @Column(name = "started_by_role", length = 50)
+    private String startedByRole; // TECHNICIAN, ADMIN
+    
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "started_by_user_id")
+    private User startedBy;
+    
+    @Column(name = "started_from_ip", length = 45)
+    private String startedFromIp; // IPv4 or IPv6
 
     public enum PlanStatus {
         NOT_PLANNED, PLANNED, IN_PROGRESS, COMPLETED
@@ -186,5 +203,45 @@ public class MaintenancePlan {
     
     public void setPrice(java.math.BigDecimal price) {
         this.price = price;
+    }
+    
+    public Boolean getStartedRemotely() {
+        return startedRemotely;
+    }
+    
+    public void setStartedRemotely(Boolean startedRemotely) {
+        this.startedRemotely = startedRemotely;
+    }
+    
+    public String getStartedByRole() {
+        return startedByRole;
+    }
+    
+    public void setStartedByRole(String startedByRole) {
+        this.startedByRole = startedByRole;
+    }
+    
+    public LocalDateTime getStartedAt() {
+        return startedAt;
+    }
+    
+    public void setStartedAt(LocalDateTime startedAt) {
+        this.startedAt = startedAt;
+    }
+    
+    public User getStartedBy() {
+        return startedBy;
+    }
+    
+    public void setStartedBy(User startedBy) {
+        this.startedBy = startedBy;
+    }
+    
+    public String getStartedFromIp() {
+        return startedFromIp;
+    }
+    
+    public void setStartedFromIp(String startedFromIp) {
+        this.startedFromIp = startedFromIp;
     }
 }

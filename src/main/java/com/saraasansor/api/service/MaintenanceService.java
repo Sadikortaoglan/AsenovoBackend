@@ -6,13 +6,17 @@ import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.FileAttachment;
 import com.saraasansor.api.model.LabelType;
 import com.saraasansor.api.model.Maintenance;
+import com.saraasansor.api.model.MaintenancePlan;
 import com.saraasansor.api.model.User;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.FileAttachmentRepository;
 import com.saraasansor.api.repository.MaintenanceRepository;
+import com.saraasansor.api.repository.MaintenancePlanRepository;
 import com.saraasansor.api.repository.UserRepository;
 import com.saraasansor.api.service.FileStorageService;
 import com.saraasansor.api.util.LabelDurationCalculator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +35,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class MaintenanceService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MaintenanceService.class);
     
     @Autowired
     private MaintenanceRepository maintenanceRepository;
@@ -45,6 +52,9 @@ public class MaintenanceService {
     
     @Autowired
     private FileAttachmentRepository fileAttachmentRepository;
+    
+    @Autowired
+    private MaintenancePlanRepository maintenancePlanRepository;
     
     public List<MaintenanceDto> getAllMaintenances() {
         return maintenanceRepository.findAll().stream()
@@ -118,6 +128,10 @@ public class MaintenanceService {
         elevator.setStatus(result.getStatus());
         
         elevatorRepository.save(elevator);
+        
+        // AUTO-UPDATE MAINTENANCE PLAN: Update plan status to COMPLETED
+        // Business rule: When maintenance is created, find related plan and mark as COMPLETED
+        updateMaintenancePlanStatus(saved.getElevator().getId(), saved.getDate(), MaintenancePlan.PlanStatus.COMPLETED);
         
         return MaintenanceDto.fromEntity(saved);
     }
@@ -284,5 +298,59 @@ public class MaintenanceService {
         summary.setUnpaidAmount(totalAmount - paidAmount);
         
         return summary;
+    }
+    
+    /**
+     * Update MaintenancePlan status when maintenance is created or QR is validated
+     * 
+     * @param elevatorId Elevator ID
+     * @param date Maintenance date (should match planned_date)
+     * @param newStatus New status (IN_PROGRESS or COMPLETED)
+     */
+    private void updateMaintenancePlanStatus(Long elevatorId, LocalDate date, MaintenancePlan.PlanStatus newStatus) {
+        try {
+            // Find plan by elevator ID and planned date
+            List<MaintenancePlan> plans = maintenancePlanRepository.findByElevatorIdAndPlannedDate(
+                elevatorId, 
+                date
+            );
+            
+            if (plans != null && !plans.isEmpty()) {
+                // Get the first matching plan (most recent if multiple)
+                MaintenancePlan plan = plans.get(0);
+                
+                logger.debug("Updating maintenance plan status - Plan ID: {}, Current: {}, New: {}", 
+                    plan.getId(), plan.getStatus(), newStatus);
+                
+                // Update status
+                plan.setStatus(newStatus);
+                
+                // If completing, set completedAt timestamp
+                if (newStatus == MaintenancePlan.PlanStatus.COMPLETED) {
+                    plan.setCompletedAt(LocalDateTime.now());
+                    logger.debug("Plan marked as COMPLETED");
+                }
+                
+                // Save plan
+                maintenancePlanRepository.save(plan);
+                logger.debug("Plan status updated successfully");
+            } else {
+                logger.debug("No matching MaintenancePlan found for elevatorId={}, date={}", elevatorId, date);
+            }
+        } catch (Exception e) {
+            // Log error but don't fail maintenance creation
+            logger.warn("Error updating MaintenancePlan status: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Update MaintenancePlan status to IN_PROGRESS when QR is validated
+     * Called from MaintenanceController after QR validation
+     * 
+     * @param elevatorId Elevator ID
+     * @param date Planned date (from maintenance request)
+     */
+    public void markPlanAsInProgress(Long elevatorId, LocalDate date) {
+        updateMaintenancePlanStatus(elevatorId, date, MaintenancePlan.PlanStatus.IN_PROGRESS);
     }
 }

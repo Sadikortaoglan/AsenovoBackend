@@ -126,4 +126,17 @@ public interface MaintenancePlanRepository extends JpaRepository<MaintenancePlan
         @Param("status") MaintenancePlan.PlanStatus status,
         @Param("from") LocalDateTime from,
         @Param("to") LocalDateTime to);
+    
+    /**
+     * Find MaintenancePlan by elevator ID and planned date
+     * Used to link Maintenance records to MaintenancePlan
+     */
+    @Query("SELECT p FROM MaintenancePlan p " +
+           "WHERE p.elevator.id = :elevatorId " +
+           "AND p.plannedDate = :plannedDate " +
+           "AND p.status IN ('PLANNED', 'IN_PROGRESS') " +
+           "ORDER BY p.createdAt DESC")
+    java.util.List<MaintenancePlan> findByElevatorIdAndPlannedDate(
+        @Param("elevatorId") Long elevatorId,
+        @Param("plannedDate") LocalDate plannedDate);
 }

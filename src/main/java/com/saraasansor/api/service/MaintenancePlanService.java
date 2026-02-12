@@ -12,6 +12,8 @@ import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.MaintenancePlanRepository;
 import com.saraasansor.api.repository.MaintenanceTemplateRepository;
 import com.saraasansor.api.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class MaintenancePlanService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(MaintenancePlanService.class);
     
     @Autowired
     private MaintenancePlanRepository planRepository;
@@ -187,16 +191,32 @@ public class MaintenancePlanService {
         
         List<MaintenancePlan> plans;
         
-        // SQL-level filtering: Only PLANNED and IN_PROGRESS
+        // Status filtering logic:
+        // - If status parameter is provided, use it
+        // - If status is null, default to PLANNED only (for maintenance list screen)
+        // - IN_PROGRESS and COMPLETED plans are shown in separate endpoints
+        java.util.List<MaintenancePlan.PlanStatus> statusFilter;
+        
+        if (status != null && !status.isEmpty()) {
+            try {
+                MaintenancePlan.PlanStatus requestedStatus = MaintenancePlan.PlanStatus.valueOf(status.toUpperCase());
+                statusFilter = java.util.Arrays.asList(requestedStatus);
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid status: " + status + ". Valid values: NOT_PLANNED, PLANNED, IN_PROGRESS, COMPLETED");
+            }
+        } else {
+            // Default: Only PLANNED plans for maintenance list screen
+            statusFilter = java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED);
+        }
+        
+        // SQL-level filtering
         // NOT_PLANNED and COMPLETED excluded at SQL level (NOT_PLANNED has plannedDate = null, so won't match date range)
         if (elevatorId != null) {
             plans = planRepository.findByElevatorIdAndPlannedDateBetweenOrderByPlannedDateAsc(
-                elevatorId, from, to, 
-                java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
+                elevatorId, from, to, statusFilter);
         } else {
             plans = planRepository.findByPlannedDateBetweenOrderByPlannedDateAsc(
-                from, to, 
-                java.util.Arrays.asList(MaintenancePlan.PlanStatus.PLANNED, MaintenancePlan.PlanStatus.IN_PROGRESS));
+                from, to, statusFilter);
         }
         
         return plans.stream()
@@ -234,17 +254,8 @@ public class MaintenancePlanService {
     public MaintenancePlanResponseDto updatePlan(Long id, UpdateMaintenancePlanRequest request) {
         MaintenancePlan plan = getPlanById(id);
         
-        // Log incoming request for debugging
-        System.out.println("=== UPDATE PLAN REQUEST ===");
-        System.out.println("Plan ID: " + id);
-        System.out.println("Request plannedDate: " + request.getPlannedDate());
-        System.out.println("Request templateId: " + request.getTemplateId());
-        System.out.println("Request technicianId: " + request.getTechnicianId());
-        System.out.println("Request note: " + request.getNote());
-        System.out.println("Current plan plannedDate: " + plan.getPlannedDate());
-        System.out.println("Current plan templateId: " + (plan.getTemplate() != null ? plan.getTemplate().getId() : "null"));
-        System.out.println("Current plan technicianId: " + (plan.getAssignedTechnician() != null ? plan.getAssignedTechnician().getId() : "null"));
-        System.out.println("Current plan note: " + plan.getNote());
+        logger.debug("Updating plan ID: {}, plannedDate: {}, templateId: {}, technicianId: {}", 
+            id, request.getPlannedDate(), request.getTemplateId(), request.getTechnicianId());
         
         // Validation: Only PLANNED status can be updated
         if (plan.getStatus() != MaintenancePlan.PlanStatus.PLANNED) {
@@ -265,7 +276,7 @@ public class MaintenancePlanService {
             validateMonthlyUniquenessExcluding(plan.getElevator().getId(), request.getPlannedDate(), id);
             
             plan.setPlannedDate(request.getPlannedDate());
-            System.out.println("Updated plannedDate to: " + request.getPlannedDate());
+            logger.debug("Updated plannedDate to: {}", request.getPlannedDate());
         }
         
         // Update template if provided (partial update - only update if not null)
@@ -273,7 +284,7 @@ public class MaintenancePlanService {
             MaintenanceTemplate template = templateRepository.findById(request.getTemplateId())
                     .orElseThrow(() -> new RuntimeException("Maintenance template not found"));
             plan.setTemplate(template);
-            System.out.println("Updated templateId to: " + request.getTemplateId());
+            logger.debug("Updated templateId to: {}", request.getTemplateId());
         }
         
         // Update technician if provided (partial update - only update if not null)
@@ -281,14 +292,14 @@ public class MaintenancePlanService {
             User technician = userRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new RuntimeException("Technician not found"));
             plan.setAssignedTechnician(technician);
-            System.out.println("Updated technicianId to: " + request.getTechnicianId());
+            logger.debug("Updated technicianId to: {}", request.getTechnicianId());
         }
         
         // Update note if provided (partial update - note can be empty string, so check for null)
         // IMPORTANT: Empty string is a valid value (clearing note), only null means "don't update"
         if (request.getNote() != null) {
             plan.setNote(request.getNote());
-            System.out.println("Updated note to: " + request.getNote());
+            logger.debug("Updated note");
         }
         
         // Audit log
@@ -296,11 +307,7 @@ public class MaintenancePlanService {
         plan.setUpdatedAt(LocalDateTime.now());
         
         MaintenancePlan saved = planRepository.save(plan);
-        System.out.println("=== PLAN SAVED SUCCESSFULLY ===");
-        System.out.println("Final plannedDate: " + saved.getPlannedDate());
-        System.out.println("Final templateId: " + (saved.getTemplate() != null ? saved.getTemplate().getId() : "null"));
-        System.out.println("Final technicianId: " + (saved.getAssignedTechnician() != null ? saved.getAssignedTechnician().getId() : "null"));
-        System.out.println("Final note: " + saved.getNote());
+        logger.debug("Plan saved successfully - ID: {}, Status: {}", saved.getId(), saved.getStatus());
         
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
@@ -341,9 +348,14 @@ public class MaintenancePlanService {
     
     /**
      * Start maintenance plan (PLANNED → IN_PROGRESS)
-     * RULE 1: Requires QR proof
+     * 
+     * Business Rules:
+     * - TECHNICIAN: QR token is REQUIRED
+     * - ADMIN: Can start remotely (remoteStart = true) without QR, or with QR (remoteStart = false)
+     * - QR token must match elevatorId
+     * - Audit logging: startedRemotely, startedByRole, startedAt, startedByUserId, ipAddress
      */
-    public MaintenancePlanResponseDto startPlan(Long id, String qrToken) {
+    public MaintenancePlanResponseDto startPlan(Long id, String qrToken, Boolean remoteStart, String ipAddress) {
         MaintenancePlan plan = getPlanById(id);
         
         // Validation: Only PLANNED can be started
@@ -351,27 +363,63 @@ public class MaintenancePlanService {
             throw new RuntimeException("Only PLANNED maintenance plans can be started. Current status: " + plan.getStatus());
         }
         
-        // Validation: QR proof required
-        if (qrToken == null || qrToken.isEmpty()) {
-            throw new RuntimeException("QR token is required to start maintenance");
-        }
-        
-        // Validate and use QR token
+        // Get current user and role
         User currentUser = getCurrentUser();
-        com.saraasansor.api.model.QrProof qrProof = qrProofService.validateAndUseToken(qrToken, currentUser.getId());
+        User.Role userRole = currentUser.getRole();
         
-        // Verify QR proof is for the same elevator
-        if (!qrProof.getElevator().getId().equals(plan.getElevator().getId())) {
-            throw new RuntimeException("QR token is for a different elevator");
+        // Log start attempt
+        logger.debug("Starting maintenance plan - Plan ID: {}, User: {}, Role: {}, Remote Start: {}", 
+            id, currentUser.getUsername(), userRole, remoteStart);
+        
+        com.saraasansor.api.model.QrProof qrProof = null;
+        Boolean isRemoteStart = false;
+        
+        // Role-based validation
+        if (userRole == User.Role.ADMIN && remoteStart != null && remoteStart) {
+            // TODO: Sadık production'da admin QR zorunlu yapmayı isteyebilir. Şimdilik bilinçli olarak açık bırakıldı.
+            // ADMIN remote start: No QR required
+            logger.debug("ADMIN remote start - skipping QR validation");
+            isRemoteStart = true;
+        } else {
+            // TECHNICIAN or ADMIN with QR: QR token is REQUIRED
+            if (qrToken == null || qrToken.trim().isEmpty()) {
+                throw new RuntimeException("QR token is required to start maintenance. Role: " + userRole);
+            }
+            
+            // Validate and use QR token
+            qrProof = qrProofService.validateAndUseToken(qrToken, currentUser.getId());
+            
+            // Verify QR proof is for the same elevator
+            if (!qrProof.getElevator().getId().equals(plan.getElevator().getId())) {
+                throw new RuntimeException("QR token is for a different elevator. Expected: " + 
+                    plan.getElevator().getId() + ", Got: " + qrProof.getElevator().getId());
+            }
+            
+            logger.debug("QR token validated successfully");
         }
         
-        // Update plan
+        // Update plan status
         plan.setStatus(MaintenancePlan.PlanStatus.IN_PROGRESS);
+        
+        // Set QR proof (null for remote start)
         plan.setQrProof(qrProof);
+        
+        // Audit logging
+        plan.setStartedRemotely(isRemoteStart);
+        plan.setStartedByRole(userRole.name()); // TECHNICIAN, ADMIN, etc.
+        plan.setStartedAt(LocalDateTime.now());
+        plan.setStartedBy(currentUser);
+        plan.setStartedFromIp(ipAddress);
+        
+        // Standard audit fields
         plan.setUpdatedBy(currentUser);
         plan.setUpdatedAt(LocalDateTime.now());
         
         MaintenancePlan saved = planRepository.save(plan);
+        
+        logger.info("Maintenance plan started - Plan ID: {}, Status: {}, Remote: {}", 
+            saved.getId(), saved.getStatus(), saved.getStartedRemotely());
+        
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
     
@@ -416,8 +464,6 @@ public class MaintenancePlanService {
         plan.setUpdatedAt(LocalDateTime.now());
         
         MaintenancePlan saved = planRepository.save(plan);
-        
-        // TODO: Save photos to maintenance_plan_photos table
         
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
