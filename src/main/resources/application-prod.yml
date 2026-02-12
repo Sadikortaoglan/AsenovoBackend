@@ -93,6 +93,13 @@ app:
       secret-key: ${AWS_SECRET_KEY:}
       bucket: ${AWS_BUCKET:sara-asansor-files}
       region: ${AWS_REGION:us-east-1}
+  
+  qr:
+    secret-key: ${QR_SECRET_KEY}  # REQUIRED: Must be set via environment variable
+    token-ttl-minutes: ${QR_TOKEN_TTL_MINUTES:3}
+    base-url: ${QR_BASE_URL:http://51.21.3.85:8080}
+    size: 300
+    session-token-ttl-minutes: ${QR_SESSION_TOKEN_TTL_MINUTES:5}
 
 springdoc:
   api-docs:
