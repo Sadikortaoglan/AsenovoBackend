@@ -153,6 +153,60 @@ Important settings:
 - JWT Secret: `app.jwt.secret` (change this in production!)
 - File Storage: `app.file-storage.type` (local or s3)
 
+## 🔐 Production Secrets Setup
+
+**REQUIRED Environment Variables for Production:**
+
+The following environment variables **MUST** be set before starting the application in production:
+
+### 1. QR_SECRET_KEY (REQUIRED)
+- **Purpose**: Secret key for QR code signature generation and validation
+- **Location**: Set in `.env.prod` file or as environment variable
+- **Generation**: Use a strong random secret:
+  ```bash
+  openssl rand -base64 32
+  ```
+- **Example**: `QR_SECRET_KEY=your_strong_random_secret_here`
+
+### 2. JWT_SECRET (REQUIRED)
+- **Purpose**: Secret key for JWT token signing
+- **Location**: Set in `.env.prod` file or as environment variable
+- **Generation**: Use a strong random secret:
+  ```bash
+  openssl rand -base64 32
+  ```
+- **Example**: `JWT_SECRET=your_jwt_secret_here`
+
+### 3. Database Credentials (REQUIRED)
+- `POSTGRES_DB`: Database name
+- `POSTGRES_USER`: Database user
+- `POSTGRES_PASSWORD`: Database password
+
+### Setup Steps:
+
+1. **Copy `.env.prod` template**:
+   ```bash
+   cd backend
+   cp .env.prod.example .env.prod  # If template exists
+   # Or create .env.prod manually
+   ```
+
+2. **Set all required secrets** in `.env.prod`:
+   ```bash
+   QR_SECRET_KEY=$(openssl rand -base64 32)
+   JWT_SECRET=$(openssl rand -base64 32)
+   # Add to .env.prod file
+   ```
+
+3. **Verify `.env.prod` is in `.gitignore`** (should not be committed)
+
+4. **Start with Docker Compose**:
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+> ⚠️ **Security Warning**: Never commit `.env.prod` to Git. It contains sensitive secrets.
+
 ## 📦 Database
 
 - **Migration Files**: `src/main/resources/db/migration/`
