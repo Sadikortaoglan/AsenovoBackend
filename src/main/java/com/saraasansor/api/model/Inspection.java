@@ -1,6 +1,8 @@
 package com.saraasansor.api.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,7 +25,8 @@ public class Inspection {
     private String result;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "inspection_color", nullable = false)
+    @Column(name = "inspection_color", nullable = false, columnDefinition = "inspection_color")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private InspectionColor inspectionColor;
 
     @Column(name = "contacted_person_name")
