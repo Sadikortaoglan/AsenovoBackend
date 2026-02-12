@@ -33,6 +33,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    out-of-order: false  # Production: migrations must run in order (V1, V2, V3...)
     # Production: ONLY schema migrations, NO seed data
     # dev/ folder is EXCLUDED - seed data NEVER runs in production
     locations: classpath:db/migration

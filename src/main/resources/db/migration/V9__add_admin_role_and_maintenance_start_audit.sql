@@ -21,16 +21,27 @@ BEGIN
 END $$;
 
 -- 2. Add audit fields to maintenance_plans for start tracking
-ALTER TABLE maintenance_plans
-ADD COLUMN IF NOT EXISTS started_remotely BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN IF NOT EXISTS started_by_role VARCHAR(50),
-ADD COLUMN IF NOT EXISTS started_at TIMESTAMP,
-ADD COLUMN IF NOT EXISTS started_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS started_from_ip VARCHAR(45);
+-- Check if table exists before altering (safety check)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'maintenance_plans') THEN
+        ALTER TABLE maintenance_plans
+        ADD COLUMN IF NOT EXISTS started_remotely BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS started_by_role VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS started_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS started_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS started_from_ip VARCHAR(45);
+    END IF;
+END $$;
 
--- 3. Create index for audit queries
-CREATE INDEX IF NOT EXISTS idx_maintenance_plans_started_by 
-ON maintenance_plans(started_by_user_id, started_at);
-
-CREATE INDEX IF NOT EXISTS idx_maintenance_plans_started_remotely 
-ON maintenance_plans(started_remotely, started_at);
+-- 3. Create index for audit queries (only if table exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'maintenance_plans') THEN
+        CREATE INDEX IF NOT EXISTS idx_maintenance_plans_started_by 
+        ON maintenance_plans(started_by_user_id, started_at);
+        
+        CREATE INDEX IF NOT EXISTS idx_maintenance_plans_started_remotely 
+        ON maintenance_plans(started_remotely, started_at);
+    END IF;
+END $$;
