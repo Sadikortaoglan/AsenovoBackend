@@ -234,6 +234,18 @@ public class MaintenancePlanService {
     public MaintenancePlanResponseDto updatePlan(Long id, UpdateMaintenancePlanRequest request) {
         MaintenancePlan plan = getPlanById(id);
         
+        // Log incoming request for debugging
+        System.out.println("=== UPDATE PLAN REQUEST ===");
+        System.out.println("Plan ID: " + id);
+        System.out.println("Request plannedDate: " + request.getPlannedDate());
+        System.out.println("Request templateId: " + request.getTemplateId());
+        System.out.println("Request technicianId: " + request.getTechnicianId());
+        System.out.println("Request note: " + request.getNote());
+        System.out.println("Current plan plannedDate: " + plan.getPlannedDate());
+        System.out.println("Current plan templateId: " + (plan.getTemplate() != null ? plan.getTemplate().getId() : "null"));
+        System.out.println("Current plan technicianId: " + (plan.getAssignedTechnician() != null ? plan.getAssignedTechnician().getId() : "null"));
+        System.out.println("Current plan note: " + plan.getNote());
+        
         // Validation: Only PLANNED status can be updated
         if (plan.getStatus() != MaintenancePlan.PlanStatus.PLANNED) {
             throw new RuntimeException("Only PLANNED maintenance plans can be updated. Current status: " + plan.getStatus());
@@ -242,7 +254,7 @@ public class MaintenancePlanService {
         // Get current user for audit
         User currentUser = getCurrentUser();
         
-        // Update planned date if provided
+        // Update planned date if provided (partial update - only update if not null)
         if (request.getPlannedDate() != null) {
             // Validation: Cannot schedule in the past
             if (request.getPlannedDate().isBefore(LocalDate.now())) {
@@ -253,20 +265,30 @@ public class MaintenancePlanService {
             validateMonthlyUniquenessExcluding(plan.getElevator().getId(), request.getPlannedDate(), id);
             
             plan.setPlannedDate(request.getPlannedDate());
+            System.out.println("Updated plannedDate to: " + request.getPlannedDate());
         }
         
-        // Update template if provided
+        // Update template if provided (partial update - only update if not null)
         if (request.getTemplateId() != null) {
             MaintenanceTemplate template = templateRepository.findById(request.getTemplateId())
                     .orElseThrow(() -> new RuntimeException("Maintenance template not found"));
             plan.setTemplate(template);
+            System.out.println("Updated templateId to: " + request.getTemplateId());
         }
         
-        // Update technician if provided
+        // Update technician if provided (partial update - only update if not null)
         if (request.getTechnicianId() != null) {
             User technician = userRepository.findById(request.getTechnicianId())
                     .orElseThrow(() -> new RuntimeException("Technician not found"));
             plan.setAssignedTechnician(technician);
+            System.out.println("Updated technicianId to: " + request.getTechnicianId());
+        }
+        
+        // Update note if provided (partial update - note can be empty string, so check for null)
+        // IMPORTANT: Empty string is a valid value (clearing note), only null means "don't update"
+        if (request.getNote() != null) {
+            plan.setNote(request.getNote());
+            System.out.println("Updated note to: " + request.getNote());
         }
         
         // Audit log
@@ -274,6 +296,12 @@ public class MaintenancePlanService {
         plan.setUpdatedAt(LocalDateTime.now());
         
         MaintenancePlan saved = planRepository.save(plan);
+        System.out.println("=== PLAN SAVED SUCCESSFULLY ===");
+        System.out.println("Final plannedDate: " + saved.getPlannedDate());
+        System.out.println("Final templateId: " + (saved.getTemplate() != null ? saved.getTemplate().getId() : "null"));
+        System.out.println("Final technicianId: " + (saved.getAssignedTechnician() != null ? saved.getAssignedTechnician().getId() : "null"));
+        System.out.println("Final note: " + saved.getNote());
+        
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
     
@@ -432,32 +460,14 @@ public class MaintenancePlanService {
         plan.setUpdatedBy(currentUser);
         plan.setUpdatedAt(LocalDateTime.now());
         
-        System.out.println("========================================");
-        System.out.println("CANCELLING PLAN ID: " + id);
-        System.out.println("Setting: status = NOT_PLANNED, plannedDate = null, assignedTechnician = null");
-        System.out.println("========================================");
-        
         // Save and flush to ensure immediate database write
         MaintenancePlan saved = planRepository.save(plan);
         planRepository.flush(); // Force immediate database write - CRITICAL for persistence
         
-        System.out.println("========================================");
-        System.out.println("SAVED AND FLUSHED. Verifying persistence...");
-        System.out.println("========================================");
-        
         // Verify all fields were persisted correctly
         MaintenancePlan verify = planRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Plan not found after cancellation"));
-        
-        System.out.println("========================================");
-        System.out.println("VERIFICATION QUERY RESULT:");
-        System.out.println("Plan ID: " + verify.getId());
-        System.out.println("Plan Status: " + verify.getStatus());
-        System.out.println("Plan PlannedDate: " + verify.getPlannedDate());
-        System.out.println("Plan AssignedTechnician: " + (verify.getAssignedTechnician() == null ? "null" : verify.getAssignedTechnician().getId()));
-        System.out.println("Expected: status = NOT_PLANNED, plannedDate = null, assignedTechnician = null");
-        System.out.println("========================================");
-        
+ 
         // Verify status
         if (verify.getStatus() != MaintenancePlan.PlanStatus.NOT_PLANNED) {
             throw new RuntimeException("CRITICAL: Status was not persisted. Expected NOT_PLANNED, got: " + verify.getStatus());
@@ -472,11 +482,6 @@ public class MaintenancePlanService {
         if (verify.getAssignedTechnician() != null) {
             throw new RuntimeException("CRITICAL: AssignedTechnician was not cleared. Expected null, got: " + verify.getAssignedTechnician().getId());
         }
-        
-        System.out.println("========================================");
-        System.out.println("PERSISTENCE VERIFIED: NOT_PLANNED, plannedDate = null, assignedTechnician = null");
-        System.out.println("========================================");
-        
         return MaintenancePlanResponseDto.fromEntity(saved);
     }
     

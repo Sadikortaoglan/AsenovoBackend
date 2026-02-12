@@ -19,6 +19,7 @@ public class MaintenancePlanResponseDto {
     private String status;
     private LocalDateTime completedDate;
     private String qrCode;
+    private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -61,8 +62,13 @@ public class MaintenancePlanResponseDto {
         }
         
         dto.setStatus(plan.getStatus() != null ? plan.getStatus().name() : "PLANNED");
+        dto.setNote(plan.getNote());
         dto.setCreatedAt(plan.getCreatedAt());
-        dto.setUpdatedAt(plan.getCreatedAt()); // TODO: Add updatedAt to entity if needed
+        dto.setUpdatedAt(plan.getUpdatedAt() != null ? plan.getUpdatedAt() : plan.getCreatedAt());
+        
+        if (plan.getCompletedAt() != null) {
+            dto.setCompletedDate(plan.getCompletedAt());
+        }
         
         return dto;
     }
@@ -186,5 +192,13 @@ public class MaintenancePlanResponseDto {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }

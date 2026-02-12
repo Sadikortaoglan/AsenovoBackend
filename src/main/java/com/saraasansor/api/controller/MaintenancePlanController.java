@@ -80,17 +80,64 @@ public class MaintenancePlanController {
     }
     
     /**
-     * UPDATE - Plan Güncelleme
+     * UPDATE - Plan Güncelleme (Full Update)
      * PUT /api/maintenance-plans/{id}
+     * 
+     * Semantics: Replace entire resource
+     * Behavior: Partial update - only updates non-null fields, preserves existing values for null fields
+     * 
+     * Use this when you have the full object state and want to ensure all fields are sent.
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MaintenancePlanResponseDto>> updatePlan(
             @PathVariable Long id,
             @Valid @RequestBody UpdateMaintenancePlanRequest request) {
         try {
+            // Log incoming request body for debugging
+            System.out.println("=== PUT /maintenance-plans/" + id + " ===");
+            System.out.println("Request body: plannedDate=" + request.getPlannedDate() + 
+                             ", templateId=" + request.getTemplateId() + 
+                             ", technicianId=" + request.getTechnicianId() + 
+                             ", note=" + request.getNote());
+            
             MaintenancePlanResponseDto updated = planService.updatePlan(id, request);
             return ResponseEntity.ok(ApiResponse.success("Plan updated successfully", updated));
         } catch (Exception e) {
+            System.err.println("ERROR in updatePlan: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * PARTIAL UPDATE - Plan Güncelleme (Partial Update)
+     * PATCH /api/maintenance-plans/{id}
+     * 
+     * Semantics: Modify specific fields only
+     * Behavior: Only updates provided (non-null) fields, preserves all other fields
+     * 
+     * Use this for partial updates when you only want to change specific fields.
+     * More RESTful for partial updates.
+     */
+    @PatchMapping("/{id}")
+    public ResponseEntity<ApiResponse<MaintenancePlanResponseDto>> partialUpdatePlan(
+            @PathVariable Long id,
+            @RequestBody UpdateMaintenancePlanRequest request) {
+        try {
+            // Log incoming request body for debugging
+            System.out.println("=== PATCH /maintenance-plans/" + id + " ===");
+            System.out.println("Request body: plannedDate=" + request.getPlannedDate() + 
+                             ", templateId=" + request.getTemplateId() + 
+                             ", technicianId=" + request.getTechnicianId() + 
+                             ", note=" + request.getNote());
+            
+            // PATCH uses the same service method as PUT (both support partial updates)
+            MaintenancePlanResponseDto updated = planService.updatePlan(id, request);
+            return ResponseEntity.ok(ApiResponse.success("Plan updated successfully", updated));
+        } catch (Exception e) {
+            System.err.println("ERROR in partialUpdatePlan: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
