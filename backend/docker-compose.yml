@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sara-asansor-postgres
+    environment:
+      POSTGRES_DB: sara_asansor
+      POSTGRES_USER: sara_asansor
+      POSTGRES_PASSWORD: sara_asansor
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sara_asansor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sara-asansor-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sara_asansor
+      SPRING_DATASOURCE_USERNAME: sara_asansor
+      SPRING_DATASOURCE_PASSWORD: sara_asansor
+      JWT_SECRET: your-256-bit-secret-key-change-this-in-production-minimum-32-characters
+      QR_SECRET_KEY: local-docker-qr-secret-change-this
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
+      SPRING_FLYWAY_REPAIR_ON_MIGRATE: "true"
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  postgres_data:

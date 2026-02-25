@@ -1,0 +1,204 @@
+package com.saraasansor.api.security;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.core.env.Environment;
+import org.springframework.core.Ordered;
+import org.springframework.core.env.Profiles;
+
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+    
+    @Autowired
+    private UserDetailsService userDetailsService;
+    
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    
+    @Autowired
+    private Environment environment;
+    
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+    
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+    
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+    
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                // OPTIONS requests (CORS preflight) - permit all - MUST be first
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                // Health check endpoint - permit all
+                .requestMatchers("/health").permitAll()
+                // Error endpoint - permit all (needed for exception handling)
+                .requestMatchers("/error").permitAll()
+                // Auth endpoints - permit all (no JWT required)
+                .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                // Swagger/OpenAPI endpoints - permit all
+                // Note: context-path is /api, so swagger paths are relative to that
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/swagger-ui.html/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/api-docs/**", "/swagger-config/**").permitAll()
+                .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
+                // Users endpoint - only PATRON
+                .requestMatchers("/users/**").hasRole("PATRON")
+                // Everything else requires authentication
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"" + authException.getMessage() + "\"}");
+                })
+            )
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        return http.build();
+    }
+    
+    /**
+     * Global CORS Filter that runs BEFORE Spring Security filters.
+     * This ensures CORS headers are added to ALL responses, including error responses.
+     * Order 0 = Highest priority (runs first)
+     */
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilter() {
+        CorsConfiguration config = new CorsConfiguration();
+        
+        // Build allowed origin patterns
+        List<String> allowedOriginPatterns = new java.util.ArrayList<>();
+        
+        // Local development origins (only in dev profile)
+        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default", "local"));
+        if (isDevProfile) {
+            allowedOriginPatterns.add("http://localhost:*");
+            allowedOriginPatterns.add("http://127.0.0.1:*");
+        }
+        
+        // Load production origins from environment variable
+        String corsOrigins = environment.getProperty("CORS_ALLOWED_ORIGINS");
+        if (corsOrigins != null && !corsOrigins.trim().isEmpty()) {
+            String[] origins = corsOrigins.split(",");
+            for (String origin : origins) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !allowedOriginPatterns.contains(trimmed)) {
+                    allowedOriginPatterns.add(trimmed);
+                }
+            }
+        }
+        
+        // Apply CORS configuration
+        config.setAllowedOriginPatterns(allowedOriginPatterns);
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+        config.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE); // Order 0 - runs before Spring Security
+        return bean;
+    }
+    
+    /**
+     * CORS Configuration Source for Spring Security.
+     * Used by SecurityFilterChain's .cors() configuration.
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        // Build allowed origin patterns (supports wildcards with credentials)
+        java.util.List<String> allowedOriginPatterns = new java.util.ArrayList<>();
+        
+        // Local development origins (only in dev profile)
+        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default", "local"));
+        if (isDevProfile) {
+            allowedOriginPatterns.add("http://localhost:*");          // Any localhost port
+            allowedOriginPatterns.add("http://127.0.0.1:*");          // Any 127.0.0.1 port
+        }
+        
+        // Load production origins from environment variable (comma-separated)
+        // Example: CORS_ALLOWED_ORIGINS=http://51.21.3.85,http://51.21.3.85:80
+        String corsOrigins = environment.getProperty("CORS_ALLOWED_ORIGINS");
+        if (corsOrigins != null && !corsOrigins.trim().isEmpty()) {
+            String[] origins = corsOrigins.split(",");
+            for (String origin : origins) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !allowedOriginPatterns.contains(trimmed)) {
+                    allowedOriginPatterns.add(trimmed);
+                }
+            }
+        }
+        
+        // Use allowedOriginPatterns (supports wildcards with credentials)
+        // Note: setAllowedOrigins("*") is incompatible with allowCredentials(true)
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
+        
+        // Allow all HTTP methods including OPTIONS for preflight
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        
+        // Allow specific headers (Authorization, Content-Type, Accept, Origin, etc.)
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "Origin", 
+                "X-Requested-With", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+        
+        // Allow credentials (required for Authorization header)
+        configuration.setAllowCredentials(true);
+        
+        // Cache preflight response for 1 hour
+        configuration.setMaxAge(3600L);
+        
+        // Expose headers to frontend
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}

@@ -1,0 +1,2461 @@
+{
+  "info": {
+    "_postman_id": "sara-asansor-api-2024",
+    "name": "Sara Elevator API",
+    "description": "Sara Elevator Management System REST API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.data.accessToken) {",
+                  "        pm.environment.set(\"accessToken\", jsonData.data.accessToken);",
+                  "        pm.environment.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "        pm.environment.set(\"userId\", jsonData.data.userId);",
+                  "        pm.environment.set(\"username\", jsonData.data.username);",
+                  "        pm.environment.set(\"role\", jsonData.data.role);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"{{username}}\",\n    \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "User login to get access token and refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.success && jsonData.data.accessToken) {",
+                  "        pm.environment.set(\"accessToken\", jsonData.data.accessToken);",
+                  "        pm.environment.set(\"refreshToken\", jsonData.data.refreshToken);",
+                  "        pm.environment.set(\"userId\", jsonData.data.userId);",
+                  "        pm.environment.set(\"username\", jsonData.data.username);",
+                  "        pm.environment.set(\"role\", jsonData.data.role);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"yeni_kullanici\",\n    \"password\": \"123456\",\n    \"role\": \"PERSONEL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates new user registration and automatically logs in. Role: PATRON or PERSONEL"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Gets new access token using refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "User logout (client-side should remove token)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "Elevators",
+      "item": [
+        {
+          "name": "Get All Elevators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevators",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevators"
+              ]
+            },
+            "description": "Lists all elevators."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Elevator by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevators/{{elevatorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevators",
+                "{{elevatorId}}"
+              ]
+            },
+            "description": "Gets elevator details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Elevator Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevators/{{elevatorId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevators",
+                "{{elevatorId}}",
+                "status"
+              ]
+            },
+            "description": "Returns elevator status (EXPIRED/WARNING/OK)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Elevator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identityNumber\": \"ELEV-004\",\n    \"buildingName\": \"New Business Center\",\n    \"address\": \"456 Residential Avenue, Block B\",\n    \"elevatorNumber\": \"A2\",\n    \"floorCount\": 4,\n    \"capacity\": 450,\n    \"speed\": 0.75,\n    \"technicalNotes\": \"New installation\",\n    \"inspectionDate\": \"2024-01-01\",\n    \"expiryDate\": \"2025-01-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/elevators",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevators"
+              ]
+            },
+            "description": "Creates new elevator. expiryDate is automatically calculated (inspectionDate + 12 months)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Elevator",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identityNumber\": \"ELEV-004\",\n    \"buildingName\": \"New Business Center Updated\",\n    \"address\": \"456 Residential Avenue, Block B\",\n    \"elevatorNumber\": \"A2\",\n    \"floorCount\": 5,\n    \"capacity\": 630,\n    \"speed\": 1.0,\n    \"inspectionDate\": \"2024-01-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/elevators/{{elevatorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevators",
+                "{{elevatorId}}"
+              ]
+            },
+            "description": "Updates existing elevator."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Elevator",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevators/{{elevatorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevators",
+                "{{elevatorId}}"
+              ]
+            },
+            "description": "Deletes elevator."
+          },
+          "response": []
+        }
+      ],
+      "description": "Elevator management endpoints"
+    },
+    {
+      "name": "Maintenances",
+      "item": [
+        {
+          "name": "Get All Maintenances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenances?paid=&dateFrom=&dateTo=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances"
+              ],
+              "query": [
+                {
+                  "key": "paid",
+                  "value": "",
+                  "description": "true: only paid, false: only unpaid, empty: all",
+                  "disabled": true
+                },
+                {
+                  "key": "dateFrom",
+                  "value": "",
+                  "description": "Start date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "dateTo",
+                  "value": "",
+                  "description": "End date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lists all maintenance records. Filtering: paid (true/false), dateFrom, dateTo"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Maintenance Summary (Monthly)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenances/summary?month=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "",
+                  "description": "Month format: YYYY-MM (e.g: 2026-01). Empty for current month",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Gets monthly maintenance summary (total, paid, unpaid counts and amounts)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Maintenance by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenances/{{maintenanceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances",
+                "{{maintenanceId}}"
+              ]
+            },
+            "description": "Gets maintenance record details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Maintenances by Elevator ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenances/elevator/{{elevatorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances",
+                "elevator",
+                "{{elevatorId}}"
+              ]
+            },
+            "description": "Gets maintenance records for a specific elevator."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Maintenance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"elevatorId\": 1,\n    \"date\": \"2024-01-15\",\n    \"description\": \"Monthly periodic maintenance\",\n    \"technicianUserId\": 1,\n    \"amount\": 1500.00,\n    \"isPaid\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/maintenances",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances"
+              ]
+            },
+            "description": "Creates new maintenance record."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Maintenance",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"elevatorId\": 1,\n    \"date\": \"2024-01-15\",\n    \"description\": \"Monthly periodic maintenance - Güncellendi\",\n    \"amount\": 1500.00,\n    \"isPaid\": true,\n    \"paymentDate\": \"2024-01-20\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/maintenances/{{maintenanceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances",
+                "{{maintenanceId}}"
+              ]
+            },
+            "description": "Updates maintenance record."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Maintenance as Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenances/{{maintenanceId}}/mark-paid?paid=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances",
+                "{{maintenanceId}}",
+                "mark-paid"
+              ],
+              "query": [
+                {
+                  "key": "paid",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Marks maintenance record as paid."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Maintenance",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenances/{{maintenanceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenances",
+                "{{maintenanceId}}"
+              ]
+            },
+            "description": "Deletes maintenance record."
+          },
+          "response": []
+        }
+      ],
+      "description": "Maintenance management endpoints"
+    },
+    {
+      "name": "Parts",
+      "item": [
+        {
+          "name": "Get All Parts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/parts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts"
+              ]
+            },
+            "description": "Lists all parts."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Part by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}"
+              ]
+            },
+            "description": "Gets part details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Part",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"New Part\",\n    \"unitPrice\": 250.00,\n    \"stock\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts"
+              ]
+            },
+            "description": "Creates new part."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Part",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"New Part Güncellendi\",\n    \"unitPrice\": 300.00,\n    \"stock\": 20\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}"
+              ]
+            },
+            "description": "Updates part."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Part",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/parts/{{partId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "parts",
+                "{{partId}}"
+              ]
+            },
+            "description": "Deletes part."
+          },
+          "response": []
+        }
+      ],
+      "description": "Part management endpoints"
+    },
+    {
+      "name": "Warnings",
+      "item": [
+        {
+          "name": "Get All Warnings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/warnings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "warnings"
+              ]
+            },
+            "description": "Tüm uyarıları getirir (EXPIRED ve WARNING)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expired Elevators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/warnings?type=EXPIREJECTED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "warnings"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "EXPIREJECTED"
+                }
+              ]
+            },
+            "description": "Süresi dolmuş asansörleri getirir."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Warning Elevators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/warnings?type=WARNING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "warnings"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "WARNING"
+                }
+              ]
+            },
+            "description": "Yakında dolacak (30 gün içinde) asansörleri getirir."
+          },
+          "response": []
+        }
+      ],
+      "description": "Uyarı endpoint'leri"
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard",
+                "summary"
+              ]
+            },
+            "description": "Dashboard özet istatistiklerini getirir (toplam asansör, bakım, gelir, borç, uyarılar)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Dashboard endpoint'leri"
+    },
+    {
+      "name": "Faults (Arıza)",
+      "item": [
+        {
+          "name": "Get All Faults",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faults?status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faults"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "OPEN veya COMPLETED (opsiyonel)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Tüm arıza kayıtlarını listeler. status parametresi ile filtreleme yapılabilir."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Fault by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faults/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faults",
+                "1"
+              ]
+            },
+            "description": "ID'ye göre arıza kaydı detayını getirir."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Fault",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"elevatorId\": 1,\n    \"faultSubject\": \"Motor çalışmıyor\",\n    \"contactPerson\": \"Ahmet Yılmaz\",\n    \"buildingAuthorizedMessage\": \"Acil müdahale gerekiyor\",\n    \"description\": \"Asansör 2. katta takıldı\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/faults",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faults"
+              ]
+            },
+            "description": "Yeni arıza kaydı oluşturur. Durum otomatik olarak OPEN olarak ayarlanır."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Fault Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/faults/1/status?status=COMPLETED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "faults",
+                "1",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "COMPLETED",
+                  "description": "OPEN veya COMPLETED"
+                }
+              ]
+            },
+            "description": "Arıza statusunu günceller (OPEN veya COMPLETED)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Fault tracking endpoints"
+    },
+    {
+      "name": "Inspections (Denetim)",
+      "item": [
+        {
+          "name": "Get All Inspections",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inspections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inspections"
+              ]
+            },
+            "description": "Lists all inspection records."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inspection by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inspections/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inspections",
+                "1"
+              ]
+            },
+            "description": "ID'ye göre denetim kaydı detayını getirir."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inspections by Elevator ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inspections/elevator/{{elevatorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inspections",
+                "elevator",
+                "{{elevatorId}}"
+              ]
+            },
+            "description": "Belirli bir asansöre ait denetim kayıtlarını getirir (date sıralı DESC)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"elevatorId\": 1,\n    \"date\": \"2026-01-10\",\n    \"result\": \"BAŞARILI\",\n    \"description\": \"Tüm kontroller yapıldı, her şey uygun\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inspections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inspections"
+              ]
+            },
+            "description": "Creates new inspection record."
+          },
+          "response": []
+        }
+      ],
+      "description": "Denetim kayıt endpoint'leri"
+    },
+    {
+      "name": "Payments (Tahsilat)",
+      "item": [
+        {
+          "name": "Get All Payment Receipts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments?dateFrom=&dateTo=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ],
+              "query": [
+                {
+                  "key": "dateFrom",
+                  "value": "",
+                  "description": "Start date (YYYY-MM-DD)",
+                  "disabled": true
+                },
+                {
+                  "key": "dateTo",
+                  "value": "",
+                  "description": "End date (YYYY-MM-DD)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Tüm tahsilat fişlerini listeler. Tarih aralığı ile filtreleme yapılabilir."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Receipt by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "1"
+              ]
+            },
+            "description": "ID'ye göre tahsilat fişi detayını getirir."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Payment Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"maintenanceId\": 1,\n    \"amount\": 500.0,\n    \"payerName\": \"Bina Yönetimi\",\n    \"date\": \"2026-01-10\",\n    \"note\": \"Nakit ödeme\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            },
+            "description": "Creates new payment receipt. Related maintenance is automatically marked as 'isPaid=true'."
+          },
+          "response": []
+        }
+      ],
+      "description": "Tahsilat fişi endpoint'leri"
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "Get all users (PATRON role only)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Users endpoint (PATRON only)"
+    },
+    {
+      "name": "Offers (Teklifler)",
+      "item": [
+        {
+          "name": "Get All Offers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers"
+              ]
+            },
+            "description": "Lists all offers."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Offer by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/offers/{{offerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "{{offerId}}"
+              ]
+            },
+            "description": "Gets offer details by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Offers by Elevator ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/offers/elevator/{{elevatorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "elevator",
+                "{{elevatorId}}"
+              ]
+            },
+            "description": "Gets offers for a specific elevator."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"elevatorId\": 1,\n    \"date\": \"2024-01-15\",\n    \"vatRate\": 20.0,\n    \"discountAmount\": 0.0,\n    \"subtotal\": 1000.0,\n    \"totalAmount\": 1200.0,\n    \"status\": \"PENDING\",\n    \"items\": [\n        {\n            \"partId\": 1,\n            \"quantity\": 2,\n            \"unitPrice\": 500.0\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers"
+              ]
+            },
+            "description": "Creates new offer. Items can be included. If items are provided, totals are recalculated automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Offer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"elevatorId\": 1,\n    \"date\": \"2024-01-15\",\n    \"vatRate\": 20.0,\n    \"discountAmount\": 50.0,\n    \"subtotal\": 1000.0,\n    \"totalAmount\": 1140.0,\n    \"status\": \"ACCEPTED\",\n    \"items\": [\n        {\n            \"partId\": 1,\n            \"quantity\": 2,\n            \"unitPrice\": 500.0\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/offers/{{offerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "{{offerId}}"
+              ]
+            },
+            "description": "Updates existing offer. If items are provided, existing items are replaced and totals are recalculated."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Offer",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/offers/{{offerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "offers",
+                "{{offerId}}"
+              ]
+            },
+            "description": "Deletes offer and related offer items (cascade delete)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Offer management endpoints"
+    },
+    {
+      "name": "New UI Modules (2026-02)",
+      "item": [
+        {
+          "name": "List Maintenance Completions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/maintenance-completions?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "maintenance-completions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "25"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Elevator Labels",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevator-labels?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-labels"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Elevator Label (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payload",
+                  "value": "{\"elevatorId\":1,\"labelName\":\"PM-QA-ETIKET\",\"startAt\":\"2026-02-01T10:00:00\",\"endAt\":\"2027-02-01T10:00:00\",\"description\":\"Postman QA etiket\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/elevator-labels",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-labels"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Elevator Label (multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payload",
+                  "value": "{\"id\":{{labelId}},\"elevatorId\":1,\"labelName\":\"PM-QA-ETIKET-GUNCEL\",\"startAt\":\"2026-03-01T10:00:00\",\"endAt\":\"2027-03-01T10:00:00\",\"description\":\"Postman QA etiket guncel\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/elevator-labels/{{labelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-labels",
+                "{{labelId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Elevator Label",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevator-labels/{{labelId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-labels",
+                "{{labelId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Elevator Contracts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevator-contracts?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-contracts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Elevator Contract (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payload",
+                  "value": "{\"elevatorId\":1,\"contractDate\":\"2026-02-20\",\"contractHtml\":\"<p>QA sozlesme</p>\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/elevator-contracts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-contracts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Elevator Contract (multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payload",
+                  "value": "{\"id\":{{contractId}},\"elevatorId\":1,\"contractDate\":\"2026-03-20\",\"contractHtml\":\"<p>QA sozlesme guncel</p>\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/elevator-contracts/{{contractId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-contracts",
+                "{{contractId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Elevator Contract",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/elevator-contracts/{{contractId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "elevator-contracts",
+                "{{contractId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get EDM Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/edm/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "settings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save EDM Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"edm-user\",\n  \"password\": \"superSecret123\",\n  \"email\": \"qa@example.com\",\n  \"invoiceSeriesEarchive\": \"SAR\",\n  \"invoiceSeriesEfatura\": \"MUR\",\n  \"mode\": \"PRODUCTION\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/edm/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "settings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Incoming EDM Invoices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/edm/invoices/incoming?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "invoices",
+                "incoming"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Outgoing EDM Invoices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/edm/invoices/outgoing?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "invoices",
+                "outgoing"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Manual Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceNo\": \"PM-QA-001\",\n  \"invoiceDate\": \"2026-02-21\",\n  \"direction\": \"OUTGOING\",\n  \"profile\": \"TICARI FATURA\",\n  \"status\": \"DRAFT\",\n  \"receiverName\": \"QA Receiver\",\n  \"receiverVknTckn\": \"1234567890\",\n  \"currency\": \"TRY\",\n  \"amount\": 1500.00,\n  \"note\": \"manual outgoing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/edm/invoices/manual",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "invoices",
+                "manual"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate VKN/TCKN",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/edm/vkn-tckn/validate?value=11111111110",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "vkn-tckn",
+                "validate"
+              ],
+              "query": [
+                {
+                  "key": "value",
+                  "value": "11111111110"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Merge EDM Invoices",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceIds\": [{{manualInvoiceId}}, {{manualInvoiceId}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/edm/invoices/merge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "edm",
+                "invoices",
+                "merge"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Payment Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payment-transactions?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment-transactions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Cash Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QA Kasa\",\n  \"currency\": \"TRY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment-transactions/cash-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment-transactions",
+                "cash-accounts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QA Banka\",\n  \"currency\": \"TRY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment-transactions/bank-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment-transactions",
+                "bank-accounts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Cash Accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payment-transactions/cash-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment-transactions",
+                "cash-accounts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Bank Accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payment-transactions/bank-accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payment-transactions",
+                "bank-accounts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Stock Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productName\": \"QA PART\",\n  \"stockGroup\": \"KAPI\",\n  \"modelName\": \"MODEL-X\",\n  \"unit\": \"ADET\",\n  \"vatRate\": 20,\n  \"purchasePrice\": 100,\n  \"salePrice\": 150,\n  \"stockIn\": 10,\n  \"stockOut\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Stocks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stocks?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Stock",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{stockId}},\n  \"productName\": \"QA PART GUNCEL\",\n  \"stockGroup\": \"KAPI\",\n  \"modelName\": \"MODEL-X2\",\n  \"unit\": \"ADET\",\n  \"vatRate\": 20,\n  \"purchasePrice\": 110,\n  \"salePrice\": 170,\n  \"stockIn\": 12,\n  \"stockOut\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stocks/{{stockId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks",
+                "{{stockId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Stock Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromStockId\": {{fromStockId}},\n  \"toStockId\": {{toStockId}},\n  \"quantity\": 5,\n  \"transferDate\": \"2026-02-22T14:00:00\",\n  \"note\": \"Postman transfer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/stocks/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks",
+                "transfers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Stock Transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stocks/transfers?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks",
+                "transfers"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Stock Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stocks/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks",
+                "models"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Stock VAT Rates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stocks/vat-rates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks",
+                "vat-rates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Stock",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/stocks/{{stockId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "stocks",
+                "{{stockId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Proposal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1,\n  \"date\": \"2026-02-21\",\n  \"vatRate\": 20,\n  \"discountAmount\": 0,\n  \"items\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/proposals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "proposals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Proposals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/proposals?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "proposals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Proposal Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partId\": 1,\n  \"quantity\": 2,\n  \"unitPrice\": 175.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/proposals/{{proposalId}}/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "proposals",
+                "{{proposalId}}",
+                "items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Proposal Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/proposals/{{proposalId}}/items/{{proposalItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "proposals",
+                "{{proposalId}}",
+                "items",
+                "{{proposalItemId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Status Detection Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/status-detections?page=0&size=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "status-detections"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Status Detection Report (multipart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payload",
+                  "value": "{\"reportDate\":\"2026-02-22\",\"buildingName\":\"QA Bina\",\"elevatorName\":\"QA Asansor\",\"identityNumber\":\"QA-IDENT-001\",\"status\":\"ACTIVE\",\"note\":\"Postman rapor\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports/status-detections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "status-detections"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Status Detection Report (multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payload",
+                  "value": "{\"id\":{{statusReportId}},\"reportDate\":\"2026-02-23\",\"buildingName\":\"QA Bina Guncel\",\"elevatorName\":\"QA Asansor 2\",\"identityNumber\":\"QA-IDENT-002\",\"status\":\"PASSIVE\",\"note\":\"Postman rapor guncel\"}",
+                  "type": "text",
+                  "contentType": "application/json"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports/status-detections/{{statusReportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "status-detections",
+                "{{statusReportId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Status Detection Report",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/status-detections/{{statusReportId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "status-detections",
+                "{{statusReportId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints added for new UI modules (labels/contracts, EDM invoices/settings, payment transactions, stock, proposal, status reports)."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081/api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "labelId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "contractId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "manualInvoiceId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "stockId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "fromStockId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "toStockId",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "proposalId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "proposalItemId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "statusReportId",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}

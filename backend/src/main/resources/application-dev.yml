@@ -1,0 +1,28 @@
+spring:
+  profiles:
+    active: dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sara_asansor
+    username: sara_asansor
+    password: sara_asansor
+  
+  jpa:
+    show-sql: true
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    # Dev: Load both schema migrations AND seed data
+    locations: classpath:db/migration,classpath:db/migration/dev
+
+# Allow seed/dummy data in development
+app:
+  seed:
+    enabled: true
+
+logging:
+  level:
+    com.saraasansor.api: DEBUG
+    org.springframework.security: DEBUG
+

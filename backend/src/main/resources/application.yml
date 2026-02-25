@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: sara-asansor-api
+  
+  mvc:
+    contentnegotiation:
+      favor-path-extension: false
+      favor-parameter: false
+      ignore-accept-header: false
+      default-content-type: application/json
+  
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/sara_asansor}
+    username: sara_asansor
+    password: sara_asansor
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        use_sql_comments: false
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    out-of-order: true  # Allow V4 to run even though V5 was applied (will be fixed by repair)
+    repair-on-migrate: true
+    validate-on-migrate: false  # Temporarily disable validation to allow repair to fix V5
+    ignore-migration-patterns: "*:ignored"  # Ignore deleted migrations
+  
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    com.saraasansor.api: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration: 900000  # 15 minutes
+    refresh-token-expiration: 604800000  # 7 days
+  
+  file-storage:
+    type: ${FILE_STORAGE_TYPE:local}  # local or s3
+    local:
+      directory: ${FILE_STORAGE_LOCAL_DIR:./uploads}
+    s3:
+      endpoint: ${AWS_ENDPOINT:}
+      access-key: ${AWS_ACCESS_KEY:}
+      secret-key: ${AWS_SECRET_KEY:}
+      bucket: ${AWS_BUCKET:sara-asansor-files}
+      region: ${AWS_REGION:us-east-1}
+  
+  qr:
+    secret-key: ${QR_SECRET_KEY}
+    token-ttl-minutes: ${QR_TOKEN_TTL_MINUTES:3}  # Token expiration in minutes
+    base-url: ${QR_BASE_URL:https://app.saraasansor.com}
+    size: 300  # QR code image size in pixels
+    session-token-ttl-minutes: ${QR_SESSION_TOKEN_TTL_MINUTES:5}  # QR session token expiration in minutes
+  
+  maintenance:
+    min-duration-minutes: ${MAINTENANCE_MIN_DURATION_MINUTES:3}  # Minimum session duration in minutes
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    config-url: /api-docs/swagger-config
+    urls:
+      - url: /api-docs
+        name: Sara Elevator API
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+
