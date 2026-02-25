@@ -1,5 +1,6 @@
 package com.saraasansor.api.security;
 
+import com.saraasansor.api.tenant.filter.TenantResolverFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -42,6 +43,9 @@ public class SecurityConfig {
     
     @Autowired
     private Environment environment;
+
+    @Autowired
+    private TenantResolverFilter tenantResolverFilter;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -94,6 +98,8 @@ public class SecurityConfig {
                 })
             )
             .authenticationProvider(authenticationProvider())
+            // Resolve tenant (if any) before JWT authentication so that security and data access are tenant-aware
+            .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
