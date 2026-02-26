@@ -58,6 +58,17 @@ logging:
 app:
   deployment-mode: SAAS # SAAS | ON_PREM
 
+  tenancy:
+    migration:
+      enabled: ${TENANCY_MIGRATION_ENABLED:true}
+      include-shared-schemas: ${TENANCY_MIGRATION_INCLUDE_SHARED_SCHEMAS:true}
+      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:true}
+      default-shared-schema: ${TENANCY_DEFAULT_SHARED_SCHEMA:public}
+      history-table: ${TENANCY_FLYWAY_HISTORY_TABLE:flyway_schema_history}
+      baseline-on-migrate: ${TENANCY_FLYWAY_BASELINE_ON_MIGRATE:true}
+      connect-retries: ${TENANCY_FLYWAY_CONNECT_RETRIES:1}
+      locations: classpath:db/migration
+
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiration: 900000  # 15 minutes

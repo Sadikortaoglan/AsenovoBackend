@@ -77,6 +77,11 @@ app:
   # Production: Dummy/seed data is FORBIDDEN
   seed:
     enabled: false
+  tenancy:
+    migration:
+      enabled: ${TENANCY_MIGRATION_ENABLED:true}
+      include-shared-schemas: ${TENANCY_MIGRATION_INCLUDE_SHARED_SCHEMAS:true}
+      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:true}
   
   jwt:
     secret: ${JWT_SECRET}

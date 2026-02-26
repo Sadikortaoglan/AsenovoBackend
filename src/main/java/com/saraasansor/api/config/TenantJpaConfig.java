@@ -2,7 +2,6 @@ package com.saraasansor.api.config;
 
 import com.saraasansor.api.tenant.SchemaTenantIdentifierResolver;
 import com.saraasansor.api.tenant.SharedSchemaMultiTenantConnectionProvider;
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
 import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
 import org.springframework.boot.autoconfigure.orm.jpa.JpaProperties;
@@ -57,9 +56,9 @@ public class TenantJpaConfig {
         emf.setJpaVendorAdapter(vendorAdapter);
 
         Map<String, Object> props = new HashMap<>(jpaProperties.getProperties());
-        props.put(AvailableSettings.MULTI_TENANT, org.hibernate.MultiTenancyStrategy.SCHEMA);
-        props.put(AvailableSettings.MULTI_TENANT_CONNECTION_PROVIDER, multiTenantConnectionProvider);
-        props.put(AvailableSettings.MULTI_TENANT_IDENTIFIER_RESOLVER, tenantIdentifierResolver);
+        props.put("hibernate.multiTenancy", "SCHEMA");
+        props.put("hibernate.multi_tenant_connection_provider", multiTenantConnectionProvider);
+        props.put("hibernate.tenant_identifier_resolver", tenantIdentifierResolver);
 
         emf.setJpaPropertyMap(props);
 
@@ -73,4 +72,3 @@ public class TenantJpaConfig {
         return txManager;
     }
 }
-
