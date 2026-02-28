@@ -3,6 +3,7 @@ package com.saraasansor.api.config;
 import com.saraasansor.api.tenant.TenantRoutingDataSource;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -21,7 +22,7 @@ public class TenantDataSourceConfig {
     }
 
     @Bean
-    public DataSource sharedDataSource(DataSourceProperties sharedDataSourceProperties) {
+    public DataSource sharedDataSource(@Qualifier("sharedDataSourceProperties") DataSourceProperties sharedDataSourceProperties) {
         return sharedDataSourceProperties.initializeDataSourceBuilder().build();
     }
 
@@ -45,4 +46,3 @@ public class TenantDataSourceConfig {
         return routingDataSource;
     }
 }
-

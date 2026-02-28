@@ -75,7 +75,7 @@ app:
       locations: classpath:db/migration
 
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:local-dev-jwt-secret-change-this-local-dev-jwt-secret-change-this}
     access-token-expiration: 900000  # 15 minutes
     refresh-token-expiration: 604800000  # 7 days
   
@@ -91,7 +91,7 @@ app:
       region: ${AWS_REGION:us-east-1}
   
   qr:
-    secret-key: ${QR_SECRET_KEY}
+    secret-key: ${QR_SECRET_KEY:local-dev-qr-secret-change-this-local-dev-qr-secret-change-this}
     token-ttl-minutes: ${QR_TOKEN_TTL_MINUTES:3}  # Token expiration in minutes
     base-url: ${QR_BASE_URL:https://app.saraasansor.com}
     size: 300  # QR code image size in pixels

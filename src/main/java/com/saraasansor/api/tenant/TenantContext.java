@@ -18,7 +18,8 @@ public final class TenantContext {
     }
 
     public static Long getTenantId(){
-        return getCurrentTenant().getId();
+        TenantDescriptor tenant = getCurrentTenant();
+        return tenant != null ? tenant.getId() : null;
     }
 
     public static boolean hasTenant() {
@@ -29,4 +30,3 @@ public final class TenantContext {
         CURRENT_TENANT.remove();
     }
 }
-
