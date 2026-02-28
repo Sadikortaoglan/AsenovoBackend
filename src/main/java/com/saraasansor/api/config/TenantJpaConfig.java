@@ -19,7 +19,10 @@ import java.util.Map;
 
 @Configuration
 @EnableJpaRepositories(
-        basePackages = "com.saraasansor.api.repository"
+        basePackages = {
+                "com.saraasansor.api.repository",
+                "com.saraasansor.api.tenant.repository"
+        }
 )
 public class TenantJpaConfig {
 

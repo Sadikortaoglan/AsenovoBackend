@@ -18,12 +18,17 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
         use_sql_comments: false
+        physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+        implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
   
   flyway:
     enabled: true

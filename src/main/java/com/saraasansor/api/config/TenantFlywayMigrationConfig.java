@@ -29,6 +29,16 @@ public class TenantFlywayMigrationConfig {
             DataSource sharedDataSource = flyway.getConfiguration().getDataSource();
             JdbcTemplate jdbcTemplate = new JdbcTemplate(sharedDataSource);
 
+            Boolean tenantsTableExists = jdbcTemplate.queryForObject(
+                    "SELECT to_regclass('public.tenants') IS NOT NULL",
+                    Boolean.class
+            );
+            if (Boolean.FALSE.equals(tenantsTableExists)) {
+                // First boot on old single-tenant DB: tenant registry is not ready yet.
+                // Control-plane migration has already run; next boot will process tenant-specific migrations.
+                return;
+            }
+
             List<TenantRow> tenants = jdbcTemplate.query(
                     "SELECT id, tenancy_mode, schema_name, db_host, db_name, db_username, db_password " +
                             "FROM tenants WHERE active = true",

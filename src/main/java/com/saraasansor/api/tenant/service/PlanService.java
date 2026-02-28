@@ -27,9 +27,9 @@ public class PlanService {
         String cacheKey = CACHE_PREFIX + tenantId;
 
         // 1️⃣ Cache kontrolü
-        Plan cachedPlan = (Plan) redisTemplate.opsForValue().get(cacheKey);
+        PlanSnapShot cachedPlan = (PlanSnapShot) redisTemplate.opsForValue().get(cacheKey);
         if (cachedPlan != null) {
-            return getPlanSnapShot(cachedPlan);
+            return cachedPlan;
         }
 
         // 2️⃣ DB’den çek
