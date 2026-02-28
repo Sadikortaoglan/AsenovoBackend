@@ -38,7 +38,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       FILE_STORAGE_TYPE: local
       FILE_STORAGE_LOCAL_DIR: /app/uploads
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:https://*.asenovo.com}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://asenovo.com,https://*.asenovo.com}
     env_file:
       - .env.prod
     ports:
