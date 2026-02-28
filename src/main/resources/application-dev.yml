@@ -1,7 +1,4 @@
 spring:
-  profiles:
-    active: dev
-  
   datasource:
     url: jdbc:postgresql://localhost:5432/sara_asansor
     username: sara_asansor
@@ -20,9 +17,13 @@ spring:
 app:
   seed:
     enabled: true
+  tenancy:
+    migration:
+      enabled: ${TENANCY_MIGRATION_ENABLED:true}
+      include-shared-schemas: ${TENANCY_MIGRATION_INCLUDE_SHARED_SCHEMAS:true}
+      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:false}
 
 logging:
   level:
     com.saraasansor.api: DEBUG
     org.springframework.security: DEBUG
-

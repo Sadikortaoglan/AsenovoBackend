@@ -51,7 +51,7 @@ public class ProductionSeedGuard {
         if (isProduction && seedEnabled) {
             throw new IllegalStateException(
                 "CRITICAL ERROR: Dummy/seed data execution is BLOCKED in production. " +
-                "app.seed.enabled=true is not allowed when SPRING_PROFILES_ACTIVE=prod. " +
+                "app.seed.enabled=true is not allowed when SPRING_PROFILES_ACTIVE=dev. " +
                 "This prevents accidental seed data execution in production. " +
                 "Check application-prod.yml: app.seed.enabled must be false."
             );

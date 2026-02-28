@@ -1,5 +1,6 @@
 package com.saraasansor.api.security;
 
+import com.saraasansor.api.tenant.filter.TenantResolverFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,16 +24,21 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.core.env.Environment;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.Profiles;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     
     @Autowired
     private UserDetailsService userDetailsService;
@@ -42,6 +48,9 @@ public class SecurityConfig {
     
     @Autowired
     private Environment environment;
+
+    @Autowired
+    private TenantResolverFilter tenantResolverFilter;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -94,6 +103,8 @@ public class SecurityConfig {
                 })
             )
             .authenticationProvider(authenticationProvider())
+            // Resolve tenant (if any) before JWT authentication so that security and data access are tenant-aware
+            .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
@@ -107,28 +118,8 @@ public class SecurityConfig {
     @Bean
     public FilterRegistrationBean<CorsFilter> corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        
-        // Build allowed origin patterns
-        List<String> allowedOriginPatterns = new java.util.ArrayList<>();
-        
-        // Local development origins (only in dev profile)
-        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default"));
-        if (isDevProfile) {
-            allowedOriginPatterns.add("http://localhost:*");
-            allowedOriginPatterns.add("http://127.0.0.1:*");
-        }
-        
-        // Load production origins from environment variable
-        String corsOrigins = environment.getProperty("CORS_ALLOWED_ORIGINS");
-        if (corsOrigins != null && !corsOrigins.trim().isEmpty()) {
-            String[] origins = corsOrigins.split(",");
-            for (String origin : origins) {
-                String trimmed = origin.trim();
-                if (!trimmed.isEmpty() && !allowedOriginPatterns.contains(trimmed)) {
-                    allowedOriginPatterns.add(trimmed);
-                }
-            }
-        }
+
+        List<String> allowedOriginPatterns = resolveAllowedOriginPatterns();
         
         // Apply CORS configuration
         config.setAllowedOriginPatterns(allowedOriginPatterns);
@@ -153,29 +144,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Build allowed origin patterns (supports wildcards with credentials)
-        java.util.List<String> allowedOriginPatterns = new java.util.ArrayList<>();
-        
-        // Local development origins (only in dev profile)
-        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default"));
-        if (isDevProfile) {
-            allowedOriginPatterns.add("http://localhost:*");          // Any localhost port
-            allowedOriginPatterns.add("http://127.0.0.1:*");          // Any 127.0.0.1 port
-        }
-        
-        // Load production origins from environment variable (comma-separated)
-        // Example: CORS_ALLOWED_ORIGINS=http://51.21.3.85,http://51.21.3.85:80
-        String corsOrigins = environment.getProperty("CORS_ALLOWED_ORIGINS");
-        if (corsOrigins != null && !corsOrigins.trim().isEmpty()) {
-            String[] origins = corsOrigins.split(",");
-            for (String origin : origins) {
-                String trimmed = origin.trim();
-                if (!trimmed.isEmpty() && !allowedOriginPatterns.contains(trimmed)) {
-                    allowedOriginPatterns.add(trimmed);
-                }
-            }
-        }
+
+        List<String> allowedOriginPatterns = resolveAllowedOriginPatterns();
         
         // Use allowedOriginPatterns (supports wildcards with credentials)
         // Note: setAllowedOrigins("*") is incompatible with allowCredentials(true)
@@ -200,5 +170,35 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private List<String> resolveAllowedOriginPatterns() {
+        List<String> allowedOriginPatterns = new ArrayList<>();
+
+        // Local development defaults
+        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default"));
+        if (isDevProfile) {
+            allowedOriginPatterns.add("http://localhost:*");
+            allowedOriginPatterns.add("http://127.0.0.1:*");
+            allowedOriginPatterns.add("http://*.sara.local:*");
+        }
+
+        // Comma-separated explicit list/patterns from env
+        String corsOrigins = environment.getProperty("CORS_ALLOWED_ORIGINS");
+        if (corsOrigins != null && !corsOrigins.trim().isEmpty()) {
+            String[] origins = corsOrigins.split(",");
+            for (String origin : origins) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !allowedOriginPatterns.contains(trimmed)) {
+                    allowedOriginPatterns.add(trimmed);
+                }
+            }
+        }
+
+        if (allowedOriginPatterns.isEmpty()) {
+            log.warn("No CORS allowed origins configured. Browser requests will fail.");
+        }
+
+        return allowedOriginPatterns;
     }
 }
