@@ -106,7 +106,7 @@ TENANT_SCHEMA_SQL=$(printf "%s" "$TENANT_SCHEMA" | sed "s/'/''/g")
 REDIS_NAMESPACE_SQL=$(printf "%s" "tenant:${TENANT_SUBDOMAIN}" | sed "s/'/''/g")
 
 SQL=$(cat <<SQL_EOF
-DO \\$\
+DO \$\$
 BEGIN
   IF to_regclass('public.plans') IS NULL THEN
     RAISE EXCEPTION 'plans table not found. Run migrations first.';
@@ -115,8 +115,7 @@ BEGIN
     RAISE EXCEPTION 'tenants table not found. Run migrations first.';
   END IF;
 END
-\
-\$;
+\$\$;
 
 CREATE SCHEMA IF NOT EXISTS ${TENANT_SCHEMA};
 
