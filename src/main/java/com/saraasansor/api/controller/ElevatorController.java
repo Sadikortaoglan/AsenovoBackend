@@ -3,11 +3,14 @@ package com.saraasansor.api.controller;
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.ElevatorDto;
 import com.saraasansor.api.dto.ElevatorStatusDto;
+import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.service.ElevatorService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -170,5 +173,41 @@ public class ElevatorController {
                     .body(ApiResponse.error("Failed to generate QR code: " + e.getMessage()));
         }
     }
-}
 
+    /**
+     * GET /api/elevators/qr/download-all
+     * Downloads all elevator QR codes as a single PDF.
+     */
+    @GetMapping("/qr/download-all")
+    public ResponseEntity<?> downloadAllElevatorQrs() {
+        try {
+            byte[] pdfBytes = elevatorQrService.generateAllQrPdf();
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/pdf")
+                    .header("Content-Disposition", "attachment; filename=\"all-elevator-qrs.pdf\"")
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            logger.error("Error in downloadAllElevatorQrs: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .header("Content-Type", "application/json")
+                    .body(ApiResponse.error("Failed to generate all elevator QR codes: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/report")
+    public ResponseEntity<?> getElevatorReport(@PathVariable Long id) {
+        try {
+            byte[] pdfBytes = elevatorService.generateElevatorReportPdf(id);
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/pdf")
+                    .header("Content-Disposition", "inline; filename=\"elevator-" + id + "-report.pdf\"")
+                    .body(pdfBytes);
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to generate elevator report: " + e.getMessage()));
+        }
+    }
+}
