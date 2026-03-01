@@ -1,5 +1,6 @@
 package com.saraasansor.api.security;
 
+import com.saraasansor.api.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -15,7 +16,11 @@ import java.util.function.Function;
 
 @Component
 public class JwtTokenProvider {
-    
+
+    private static final String USER_ID = "userId";
+    private static final String ROLE = "role";
+    private static final String USER_TYPE = "userType";
+    private static final String B2BUNIT_ID = "b2bUnitId";
     @Value("${app.jwt.secret}")
     private String secret;
     
@@ -32,9 +37,18 @@ public class JwtTokenProvider {
     
     public String generateAccessToken(String username, Long userId, String role) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", userId);
-        claims.put("role", role);
+        claims.put(USER_ID, userId);
+        claims.put(ROLE, role);
         return createToken(claims, username, accessTokenExpiration);
+    }
+
+    public String generateAccessToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(USER_ID, user.getId());
+        claims.put(ROLE, user.getRole().name());
+        claims.put(USER_TYPE, user.getUserType() != null ? user.getUserType().name() : null);
+        claims.put(B2BUNIT_ID, user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
+        return createToken(claims, user.getUsername(), accessTokenExpiration);
     }
     
     public String generateRefreshToken(String username) {
@@ -60,7 +74,7 @@ public class JwtTokenProvider {
     
     public Long getUserIdFromToken(String token) {
         return getClaimFromToken(token, claims -> {
-            Object userId = claims.get("userId");
+            Object userId = claims.get(USER_ID);
             if (userId instanceof Integer) {
                 return ((Integer) userId).longValue();
             }
@@ -69,7 +83,11 @@ public class JwtTokenProvider {
     }
     
     public String getRoleFromToken(String token) {
-        return getClaimFromToken(token, claims -> (String) claims.get("role"));
+        return getClaimFromToken(token, claims -> (String) claims.get(ROLE));
+    }
+
+    public String getUserTypeFromToken(String token) {
+        return getClaimFromToken(token, claims -> (String) claims.get(USER_TYPE));
     }
     
     public Date getExpirationDateFromToken(String token) {
@@ -99,4 +117,3 @@ public class JwtTokenProvider {
         return (tokenUsername.equals(username) && !isTokenExpired(token));
     }
 }
-

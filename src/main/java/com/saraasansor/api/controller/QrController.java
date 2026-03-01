@@ -201,7 +201,7 @@ public class QrController {
     
     /**
      * POST /api/qr/remote-start
-     * Creates session token for ADMIN remote start (no QR required)
+     * Creates session token for admin remote start (no QR required)
      * 
      * Request body:
      * {
@@ -237,11 +237,11 @@ public class QrController {
             com.saraasansor.api.model.User currentUser = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
-            // Only ADMIN allowed
-            if (currentUser.getRole() != com.saraasansor.api.model.User.Role.ADMIN && 
-                currentUser.getRole() != com.saraasansor.api.model.User.Role.PATRON) {
+            // Only admin roles allowed
+            if (currentUser.getRole() != com.saraasansor.api.model.User.Role.SYSTEM_ADMIN &&
+                currentUser.getRole() != com.saraasansor.api.model.User.Role.STAFF_ADMIN) {
                 return ResponseEntity.status(403)
-                    .body(ApiResponse.error("Remote start is only allowed for ADMIN role"));
+                    .body(ApiResponse.error("Remote start is only allowed for admin roles"));
             }
             
             // Validate elevator exists

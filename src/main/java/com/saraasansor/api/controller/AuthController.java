@@ -7,22 +7,29 @@ import com.saraasansor.api.dto.auth.RefreshTokenRequest;
 import com.saraasansor.api.dto.auth.RegisterRequest;
 import com.saraasansor.api.service.AuthService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
     
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
     
     @PostMapping(value = "/login", consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         try {
             LoginResponse response = authService.login(request);
             return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Invalid username or password"));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Login failed: " + e.getMessage()));
@@ -35,7 +42,7 @@ public class AuthController {
             LoginResponse response = authService.refreshToken(request.getRefreshToken());
             return ResponseEntity.ok(ApiResponse.success("Token refreshed", response));
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error("Token refresh failed: " + e.getMessage()));
         }
     }
@@ -67,4 +74,3 @@ public class AuthController {
         }
     }
 }
-

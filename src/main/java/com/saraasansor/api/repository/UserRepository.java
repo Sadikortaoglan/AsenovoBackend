@@ -12,12 +12,9 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     boolean existsByUsername(String username);
+    boolean existsByUsernameAndIdNot(String username, Long id);
+    Optional<User> findFirstByB2bUnitIdAndActiveTrue(Long b2bUnitId);
     
-    /**
-     * Count active users with PATRON role
-     * Used to ensure at least one active PATRON always exists
-     */
     @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role AND u.active = true")
     long countActiveUsersByRole(@Param("role") User.Role role);
 }
-
