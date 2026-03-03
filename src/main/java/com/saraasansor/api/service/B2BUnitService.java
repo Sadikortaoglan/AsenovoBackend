@@ -10,7 +10,9 @@ import com.saraasansor.api.repository.B2BUnitGroupRepository;
 import com.saraasansor.api.repository.B2BUnitRepository;
 import com.saraasansor.api.repository.UserRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -96,6 +99,21 @@ public class B2BUnitService {
         B2BUnit saved = b2bUnitRepository.save(unit);
         synchronizeCariUser(saved, rawPassword, encodedPassword);
         return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public List<B2BUnit> getLookup(String query) {
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.getRole() == User.Role.CARI_USER) {
+            if (currentUser.getB2bUnit() == null) {
+                return List.of();
+            }
+            return b2bUnitRepository.findByIdAndActiveTrue(currentUser.getB2bUnit().getId())
+                    .map(List::of)
+                    .orElseGet(List::of);
+        }
+
+        return b2bUnitRepository.findActiveLookup(normalizeNullable(query), PageRequest.of(0, 100, Sort.by(Sort.Direction.ASC, "name")));
     }
 
     public B2BUnit updateB2BUnit(Long id, UpdateB2BUnitRequest request) {

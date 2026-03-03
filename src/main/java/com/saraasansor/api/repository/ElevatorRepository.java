@@ -21,5 +21,6 @@ public interface ElevatorRepository extends JpaRepository<Elevator, Long> {
     
     @Query("SELECT e FROM Elevator e WHERE e.expiryDate >= :now AND e.expiryDate <= :thirtyDaysLater")
     List<Elevator> findExpiringSoonElevators(LocalDate now, LocalDate thirtyDaysLater);
-}
 
+    List<Elevator> findByBuildingNameIgnoreCase(String buildingName);
+}

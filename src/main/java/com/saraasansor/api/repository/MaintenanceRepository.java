@@ -12,6 +12,8 @@ import java.util.List;
 @Repository
 public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> {
     List<Maintenance> findByElevatorIdOrderByDateDesc(Long elevatorId);
+
+    List<Maintenance> findByElevatorIdInOrderByDateDesc(List<Long> elevatorIds);
     
     List<Maintenance> findByIsPaidOrderByDateDesc(Boolean isPaid);
     
@@ -24,4 +26,3 @@ public interface MaintenanceRepository extends JpaRepository<Maintenance, Long> 
     @Query("SELECT m FROM Maintenance m WHERE YEAR(m.date) = :year AND MONTH(m.date) = :month ORDER BY m.date DESC")
     List<Maintenance> findByYearAndMonth(@Param("year") int year, @Param("month") int month);
 }
-

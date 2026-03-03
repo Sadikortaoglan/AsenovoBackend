@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface B2BUnitRepository extends JpaRepository<B2BUnit, Long> {
@@ -29,4 +30,11 @@ public interface B2BUnitRepository extends JpaRepository<B2BUnit, Long> {
     boolean existsByPortalUsernameAndActiveTrue(String portalUsername);
 
     boolean existsByPortalUsernameAndActiveTrueAndIdNot(String portalUsername, Long id);
+
+    @Query("SELECT u FROM B2BUnit u WHERE u.active = true AND " +
+            "(:query IS NULL OR :query = '' OR LOWER(u.name) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "ORDER BY u.name ASC")
+    List<B2BUnit> findActiveLookup(@Param("query") String query, Pageable pageable);
+
+    Optional<B2BUnit> findFirstByNameIgnoreCaseAndActiveTrue(String name);
 }
