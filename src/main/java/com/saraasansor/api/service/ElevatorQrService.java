@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -159,14 +160,14 @@ public class ElevatorQrService {
                 contentStream.beginText();
                 contentStream.setFont(PDType1Font.HELVETICA_BOLD, 20);
                 contentStream.newLineAtOffset(margin, pageHeight - margin - 30);
-                contentStream.showText("Asansör Bakım QR Kodu");
+                contentStream.showText(toPdfSafeText("Asansor Bakim QR Kodu"));
                 contentStream.endText();
                 
                 // 3. Elevator Information
                 contentStream.beginText();
                 contentStream.setFont(PDType1Font.HELVETICA, 12);
                 contentStream.newLineAtOffset(margin, pageHeight - margin - 60);
-                contentStream.showText("Asansör: " + (elevator.getBuildingName() != null ? elevator.getBuildingName() : "N/A"));
+                contentStream.showText(toPdfSafeText("Asansor: " + (elevator.getBuildingName() != null ? elevator.getBuildingName() : "N/A")));
                 contentStream.endText();
                 
                 contentStream.beginText();
@@ -175,7 +176,7 @@ public class ElevatorQrService {
                 String elevatorCode = elevator.getIdentityNumber() != null && !elevator.getIdentityNumber().isEmpty()
                         ? elevator.getIdentityNumber()
                         : elevator.getElevatorNumber();
-                contentStream.showText("Kod: " + (elevatorCode != null ? elevatorCode : "N/A"));
+                contentStream.showText(toPdfSafeText("Kod: " + (elevatorCode != null ? elevatorCode : "N/A")));
                 contentStream.endText();
                 
                 // 4. QR Code Image (centered)
@@ -195,13 +196,13 @@ public class ElevatorQrService {
                 contentStream.setFont(PDType1Font.HELVETICA, 10);
                 float instructionsY = qrY - 40;
                 contentStream.newLineAtOffset(margin, instructionsY);
-                contentStream.showText("Kullanım Talimatları:");
+                contentStream.showText(toPdfSafeText("Kullanim Talimatlari:"));
                 contentStream.endText();
                 
                 String[] instructions = {
-                    "1. Bu QR kodu asansör üzerine yapıştırın",
-                    "2. Bakım başlatmak için QR kodu mobil uygulama ile tarayın",
-                    "3. QR kod hasarlı veya okunamaz durumda ise yenisini yazdırın"
+                    "1. Bu QR kodu asansor uzerine yapistirin",
+                    "2. Bakim baslatmak icin QR kodu mobil uygulama ile tarayin",
+                    "3. QR kod hasarli veya okunamaz durumda ise yenisini yazdirin"
                 };
                 
                 float lineHeight = 15;
@@ -209,7 +210,7 @@ public class ElevatorQrService {
                     contentStream.beginText();
                     contentStream.setFont(PDType1Font.HELVETICA, 9);
                     contentStream.newLineAtOffset(margin + 10, instructionsY - 20 - (i * lineHeight));
-                    contentStream.showText(instructions[i]);
+                    contentStream.showText(toPdfSafeText(instructions[i]));
                     contentStream.endText();
                 }
                 
@@ -217,7 +218,7 @@ public class ElevatorQrService {
                 contentStream.beginText();
                 contentStream.setFont(PDType1Font.HELVETICA_OBLIQUE, 8);
                 contentStream.newLineAtOffset(margin, margin);
-                contentStream.showText("Sara Asansör - Bakım Yönetim Sistemi");
+                contentStream.showText(toPdfSafeText("Sara Asansor - Bakim Yonetim Sistemi"));
                 contentStream.endText();
             }
             
@@ -227,6 +228,74 @@ public class ElevatorQrService {
             
         } catch (IOException e) {
             throw new RuntimeException("Failed to generate QR PDF", e);
+        }
+    }
+
+    /**
+     * Generate a single PDF that contains QR codes for all elevators.
+     */
+    public byte[] generateAllQrPdf() {
+        List<Elevator> elevators = elevatorRepository.findAll();
+        if (elevators.isEmpty()) {
+            throw new RuntimeException("No elevators found");
+        }
+
+        try (PDDocument document = new PDDocument()) {
+            for (Elevator elevator : elevators) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+
+                try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                    float pageWidth = page.getMediaBox().getWidth();
+                    float pageHeight = page.getMediaBox().getHeight();
+                    float margin = 50;
+
+                    contentStream.beginText();
+                    contentStream.setFont(PDType1Font.HELVETICA_BOLD, 18);
+                    contentStream.newLineAtOffset(margin, pageHeight - margin - 30);
+                    contentStream.showText(toPdfSafeText("Asansor QR Listesi"));
+                    contentStream.endText();
+
+                    String elevatorCode = elevator.getIdentityNumber() != null && !elevator.getIdentityNumber().isEmpty()
+                            ? elevator.getIdentityNumber()
+                            : elevator.getElevatorNumber();
+
+                    contentStream.beginText();
+                    contentStream.setFont(PDType1Font.HELVETICA, 12);
+                    contentStream.newLineAtOffset(margin, pageHeight - margin - 60);
+                    contentStream.showText(toPdfSafeText("Asansor: " + (elevator.getBuildingName() != null ? elevator.getBuildingName() : "N/A")));
+                    contentStream.endText();
+
+                    contentStream.beginText();
+                    contentStream.setFont(PDType1Font.HELVETICA, 12);
+                    contentStream.newLineAtOffset(margin, pageHeight - margin - 80);
+                    contentStream.showText(toPdfSafeText("Kod: " + (elevatorCode != null ? elevatorCode : "N/A")));
+                    contentStream.endText();
+
+                    contentStream.beginText();
+                    contentStream.setFont(PDType1Font.HELVETICA, 11);
+                    contentStream.newLineAtOffset(margin, pageHeight - margin - 100);
+                    contentStream.showText(toPdfSafeText("Adres: " + (elevator.getAddress() != null ? elevator.getAddress() : "N/A")));
+                    contentStream.endText();
+
+                    BufferedImage qrImage = generateQrImage(elevator.getId());
+                    ByteArrayOutputStream qrBaos = new ByteArrayOutputStream();
+                    javax.imageio.ImageIO.write(qrImage, "PNG", qrBaos);
+                    byte[] qrImageBytes = qrBaos.toByteArray();
+
+                    PDImageXObject pdImage = PDImageXObject.createFromByteArray(document, qrImageBytes, "qr-code-" + elevator.getId());
+                    float qrSize = 240;
+                    float qrX = (pageWidth - qrSize) / 2;
+                    float qrY = pageHeight - margin - 360;
+                    contentStream.drawImage(pdImage, qrX, qrY, qrSize, qrSize);
+                }
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            document.save(baos);
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to generate bulk QR PDF", e);
         }
     }
     
@@ -315,6 +384,19 @@ public class ElevatorQrService {
         } catch (Exception e) {
             return QrValidationResult.invalid("QR validation error: " + e.getMessage());
         }
+    }
+
+    private String toPdfSafeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+                .replace('ç', 'c').replace('Ç', 'C')
+                .replace('ğ', 'g').replace('Ğ', 'G')
+                .replace('ı', 'i').replace('İ', 'I')
+                .replace('ö', 'o').replace('Ö', 'O')
+                .replace('ş', 's').replace('Ş', 'S')
+                .replace('ü', 'u').replace('Ü', 'U');
     }
     
     /**
