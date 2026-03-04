@@ -12,6 +12,7 @@ import java.util.Optional;
 @Repository
 public interface FaultRepository extends JpaRepository<Fault, Long> {
     List<Fault> findByElevatorIdOrderByCreatedAtDesc(Long elevatorId);
+    List<Fault> findByElevatorIdInOrderByCreatedAtDesc(List<Long> elevatorIds);
     List<Fault> findByStatusOrderByCreatedAtDesc(Fault.Status status);
     List<Fault> findByElevatorIdAndStatusOrderByCreatedAtDesc(Long elevatorId, Fault.Status status);
     
@@ -24,4 +25,3 @@ public interface FaultRepository extends JpaRepository<Fault, Long> {
     @Query("SELECT f FROM Fault f JOIN FETCH f.elevator WHERE f.id = :id")
     Optional<Fault> findByIdWithElevator(@Param("id") Long id);
 }
-

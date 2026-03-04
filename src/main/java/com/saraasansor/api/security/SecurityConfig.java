@@ -123,11 +123,20 @@ public class SecurityConfig {
                 .requestMatchers("/users/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
                 // B2BUnit endpoints
                 .requestMatchers(HttpMethod.GET, "/b2bunits").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.GET, "/b2bunits/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasRole(CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.POST, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.PUT, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.DELETE, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                // Facility endpoints
+                .requestMatchers(HttpMethod.GET, "/facilities/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                .requestMatchers(HttpMethod.POST, "/facilities/import-excel").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/facilities/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.PUT, "/facilities/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.DELETE, "/facilities/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
+                // Location lookup endpoints
+                .requestMatchers(HttpMethod.GET, "/locations/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit group endpoints
                 .requestMatchers(HttpMethod.GET, "/b2bunit-groups/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.POST, "/b2bunit-groups/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
@@ -135,6 +144,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/b2bunit-groups/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
                 // Currency endpoint
                 .requestMatchers(HttpMethod.GET, "/currencies/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                // E-Invoice stub endpoint
+                .requestMatchers(HttpMethod.GET, "/einvoice/query").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 // Everything else requires authentication
                 .anyRequest().authenticated()
             )

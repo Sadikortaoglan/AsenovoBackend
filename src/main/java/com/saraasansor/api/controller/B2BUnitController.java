@@ -1,6 +1,7 @@
 package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
+import com.saraasansor.api.dto.B2BUnitLookupDto;
 import com.saraasansor.api.dto.B2BUnitDto;
 import com.saraasansor.api.dto.CreateB2BUnitRequest;
 import com.saraasansor.api.dto.UpdateB2BUnitRequest;
@@ -13,6 +14,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/b2bunits")
@@ -46,6 +49,15 @@ public class B2BUnitController {
     public ResponseEntity<ApiResponse<B2BUnitDto>> getMyB2BUnit() {
         B2BUnit unit = b2bUnitService.getMyB2BUnit();
         return ResponseEntity.ok(ApiResponse.success(B2BUnitDto.fromEntity(unit)));
+    }
+
+    @GetMapping("/lookup")
+    public ResponseEntity<ApiResponse<List<B2BUnitLookupDto>>> lookupB2BUnits(
+            @RequestParam(required = false) String query) {
+        List<B2BUnitLookupDto> result = b2bUnitService.getLookup(query).stream()
+                .map(B2BUnitLookupDto::fromEntity)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping

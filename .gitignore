@@ -44,3 +44,5 @@ uploads/
 *.db
 
 .env
+
+.idea
