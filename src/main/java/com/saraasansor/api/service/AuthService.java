@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,18 +63,25 @@ public class AuthService {
     
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (AuthenticationException ex) {
+            throw ex;
+        }
         
         SecurityContextHolder.getContext().setAuthentication(authentication);
         
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
+
         // Generate access token (JWT, 15 minutes)
-        String accessToken = tokenProvider.generateAccessToken(
-            user.getUsername(), user.getId(), user.getRole().name());
+        String accessToken = tokenProvider.generateAccessToken(user);
         
         // Generate refresh token (UUID-like, 7 days)
         String refreshTokenValue = generateRefreshTokenValue();
@@ -90,6 +98,8 @@ public class AuthService {
         response.setUserId(user.getId());
         response.setUsername(user.getUsername());
         response.setRole(user.getRole().name());
+        response.setUserType(resolveUserTypeName(user));
+        response.setB2bUnitId(user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
         
         return response;
     }
@@ -111,8 +121,7 @@ public class AuthService {
         }
         
         // Generate new access token (15 minutes)
-        String newAccessToken = tokenProvider.generateAccessToken(
-            user.getUsername(), user.getId(), user.getRole().name());
+        String newAccessToken = tokenProvider.generateAccessToken(user);
         
         // Token rotation: Generate new refresh token and revoke old one
         String newRefreshTokenValue = generateRefreshTokenValue();
@@ -133,6 +142,8 @@ public class AuthService {
         response.setUserId(user.getId());
         response.setUsername(user.getUsername());
         response.setRole(user.getRole().name());
+        response.setUserType(resolveUserTypeName(user));
+        response.setB2bUnitId(user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
         
         return response;
     }
@@ -150,15 +161,21 @@ public class AuthService {
         try {
             user.setRole(User.Role.valueOf(request.getRole().toUpperCase()));
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid role. Must be PATRON or PERSONEL.");
+            throw new RuntimeException("Invalid role. Must be STAFF_ADMIN, STAFF_USER or CARI_USER.");
         }
+
+        if (user.getRole() == User.Role.SYSTEM_ADMIN) {
+            throw new RuntimeException("SYSTEM_ADMIN cannot be created from public register endpoint.");
+        }
+        user.setUserType(user.getRole() == User.Role.CARI_USER ? User.UserType.CARI : User.UserType.STAFF);
         
         user.setActive(true);
+        user.setEnabled(true);
+        user.setLocked(false);
         User savedUser = userRepository.save(user);
         
         // Auto login
-        String accessToken = tokenProvider.generateAccessToken(
-            savedUser.getUsername(), savedUser.getId(), savedUser.getRole().name());
+        String accessToken = tokenProvider.generateAccessToken(savedUser);
         
         // Generate refresh token (UUID-like, 7 days)
         String refreshTokenValue = generateRefreshTokenValue();
@@ -175,8 +192,23 @@ public class AuthService {
         response.setUserId(savedUser.getId());
         response.setUsername(savedUser.getUsername());
         response.setRole(savedUser.getRole().name());
+        response.setUserType(resolveUserTypeName(savedUser));
+        response.setB2bUnitId(savedUser.getB2bUnit() != null ? savedUser.getB2bUnit().getId() : null);
         
         return response;
+    }
+
+    private String resolveUserTypeName(User user) {
+        if (user.getUserType() != null) {
+            return user.getUserType().name();
+        }
+        if (user.getRole() == User.Role.SYSTEM_ADMIN) {
+            return User.UserType.SYSTEM_ADMIN.name();
+        }
+        if (user.getRole() == User.Role.CARI_USER) {
+            return User.UserType.CARI.name();
+        }
+        return User.UserType.STAFF.name();
     }
     
     @Transactional

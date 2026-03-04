@@ -350,8 +350,8 @@ public class MaintenancePlanService {
      * Start maintenance plan (PLANNED → IN_PROGRESS)
      * 
      * Business Rules:
-     * - TECHNICIAN: QR token is REQUIRED
-     * - ADMIN: Can start remotely (remoteStart = true) without QR, or with QR (remoteStart = false)
+     * - STAFF_USER: QR token is REQUIRED
+     * - SYSTEM_ADMIN/STAFF_ADMIN: Can start remotely (remoteStart = true) without QR, or with QR (remoteStart = false)
      * - QR token must match elevatorId
      * - Audit logging: startedRemotely, startedByRole, startedAt, startedByUserId, ipAddress
      */
@@ -375,13 +375,13 @@ public class MaintenancePlanService {
         Boolean isRemoteStart = false;
         
         // Role-based validation
-        if (userRole == User.Role.ADMIN && remoteStart != null && remoteStart) {
+        if ((userRole == User.Role.SYSTEM_ADMIN || userRole == User.Role.STAFF_ADMIN)
+                && remoteStart != null && remoteStart) {
             // TODO: Sadık production'da admin QR zorunlu yapmayı isteyebilir. Şimdilik bilinçli olarak açık bırakıldı.
-            // ADMIN remote start: No QR required
-            logger.debug("ADMIN remote start - skipping QR validation");
+            logger.debug("Admin remote start - skipping QR validation");
             isRemoteStart = true;
         } else {
-            // TECHNICIAN or ADMIN with QR: QR token is REQUIRED
+            // STAFF_USER or admin with QR: QR token is REQUIRED
             if (qrToken == null || qrToken.trim().isEmpty()) {
                 throw new RuntimeException("QR token is required to start maintenance. Role: " + userRole);
             }
@@ -406,7 +406,7 @@ public class MaintenancePlanService {
         
         // Audit logging
         plan.setStartedRemotely(isRemoteStart);
-        plan.setStartedByRole(userRole.name()); // TECHNICIAN, ADMIN, etc.
+        plan.setStartedByRole(userRole.name());
         plan.setStartedAt(LocalDateTime.now());
         plan.setStartedBy(currentUser);
         plan.setStartedFromIp(ipAddress);

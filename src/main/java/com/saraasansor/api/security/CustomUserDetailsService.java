@@ -10,12 +10,18 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
-    
+
+    private final String ROLE_PREFIX = "ROLE_";
+    private final String ROLE_STAFF_ADMIN = "ROLE_STAFF_ADMIN";
+    private final String ROLE_STAFF_USER = "ROLE_STAFF_USER";
+    private final String ROLE_CARI_USER = "ROLE_CARI_USER";
+
     @Autowired
     private UserRepository userRepository;
     
@@ -27,16 +33,29 @@ public class CustomUserDetailsService implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPasswordHash(),
-                user.getActive(),
+                Boolean.TRUE.equals(user.getActive()) && Boolean.TRUE.equals(user.getEnabled()),
                 true, // accountNonExpired
                 true, // credentialsNonExpired
-                true, // accountNonLocked
+                !Boolean.TRUE.equals(user.getLocked()),
                 getAuthorities(user.getRole())
         );
     }
     
     private Collection<? extends GrantedAuthority> getAuthorities(User.Role role) {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority(ROLE_PREFIX + role.name()));
+
+        if (role == User.Role.SYSTEM_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_ADMIN));
+            authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_USER));
+            authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
+        } else if (role == User.Role.STAFF_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_USER));
+            authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
+        } else if (role == User.Role.STAFF_USER) {
+            authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
+        }
+
+        return authorities;
     }
 }
-
