@@ -1,4 +1,4 @@
-CREATE TABLE facilities (
+CREATE TABLE IF NOT EXISTS facilities (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     b2b_unit_id BIGINT NOT NULL REFERENCES b2b_units(id) ON DELETE RESTRICT,
@@ -38,7 +38,7 @@ CREATE TABLE facilities (
     CONSTRAINT ck_facilities_map_lng_range CHECK (map_lng IS NULL OR (map_lng >= -180 AND map_lng <= 180))
 );
 
-CREATE INDEX idx_facilities_b2b_unit_name ON facilities(b2b_unit_id, name);
-CREATE INDEX idx_facilities_status ON facilities(status);
-CREATE INDEX idx_facilities_active ON facilities(active);
-CREATE INDEX idx_facilities_name ON facilities(name);
+CREATE INDEX IF NOT EXISTS idx_facilities_b2b_unit_name ON facilities(b2b_unit_id, name);
+CREATE INDEX IF NOT EXISTS idx_facilities_status ON facilities(status);
+CREATE INDEX IF NOT EXISTS idx_facilities_active ON facilities(active);
+CREATE INDEX IF NOT EXISTS idx_facilities_name ON facilities(name);
