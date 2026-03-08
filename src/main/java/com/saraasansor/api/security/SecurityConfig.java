@@ -1,6 +1,7 @@
 package com.saraasansor.api.security;
 
 import com.saraasansor.api.tenant.filter.TenantResolverFilter;
+import com.saraasansor.api.tenant.filter.RateLimitFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,7 +51,7 @@ public class SecurityConfig {
     private final String STAFF_ADMIN = "STAFF_ADMIN";
     private final String STAFF_USER = "STAFF_USER";
     private final String CARI_USER = "CARI_USER";
-    
+
     @Autowired
     private UserDetailsService userDetailsService;
     
@@ -62,7 +63,10 @@ public class SecurityConfig {
 
     @Autowired
     private TenantResolverFilter tenantResolverFilter;
-    
+
+    @Autowired
+    private RateLimitFilter rateLimitFilter;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -98,7 +102,7 @@ public class SecurityConfig {
         handler.setRoleHierarchy(roleHierarchy);
         return handler;
     }
-    
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -114,6 +118,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - permit all
                 // Note: context-path is /api, so swagger paths are relative to that
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/swagger-ui.html/**").permitAll()
@@ -164,6 +169,7 @@ public class SecurityConfig {
             .authenticationProvider(authenticationProvider())
             // Resolve tenant (if any) before JWT authentication so that security and data access are tenant-aware
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(rateLimitFilter, TenantResolverFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
@@ -237,9 +243,12 @@ public class SecurityConfig {
         // Local development defaults
         boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev", "default"));
         if (isDevProfile) {
+            allowedOriginPatterns.add("https://*.asenovo.local");
+            allowedOriginPatterns.add("https://localhost:*");
+            allowedOriginPatterns.add("https://127.0.0.1:*");
             allowedOriginPatterns.add("http://localhost:*");
             allowedOriginPatterns.add("http://127.0.0.1:*");
-            allowedOriginPatterns.add("http://*.sara.local:*");
+            allowedOriginPatterns.add("http://*.asenovo.local:*");
         }
 
         // Comma-separated explicit list/patterns from env
