@@ -5,6 +5,7 @@ import com.saraasansor.api.dto.FacilityAddressDto;
 import com.saraasansor.api.dto.FacilityDto;
 import com.saraasansor.api.dto.FacilityImportResultDto;
 import com.saraasansor.api.dto.FacilityMovementDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.UpdateFacilityRequest;
 import com.saraasansor.api.model.B2BCurrency;
 import com.saraasansor.api.model.B2BUnit;
@@ -35,7 +36,9 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -162,6 +165,26 @@ public class FacilityService {
         Page<Facility> facilities = facilityRepository.search(normalizeNullable(query), effectiveB2bUnitId, status, pageable);
         boolean includeDoorPassword = canViewDoorPassword(currentUser);
         return facilities.map(facility -> FacilityDto.fromEntity(facility, includeDoorPassword));
+    }
+
+    @Transactional(readOnly = true)
+    public List<LookupDto> getLookup(Long b2bUnitId, String query) {
+        User currentUser = getCurrentUser();
+        Long effectiveB2bUnitId = b2bUnitId;
+        if (isCariUser(currentUser)) {
+            effectiveB2bUnitId = getCariB2bUnitId(currentUser);
+        }
+        if (effectiveB2bUnitId == null) {
+            throw new RuntimeException("b2bUnitId is required");
+        }
+
+        return facilityRepository.findLookupByB2bUnitId(
+                        effectiveB2bUnitId,
+                        normalizeNullable(query),
+                        PageRequest.of(0, 200, Sort.by(Sort.Direction.ASC, "name"))
+                ).stream()
+                .map(facility -> new LookupDto(facility.getId(), facility.getName()))
+                .toList();
     }
 
     @Transactional(readOnly = true)

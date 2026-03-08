@@ -130,6 +130,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/b2b-units/*/detail").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit transactions endpoint (detail filter section)
                 .requestMatchers(HttpMethod.GET, "/b2b-units/*/transactions").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                // B2BUnit invoice endpoints (detail invoice section)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/invoices/purchase").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/invoices/sales").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.GET, "/b2b-units/*/invoices/*").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit endpoints
                 .requestMatchers(HttpMethod.GET, "/b2bunits").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
@@ -153,6 +157,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/b2bunit-groups/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
                 // Currency endpoint
                 .requestMatchers(HttpMethod.GET, "/currencies/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                // Invoice lookup endpoints
+                .requestMatchers(HttpMethod.GET, "/warehouses/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.GET, "/elevators/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 // E-Invoice stub endpoint
                 .requestMatchers(HttpMethod.GET, "/einvoice/query").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 // Everything else requires authentication

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Service
@@ -108,6 +109,38 @@ public class B2BUnitTransactionService {
         throw new UnsupportedOperationException("CSV export is not implemented yet");
     }
 
+    public void onPurchaseInvoicePosted(Long b2bUnitId,
+                                        LocalDate invoiceDate,
+                                        BigDecimal grandTotal,
+                                        String referenceCode,
+                                        String description) {
+        createTransactionRecord(
+                b2bUnitId,
+                invoiceDate,
+                B2BUnitTransaction.TransactionType.PURCHASE,
+                normalizeMoney(grandTotal),
+                BigDecimal.ZERO,
+                referenceCode,
+                description
+        );
+    }
+
+    public void onSalesInvoicePosted(Long b2bUnitId,
+                                     LocalDate invoiceDate,
+                                     BigDecimal grandTotal,
+                                     String referenceCode,
+                                     String description) {
+        createTransactionRecord(
+                b2bUnitId,
+                invoiceDate,
+                B2BUnitTransaction.TransactionType.SALE,
+                BigDecimal.ZERO,
+                normalizeMoney(grandTotal),
+                referenceCode,
+                description
+        );
+    }
+
     private B2BUnitTransaction.TransactionType resolveTransactionType(String search) {
         if (!StringUtils.hasText(search)) {
             return null;
@@ -161,5 +194,42 @@ public class B2BUnitTransactionService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void createTransactionRecord(Long b2bUnitId,
+                                         LocalDate transactionDate,
+                                         B2BUnitTransaction.TransactionType transactionType,
+                                         BigDecimal debitAmount,
+                                         BigDecimal creditAmount,
+                                         String referenceCode,
+                                         String description) {
+        B2BUnit b2bUnit = b2bUnitRepository.findByIdAndActiveTrue(b2bUnitId)
+                .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+
+        BigDecimal lastBalance = transactionRepository.findTopByB2bUnitIdOrderByTransactionDateDescIdDesc(b2bUnitId)
+                .map(B2BUnitTransaction::getBalanceAfterTransaction)
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal balanceAfterTransaction = lastBalance
+                .subtract(normalizeMoney(debitAmount))
+                .add(normalizeMoney(creditAmount));
+
+        B2BUnitTransaction transaction = new B2BUnitTransaction();
+        transaction.setB2bUnit(b2bUnit);
+        transaction.setTransactionDate(transactionDate != null ? transactionDate : LocalDate.now());
+        transaction.setTransactionType(transactionType);
+        transaction.setDebitAmount(normalizeMoney(debitAmount));
+        transaction.setCreditAmount(normalizeMoney(creditAmount));
+        transaction.setBalanceAfterTransaction(balanceAfterTransaction);
+        transaction.setReferenceCode(normalizeNullable(referenceCode));
+        transaction.setDescription(normalizeNullable(description));
+        transactionRepository.save(transaction);
+    }
+
+    private BigDecimal normalizeMoney(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        return value.setScale(2, java.math.RoundingMode.HALF_UP);
     }
 }

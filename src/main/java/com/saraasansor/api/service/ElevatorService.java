@@ -1,14 +1,17 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.ElevatorDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.ElevatorStatusDto;
 import com.saraasansor.api.dto.WarningDto;
 import com.saraasansor.api.dto.WarningElevatorDto;
 import com.saraasansor.api.dto.WarningGroupDto;
 import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.model.Elevator;
+import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.model.LabelType;
 import com.saraasansor.api.repository.ElevatorRepository;
+import com.saraasansor.api.repository.FacilityRepository;
 import com.saraasansor.api.tenant.TenantContext;
 import com.saraasansor.api.tenant.data.TenantDescriptor;
 import com.saraasansor.api.util.AuditLogger;
@@ -22,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -43,6 +47,9 @@ public class ElevatorService {
     
     @Autowired
     private ElevatorRepository elevatorRepository;
+
+    @Autowired
+    private FacilityRepository facilityRepository;
     
     @Autowired
     private AuditLogger auditLogger;
@@ -51,6 +58,27 @@ public class ElevatorService {
         return elevatorRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
                 .map(ElevatorDto::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<LookupDto> getLookup(Long facilityId, String query) {
+        if (facilityId == null) {
+            throw new RuntimeException("facilityId is required");
+        }
+
+        Facility facility = facilityRepository.findByIdAndActiveTrue(facilityId)
+                .orElseThrow(() -> new RuntimeException("Facility not found"));
+
+        String normalizedQuery = normalizeNullable(query);
+        return elevatorRepository.findByBuildingNameIgnoreCase(facility.getName()).stream()
+                .filter(elevator -> matchLookupQuery(elevator, normalizedQuery))
+                .sorted(Comparator
+                        .comparing((Elevator elevator) -> normalizeNullable(elevator.getElevatorNumber()),
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(elevator -> normalizeNullable(elevator.getIdentityNumber()),
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .map(this::toLookupDto)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -164,6 +192,35 @@ public class ElevatorService {
             dto.getManagerPhone());
         
         return dto;
+    }
+
+    private LookupDto toLookupDto(Elevator elevator) {
+        String name;
+        if (StringUtils.hasText(elevator.getElevatorNumber())) {
+            name = elevator.getElevatorNumber();
+        } else if (StringUtils.hasText(elevator.getIdentityNumber())) {
+            name = elevator.getIdentityNumber();
+        } else {
+            name = "Elevator #" + elevator.getId();
+        }
+        return new LookupDto(elevator.getId(), name);
+    }
+
+    private boolean matchLookupQuery(Elevator elevator, String query) {
+        if (!StringUtils.hasText(query)) {
+            return true;
+        }
+        String normalized = query.toLowerCase(Locale.ROOT);
+        return (StringUtils.hasText(elevator.getElevatorNumber()) && elevator.getElevatorNumber().toLowerCase(Locale.ROOT).contains(normalized))
+                || (StringUtils.hasText(elevator.getIdentityNumber()) && elevator.getIdentityNumber().toLowerCase(Locale.ROOT).contains(normalized))
+                || (StringUtils.hasText(elevator.getBuildingName()) && elevator.getBuildingName().toLowerCase(Locale.ROOT).contains(normalized));
+    }
+
+    private String normalizeNullable(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
     
     public ElevatorDto createElevator(ElevatorDto dto) {

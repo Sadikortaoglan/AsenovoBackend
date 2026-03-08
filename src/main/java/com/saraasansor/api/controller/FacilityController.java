@@ -6,6 +6,7 @@ import com.saraasansor.api.dto.FacilityAddressDto;
 import com.saraasansor.api.dto.FacilityDto;
 import com.saraasansor.api.dto.FacilityImportResultDto;
 import com.saraasansor.api.dto.FacilityMovementDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.UpdateFacilityRequest;
 import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.service.FacilityService;
@@ -26,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/facilities")
@@ -55,6 +58,13 @@ public class FacilityController {
                 PageRequest.of(page, size, parseSort(sort))
         );
         return ResponseEntity.ok(ApiResponse.success(facilities));
+    }
+
+    @GetMapping("/lookup")
+    public ResponseEntity<ApiResponse<List<LookupDto>>> getFacilityLookup(
+            @RequestParam(required = false) Long b2bUnitId,
+            @RequestParam(required = false) String query) {
+        return ResponseEntity.ok(ApiResponse.success(facilityService.getLookup(b2bUnitId, query)));
     }
 
     @GetMapping("/{id}")

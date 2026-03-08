@@ -24,4 +24,6 @@ public interface B2BUnitTransactionRepository extends JpaRepository<B2BUnitTrans
                                           @Param("search") String search,
                                           @Param("transactionType") B2BUnitTransaction.TransactionType transactionType,
                                           Pageable pageable);
+
+    java.util.Optional<B2BUnitTransaction> findTopByB2bUnitIdOrderByTransactionDateDescIdDesc(Long b2bUnitId);
 }
