@@ -1,5 +1,5 @@
 -- B2B Unit groups
-CREATE TABLE b2b_unit_groups (
+CREATE TABLE IF NOT EXISTS b2b_unit_groups (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -9,7 +9,7 @@ CREATE TABLE b2b_unit_groups (
 );
 
 -- B2B Units
-CREATE TABLE b2b_units (
+CREATE TABLE IF NOT EXISTS b2b_units (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     tax_number VARCHAR(11),
@@ -29,7 +29,7 @@ CREATE TABLE b2b_units (
     CONSTRAINT ck_b2b_units_risk_limit_non_negative CHECK (risk_limit >= 0)
 );
 
-CREATE INDEX idx_b2b_units_group_id ON b2b_units(group_id);
-CREATE INDEX idx_b2b_units_name ON b2b_units(name);
-CREATE UNIQUE INDEX uk_b2b_units_portal_username ON b2b_units(portal_username)
+CREATE INDEX IF NOT EXISTS idx_b2b_units_group_id ON b2b_units(group_id);
+CREATE INDEX IF NOT EXISTS idx_b2b_units_name ON b2b_units(name);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_b2b_units_portal_username ON b2b_units(portal_username)
 WHERE portal_username IS NOT NULL AND active = true;

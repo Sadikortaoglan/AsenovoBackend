@@ -13,10 +13,21 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Component
 public class TenantResolverFilter extends OncePerRequestFilter {
+
+    private static final Set<String> DEFAULT_HOSTS = Set.of(
+            "asenovo.com",
+            "www.asenovo.com",
+            "default.asenovo.com",
+            "asenovo.local",
+            "www.asenovo.local",
+            "default.asenovo.local"
+    );
 
     private final TenantRegistryService tenantRegistryService;
 
@@ -29,7 +40,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String host = request.getServerName();
+        String host = resolveRequestHost(request);
 
         try {
             String subdomain = extractSubdomain(host);
@@ -65,11 +76,13 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             return null;
         }
 
-        String lowerHost = host.toLowerCase();
+        String lowerHost = normalizeHost(host);
 
         // Local development: do not enforce tenancy based on host
-        if ("localhost".equals(lowerHost) || lowerHost.startsWith("localhost:")
-                || isIpAddress(lowerHost)) {
+        if (!StringUtils.hasText(lowerHost)
+                || "localhost".equals(lowerHost)
+                || isIpAddress(lowerHost)
+                || DEFAULT_HOSTS.contains(lowerHost)) {
             return null;
         }
 
@@ -79,12 +92,37 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             return null;
         }
 
-        return parts[0];
+        String subdomain = parts[0];
+        if ("api".equals(subdomain) || "default".equals(subdomain) || "www".equals(subdomain)) {
+            return null;
+        }
+
+        return subdomain;
     }
 
     private boolean isIpAddress(String host) {
         // Very simple heuristic; this is enough to avoid treating IP as subdomain-based host
         return host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+");
     }
-}
 
+    private String resolveRequestHost(HttpServletRequest request) {
+        String forwardedHost = request.getHeader("X-Forwarded-Host");
+        if (StringUtils.hasText(forwardedHost)) {
+            return forwardedHost;
+        }
+        return request.getServerName();
+    }
+
+    private String normalizeHost(String host) {
+        if (!StringUtils.hasText(host)) {
+            return null;
+        }
+
+        String normalized = host.split(",")[0].trim().toLowerCase(Locale.ROOT);
+        int portSeparator = normalized.indexOf(':');
+        if (portSeparator >= 0) {
+            normalized = normalized.substring(0, portSeparator);
+        }
+        return normalized;
+    }
+}

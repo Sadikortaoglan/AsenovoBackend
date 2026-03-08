@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/maintenance-plans")
+@PreAuthorize("hasAnyRole('TENANT_ADMIN', 'TECHNICIAN')")
 public class MaintenancePlanController {
     
     private static final Logger logger = LoggerFactory.getLogger(MaintenancePlanController.class);
