@@ -2,12 +2,18 @@ package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.B2BUnitTransactionPageResponse;
+import com.saraasansor.api.dto.B2BUnitTransactionResponse;
+import com.saraasansor.api.dto.ManualCreditCreateRequest;
+import com.saraasansor.api.dto.ManualDebitCreateRequest;
 import com.saraasansor.api.service.B2BUnitTransactionService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,5 +47,28 @@ public class B2BUnitTransactionController {
                 PageRequest.of(page, size)
         );
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{id}/account-transactions/manual-debit")
+    public ResponseEntity<ApiResponse<B2BUnitTransactionResponse>> createManualDebit(
+            @PathVariable Long id,
+            @Valid @RequestBody ManualDebitCreateRequest request) {
+        B2BUnitTransactionResponse response = transactionService.createManualDebit(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Manual debit transaction created successfully", response));
+    }
+
+    @PostMapping("/{id}/account-transactions/manual-credit")
+    public ResponseEntity<ApiResponse<B2BUnitTransactionResponse>> createManualCredit(
+            @PathVariable Long id,
+            @Valid @RequestBody ManualCreditCreateRequest request) {
+        B2BUnitTransactionResponse response = transactionService.createManualCredit(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Manual credit transaction created successfully", response));
+    }
+
+    @GetMapping("/{id}/account-transactions/{transactionId}")
+    public ResponseEntity<ApiResponse<B2BUnitTransactionResponse>> getTransactionById(
+            @PathVariable Long id,
+            @PathVariable Long transactionId) {
+        return ResponseEntity.ok(ApiResponse.success(transactionService.getTransactionById(id, transactionId)));
     }
 }

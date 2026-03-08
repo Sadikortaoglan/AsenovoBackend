@@ -1,6 +1,7 @@
 package com.saraasansor.api.repository;
 
 import com.saraasansor.api.model.B2BUnitTransaction;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,6 +25,9 @@ public interface B2BUnitTransactionRepository extends JpaRepository<B2BUnitTrans
                                           @Param("search") String search,
                                           @Param("transactionType") B2BUnitTransaction.TransactionType transactionType,
                                           Pageable pageable);
+
+    @EntityGraph(attributePaths = {"b2bUnit", "facility"})
+    java.util.Optional<B2BUnitTransaction> findByIdAndB2bUnitId(Long id, Long b2bUnitId);
 
     java.util.Optional<B2BUnitTransaction> findTopByB2bUnitIdOrderByTransactionDateDescIdDesc(Long b2bUnitId);
 }
