@@ -126,6 +126,10 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
                 // Users endpoint - staff administration
                 .requestMatchers("/users/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
+                // B2BUnit detail endpoint (new detail page backbone)
+                .requestMatchers(HttpMethod.GET, "/b2b-units/*/detail").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                // B2BUnit transactions endpoint (detail filter section)
+                .requestMatchers(HttpMethod.GET, "/b2b-units/*/transactions").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit endpoints
                 .requestMatchers(HttpMethod.GET, "/b2bunits").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
