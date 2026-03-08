@@ -7,17 +7,21 @@ public class LoginResponse {
     private Long userId;
     private String username;
     private String role;
+    private String userType;
+    private Long b2bUnitId;
 
     public LoginResponse() {
     }
 
-    public LoginResponse(String accessToken, String refreshToken, String tokenType, Long userId, String username, String role) {
+    public LoginResponse(String accessToken, String refreshToken, String tokenType, Long userId, String username, String role, String userType, Long b2bUnitId) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenType = tokenType;
         this.userId = userId;
         this.username = username;
         this.role = role;
+        this.userType = userType;
+        this.b2bUnitId = b2bUnitId;
     }
 
     public String getAccessToken() {
@@ -66,5 +70,21 @@ public class LoginResponse {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getUserType() {
+        return userType;
+    }
+
+    public void setUserType(String userType) {
+        this.userType = userType;
+    }
+
+    public Long getB2bUnitId() {
+        return b2bUnitId;
+    }
+
+    public void setB2bUnitId(Long b2bUnitId) {
+        this.b2bUnitId = b2bUnitId;
     }
 }

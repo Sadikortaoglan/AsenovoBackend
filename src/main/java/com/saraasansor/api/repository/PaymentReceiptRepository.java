@@ -12,8 +12,9 @@ import java.util.List;
 @Repository
 public interface PaymentReceiptRepository extends JpaRepository<PaymentReceipt, Long> {
     List<PaymentReceipt> findByMaintenanceIdOrderByDateDesc(Long maintenanceId);
+
+    List<PaymentReceipt> findByMaintenanceIdInOrderByDateDesc(List<Long> maintenanceIds);
     
     @Query("SELECT pr FROM PaymentReceipt pr WHERE pr.date >= :dateFrom AND pr.date <= :dateTo ORDER BY pr.date DESC")
     List<PaymentReceipt> findByDateBetween(@Param("dateFrom") LocalDate dateFrom, @Param("dateTo") LocalDate dateTo);
 }
-

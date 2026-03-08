@@ -5,16 +5,27 @@ import com.saraasansor.api.dto.ElevatorStatusDto;
 import com.saraasansor.api.dto.WarningDto;
 import com.saraasansor.api.dto.WarningElevatorDto;
 import com.saraasansor.api.dto.WarningGroupDto;
+import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.LabelType;
 import com.saraasansor.api.repository.ElevatorRepository;
+import com.saraasansor.api.tenant.TenantContext;
+import com.saraasansor.api.tenant.data.TenantDescriptor;
 import com.saraasansor.api.util.AuditLogger;
 import com.saraasansor.api.util.LabelDurationCalculator;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.awt.Color;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -23,6 +34,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +51,103 @@ public class ElevatorService {
         return elevatorRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
                 .map(ElevatorDto::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generateElevatorReportPdf(Long id) {
+        Elevator elevator = elevatorRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Elevator not found"));
+        String tenantDisplayName = resolveTenantDisplayName();
+        String tenantHeader = tenantDisplayName.toUpperCase(Locale.ROOT);
+
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                PDRectangle mediaBox = page.getMediaBox();
+                float pageWidth = mediaBox.getWidth();
+                float pageHeight = mediaBox.getHeight();
+                float margin = 42f;
+                float contentWidth = pageWidth - (margin * 2);
+
+                // Header band
+                content.setNonStrokingColor(new Color(25, 48, 93));
+                content.addRect(0, pageHeight - 112, pageWidth, 112);
+                content.fill();
+                content.setNonStrokingColor(Color.WHITE);
+                drawText(content, PDType1Font.HELVETICA_BOLD, 16, margin, pageHeight - 34, tenantHeader);
+                drawText(content, PDType1Font.HELVETICA_BOLD, 26, margin, pageHeight - 66, "Asansor Durum Raporu");
+                drawText(content, PDType1Font.HELVETICA, 11, margin, pageHeight - 86, "Asenovo Kurumsal Teknik Raporu");
+                drawText(content, PDType1Font.HELVETICA, 10, margin, pageHeight - 102, "Raporlanan Firma: " + tenantDisplayName);
+
+                // Metadata row
+                float metaTop = pageHeight - 135;
+                content.setStrokingColor(new Color(210, 215, 224));
+                content.setNonStrokingColor(new Color(245, 247, 251));
+                content.addRect(margin, metaTop - 42, contentWidth, 38);
+                content.fill();
+                content.setNonStrokingColor(Color.BLACK);
+                content.addRect(margin, metaTop - 42, contentWidth, 38);
+                content.stroke();
+                drawText(content, PDType1Font.HELVETICA_BOLD, 10, margin + 10, metaTop - 20,
+                        "Rapor No: REP-" + elevator.getId());
+                drawText(content, PDType1Font.HELVETICA_BOLD, 10, margin + 190, metaTop - 20,
+                        "Asansor ID: " + safe(elevator.getId()));
+                drawText(content, PDType1Font.HELVETICA_BOLD, 10, margin + 350, metaTop - 20,
+                        "Tarih: " + safe(LocalDate.now()));
+                drawText(content, PDType1Font.HELVETICA, 9, margin + 10, metaTop - 34,
+                        "Platform: Asenovo");
+
+                // Body sections
+                float sectionY = metaTop - 70;
+                drawSectionTitle(content, margin, sectionY, "Asansor Bilgileri");
+                sectionY -= 18;
+                sectionY = drawInfoGrid(content, margin, sectionY, contentWidth,
+                        "Kimlik No", safe(elevator.getIdentityNumber()),
+                        "Asansor No", safe(elevator.getElevatorNumber()),
+                        "Bina", safe(elevator.getBuildingName()),
+                        "Adres", safe(elevator.getAddress()),
+                        "Kapasite", safe(elevator.getCapacity()),
+                        "Hiz", safe(elevator.getSpeed()) + " m/s");
+
+                sectionY -= 14;
+                drawSectionTitle(content, margin, sectionY, "Etiket ve Muayene");
+                sectionY -= 18;
+                sectionY = drawInfoGrid(content, margin, sectionY, contentWidth,
+                        "Etiket Tipi", toTurkishLabelType(elevator.getLabelType()),
+                        "Durum", toTurkishStatus(elevator.getStatus()),
+                        "Muayene Tarihi", safe(elevator.getInspectionDate()),
+                        "Etiket Baslangic", safe(elevator.getLabelDate()),
+                        "Etiket Bitis", safe(elevator.getExpiryDate()),
+                        "Mavi Etiket", toTurkishBoolean(elevator.getBlueLabel()));
+
+                sectionY -= 14;
+                drawSectionTitle(content, margin, sectionY, "Sorumlu Kisi");
+                sectionY -= 18;
+                sectionY = drawInfoGrid(content, margin, sectionY, contentWidth,
+                        "Ad Soyad", safe(elevator.getManagerName()),
+                        "Telefon", safe(elevator.getManagerPhone()),
+                        "TC Kimlik", safe(elevator.getManagerTcIdentityNo()),
+                        "E-Posta", safe(elevator.getManagerEmail()),
+                        "Makine Marka", safe(elevator.getMachineBrand()),
+                        "Kontrol Sistemi", safe(elevator.getControlSystem()));
+
+                // Footer
+                content.setStrokingColor(new Color(210, 215, 224));
+                content.moveTo(margin, 56);
+                content.lineTo(pageWidth - margin, 56);
+                content.stroke();
+                drawText(content, PDType1Font.HELVETICA_OBLIQUE, 9, margin, 42,
+                        "Bu rapor Asenovo platformu tarafindan otomatik olusturulmustur.");
+            }
+
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            document.save(output);
+            return output.toByteArray();
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to generate elevator PDF report", ex);
+        }
     }
     
     public ElevatorDto getElevatorById(Long id) {
@@ -491,5 +600,163 @@ public class ElevatorService {
                 throw new RuntimeException("End date must be after label date");
             }
         }
+    }
+
+    private float drawInfoGrid(PDPageContentStream content,
+                               float x,
+                               float y,
+                               float width,
+                               String k1, String v1,
+                               String k2, String v2,
+                               String k3, String v3,
+                               String k4, String v4,
+                               String k5, String v5,
+                               String k6, String v6) throws IOException {
+        float colSplit = x + (width * 0.34f);
+        float valueWidth = width - (colSplit - x) - 16f;
+        String[] keys = {k1, k2, k3, k4, k5, k6};
+        String[] vals = {v1, v2, v3, v4, v5, v6};
+        float currentTop = y + 6f;
+
+        for (int i = 0; i < 6; i++) {
+            List<String> wrappedLines = wrapText(vals[i], PDType1Font.HELVETICA, 9, valueWidth);
+            if (wrappedLines.isEmpty()) {
+                wrappedLines = List.of("-");
+            }
+            float rowHeight = Math.max(24f, 10f + (wrappedLines.size() * 11f));
+            float rowBottom = currentTop - rowHeight;
+
+            if (i % 2 == 0) {
+                content.setNonStrokingColor(new Color(248, 250, 253));
+                content.addRect(x, rowBottom, width, rowHeight);
+                content.fill();
+                content.setNonStrokingColor(Color.BLACK);
+            }
+
+            content.setStrokingColor(new Color(223, 227, 235));
+            content.addRect(x, rowBottom, width, rowHeight);
+            content.stroke();
+            content.moveTo(colSplit, rowBottom);
+            content.lineTo(colSplit, currentTop);
+            content.stroke();
+
+            float textY = currentTop - 14f;
+            drawText(content, PDType1Font.HELVETICA_BOLD, 9, x + 8, textY, keys[i]);
+            for (int lineIndex = 0; lineIndex < wrappedLines.size(); lineIndex++) {
+                drawText(content, PDType1Font.HELVETICA, 9, colSplit + 8, textY - (lineIndex * 11f), wrappedLines.get(lineIndex));
+            }
+            currentTop = rowBottom;
+        }
+        return currentTop - 6f;
+    }
+
+    private void drawSectionTitle(PDPageContentStream content, float x, float y, String title) throws IOException {
+        content.setNonStrokingColor(new Color(32, 64, 123));
+        drawText(content, PDType1Font.HELVETICA_BOLD, 12, x, y, title);
+        content.setNonStrokingColor(Color.BLACK);
+    }
+
+    private void drawText(PDPageContentStream content,
+                          PDType1Font font,
+                          float size,
+                          float x,
+                          float y,
+                          String text) throws IOException {
+        content.beginText();
+        content.setFont(font, size);
+        content.newLineAtOffset(x, y);
+        content.showText(toPdfSafeText(text));
+        content.endText();
+    }
+
+    private String safe(Object value) {
+        return value == null ? "-" : String.valueOf(value);
+    }
+
+    private String resolveTenantDisplayName() {
+        TenantDescriptor tenant = TenantContext.getCurrentTenant();
+        if (tenant == null) {
+            return "Asenovo";
+        }
+        if (tenant.getSubdomain() != null && !tenant.getSubdomain().isBlank()) {
+            return tenant.getSubdomain();
+        }
+        if (tenant.getName() != null && !tenant.getName().isBlank()) {
+            return tenant.getName();
+        }
+        return "Asenovo";
+    }
+
+    private String toTurkishLabelType(LabelType labelType) {
+        if (labelType == null) {
+            return "-";
+        }
+        return switch (labelType) {
+            case BLUE -> "Mavi";
+            case GREEN -> "Yesil";
+            case YELLOW -> "Sari";
+            case RED -> "Kirmizi";
+            case ORANGE -> "Turuncu";
+        };
+    }
+
+    private String toTurkishStatus(Elevator.Status status) {
+        if (status == null) {
+            return "-";
+        }
+        return switch (status) {
+            case ACTIVE -> "Aktif";
+            case EXPIRED -> "Suresi Dolmus";
+        };
+    }
+
+    private String toTurkishBoolean(Boolean value) {
+        if (value == null) {
+            return "-";
+        }
+        return value ? "Var" : "Yok";
+    }
+
+    private List<String> wrapText(String text, PDType1Font font, float fontSize, float maxWidth) throws IOException {
+        String normalized = safe(text);
+        List<String> lines = new ArrayList<>();
+        String[] words = normalized.split("\\s+");
+        StringBuilder line = new StringBuilder();
+
+        for (String word : words) {
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            float width = font.getStringWidth(toPdfSafeText(candidate)) / 1000f * fontSize;
+            if (width <= maxWidth) {
+                line.setLength(0);
+                line.append(candidate);
+            } else {
+                if (!line.isEmpty()) {
+                    lines.add(line.toString());
+                }
+                line.setLength(0);
+                line.append(word);
+            }
+        }
+
+        if (!line.isEmpty()) {
+            lines.add(line.toString());
+        }
+        if (lines.isEmpty()) {
+            lines.add("-");
+        }
+        return lines;
+    }
+
+    private String toPdfSafeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text
+                .replace('ç', 'c').replace('Ç', 'C')
+                .replace('ğ', 'g').replace('Ğ', 'G')
+                .replace('ı', 'i').replace('İ', 'I')
+                .replace('ö', 'o').replace('Ö', 'O')
+                .replace('ş', 's').replace('Ş', 'S')
+                .replace('ü', 'u').replace('Ü', 'U');
     }
 }

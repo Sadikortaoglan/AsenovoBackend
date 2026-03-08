@@ -101,7 +101,7 @@ public class QrController {
      * }
      */
     @PostMapping("/validate")
-    public ResponseEntity<ApiResponse<com.saraasansor.api.service.QrSessionService.QrSessionTokenResponse>> validateQrAndCreateSession(
+    public ResponseEntity<ApiResponse<Object>> validateQrAndCreateSession(
             @RequestBody QrValidateRequest request,
             jakarta.servlet.http.HttpServletRequest httpRequest) {
         try {
@@ -118,6 +118,8 @@ public class QrController {
             com.saraasansor.api.model.User currentUser = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
+            QrIntent intent = QrIntent.from(request.getIntent());
+
             // Parse QR code
             String qrCode = request.getQrCode();
             if (qrCode == null || qrCode.trim().isEmpty()) {
@@ -173,6 +175,24 @@ public class QrController {
                 return ResponseEntity.status(403)
                     .body(ApiResponse.error("QR code does not match elevator"));
             }
+
+            if (intent == QrIntent.VIEW_ELEVATOR) {
+                ViewElevatorResponse viewResponse = new ViewElevatorResponse();
+                viewResponse.setIntent(intent.name());
+                viewResponse.setElevatorId(elevator.getId());
+                viewResponse.setElevatorCode(elevatorCode);
+                viewResponse.setElevatorNo(elevator.getElevatorNumber());
+                viewResponse.setBuildingName(elevator.getBuildingName());
+                viewResponse.setAddress(elevator.getAddress());
+                viewResponse.setCustomerName(elevator.getManagerName());
+                viewResponse.setLabelType(elevator.getLabelType() != null ? elevator.getLabelType().name() : null);
+                viewResponse.setStatus(elevator.getStatus() != null ? elevator.getStatus().name() : null);
+                viewResponse.setLabelDate(elevator.getLabelDate());
+                viewResponse.setExpiryDate(elevator.getExpiryDate());
+                viewResponse.setCanStartMaintenance(true);
+
+                return ResponseEntity.ok(ApiResponse.success("QR validated (view mode)", viewResponse));
+            }
             
             // Get IP address
             String ipAddress = httpRequest.getRemoteAddr();
@@ -190,6 +210,7 @@ public class QrController {
                     false, // Not remote start
                     ipAddress
                 );
+            tokenResponse.setIntent(intent.name());
             
             return ResponseEntity.ok(ApiResponse.success("QR validated and session token created", tokenResponse));
             
@@ -201,7 +222,7 @@ public class QrController {
     
     /**
      * POST /api/qr/remote-start
-     * Creates session token for ADMIN remote start (no QR required)
+     * Creates session token for admin remote start (no QR required)
      * 
      * Request body:
      * {
@@ -237,11 +258,11 @@ public class QrController {
             com.saraasansor.api.model.User currentUser = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
-            // Only ADMIN allowed
-            if (currentUser.getRole() != com.saraasansor.api.model.User.Role.ADMIN && 
-                currentUser.getRole() != com.saraasansor.api.model.User.Role.PATRON) {
+            // Only admin roles allowed
+            if (currentUser.getRole() != com.saraasansor.api.model.User.Role.SYSTEM_ADMIN &&
+                currentUser.getRole() != com.saraasansor.api.model.User.Role.STAFF_ADMIN) {
                 return ResponseEntity.status(403)
-                    .body(ApiResponse.error("Remote start is only allowed for ADMIN role"));
+                    .body(ApiResponse.error("Remote start is only allowed for admin roles"));
             }
             
             // Validate elevator exists
@@ -284,11 +305,54 @@ public class QrController {
     public static class QrValidateRequest {
         private String qrCode;
         private Long elevatorId;
+        private String intent;
         
         public String getQrCode() { return qrCode; }
         public void setQrCode(String qrCode) { this.qrCode = qrCode; }
         public Long getElevatorId() { return elevatorId; }
         public void setElevatorId(Long elevatorId) { this.elevatorId = elevatorId; }
+        public String getIntent() { return intent; }
+        public void setIntent(String intent) { this.intent = intent; }
+    }
+
+    public static class ViewElevatorResponse {
+        private String intent;
+        private Long elevatorId;
+        private String elevatorCode;
+        private String elevatorNo;
+        private String buildingName;
+        private String address;
+        private String customerName;
+        private String labelType;
+        private String status;
+        private java.time.LocalDate labelDate;
+        private java.time.LocalDate expiryDate;
+        private Boolean canStartMaintenance;
+
+        public String getIntent() { return intent; }
+        public void setIntent(String intent) { this.intent = intent; }
+        public Long getElevatorId() { return elevatorId; }
+        public void setElevatorId(Long elevatorId) { this.elevatorId = elevatorId; }
+        public String getElevatorCode() { return elevatorCode; }
+        public void setElevatorCode(String elevatorCode) { this.elevatorCode = elevatorCode; }
+        public String getElevatorNo() { return elevatorNo; }
+        public void setElevatorNo(String elevatorNo) { this.elevatorNo = elevatorNo; }
+        public String getBuildingName() { return buildingName; }
+        public void setBuildingName(String buildingName) { this.buildingName = buildingName; }
+        public String getAddress() { return address; }
+        public void setAddress(String address) { this.address = address; }
+        public String getCustomerName() { return customerName; }
+        public void setCustomerName(String customerName) { this.customerName = customerName; }
+        public String getLabelType() { return labelType; }
+        public void setLabelType(String labelType) { this.labelType = labelType; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public java.time.LocalDate getLabelDate() { return labelDate; }
+        public void setLabelDate(java.time.LocalDate labelDate) { this.labelDate = labelDate; }
+        public java.time.LocalDate getExpiryDate() { return expiryDate; }
+        public void setExpiryDate(java.time.LocalDate expiryDate) { this.expiryDate = expiryDate; }
+        public Boolean getCanStartMaintenance() { return canStartMaintenance; }
+        public void setCanStartMaintenance(Boolean canStartMaintenance) { this.canStartMaintenance = canStartMaintenance; }
     }
     
     public static class RemoteStartRequest {
@@ -373,6 +437,22 @@ public class QrController {
         
         public void setDeviceMeta(String deviceMeta) {
             this.deviceMeta = deviceMeta;
+        }
+    }
+
+    private enum QrIntent {
+        START_MAINTENANCE,
+        VIEW_ELEVATOR;
+
+        static QrIntent from(String value) {
+            if (value == null || value.isBlank()) {
+                return START_MAINTENANCE;
+            }
+            try {
+                return QrIntent.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                throw new RuntimeException("Invalid intent. Allowed values: START_MAINTENANCE, VIEW_ELEVATOR");
+            }
         }
     }
 }

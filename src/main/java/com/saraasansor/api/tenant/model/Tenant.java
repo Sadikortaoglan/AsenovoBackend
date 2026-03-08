@@ -45,6 +45,18 @@ public class Tenant {
     @Column(name = "redis_namespace")
     private String redisNamespace;
 
+    @Column(name = "logo_url", length = 255)
+    private String logoUrl;
+
+    @Column(name = "primary_color", length = 7)
+    private String primaryColor;
+
+    @Column(name = "secondary_color", length = 7)
+    private String secondaryColor;
+
+    @Column(name = "branding_updated_at")
+    private LocalDateTime brandingUpdatedAt;
+
     @Column(nullable = false)
     private boolean active = true;
 
@@ -143,6 +155,38 @@ public class Tenant {
         this.redisNamespace = redisNamespace;
     }
 
+    public String getLogoUrl() {
+        return logoUrl;
+    }
+
+    public void setLogoUrl(String logoUrl) {
+        this.logoUrl = logoUrl;
+    }
+
+    public String getPrimaryColor() {
+        return primaryColor;
+    }
+
+    public void setPrimaryColor(String primaryColor) {
+        this.primaryColor = primaryColor;
+    }
+
+    public String getSecondaryColor() {
+        return secondaryColor;
+    }
+
+    public void setSecondaryColor(String secondaryColor) {
+        this.secondaryColor = secondaryColor;
+    }
+
+    public LocalDateTime getBrandingUpdatedAt() {
+        return brandingUpdatedAt;
+    }
+
+    public void setBrandingUpdatedAt(LocalDateTime brandingUpdatedAt) {
+        this.brandingUpdatedAt = brandingUpdatedAt;
+    }
+
     public Plan getPlan() {
         return plan;
     }
@@ -175,4 +219,3 @@ public class Tenant {
         this.updatedAt = updatedAt;
     }
 }
-

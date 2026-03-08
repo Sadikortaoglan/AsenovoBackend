@@ -45,6 +45,21 @@ public class FileStorageService {
         // Return storage key (relative path)
         return entityType.toLowerCase() + "/" + entityId + "/" + uniqueFilename;
     }
+
+    /**
+     * Save file to a specific relative directory under upload root.
+     * Returns storage key (relative path).
+     */
+    public String saveFileToDirectory(MultipartFile file, String relativeDirectory, String fileName) throws IOException {
+        Path directory = Paths.get(uploadDirectory).resolve(relativeDirectory);
+        if (!Files.exists(directory)) {
+            Files.createDirectories(directory);
+        }
+
+        Path filePath = directory.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        return relativeDirectory + "/" + fileName;
+    }
     
     /**
      * Get file URL (for local storage, returns relative path)

@@ -121,7 +121,7 @@ public class QrProofService {
             SecretKeySpec secretKeySpec = new SecretKeySpec(qrSecretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKeySpec);
             byte[] signatureBytes = mac.doFinal(elevatorPublicCode.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(signatureBytes);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate QR signature", e);
         }

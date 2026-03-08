@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,6 +34,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/maintenances")
+@PreAuthorize("hasAnyRole('TENANT_ADMIN', 'TECHNICIAN')")
 public class MaintenanceController {
     
     private static final Logger logger = LoggerFactory.getLogger(MaintenanceController.class);
@@ -143,10 +145,10 @@ public class MaintenanceController {
             // QR Session Token Validation Guard
             boolean startedRemotely = false;
             
-            if (userRole == User.Role.PERSONEL) {
-                // TECHNICIAN: QR session token is REQUIRED
+            if (userRole == User.Role.STAFF_USER) {
+                // STAFF_USER: QR session token is REQUIRED
                 if (qrSessionToken == null || qrSessionToken.trim().isEmpty()) {
-                    logger.warn("TECHNICIAN attempted to create maintenance without QR session token");
+                    logger.warn("STAFF_USER attempted to create maintenance without QR session token");
                     return ResponseEntity.status(403)
                         .body(ApiResponse.error("QR validation required. Please scan QR code first."));
                 }
@@ -176,9 +178,9 @@ public class MaintenanceController {
                 // Invalidate token after use (one-time use)
                 qrSessionService.invalidateToken(qrSessionToken);
                 
-            } else if (userRole == User.Role.ADMIN || userRole == User.Role.PATRON) {
+            } else if (userRole == User.Role.SYSTEM_ADMIN || userRole == User.Role.STAFF_ADMIN) {
                 // TODO: Sadık production'da admin QR zorunlu yapmayı isteyebilir. Şimdilik bilinçli olarak açık bırakıldı.
-                // ADMIN/PATRON: QR session token is optional
+                // Admin roles: QR session token is optional
                 if (qrSessionToken != null && !qrSessionToken.trim().isEmpty()) {
                     // Validate session token if provided
                     com.saraasansor.api.service.QrSessionService.TokenValidationResult validation = 
@@ -191,7 +193,7 @@ public class MaintenanceController {
                     }
                     
                     startedRemotely = validation.isStartedRemotely();
-                    logger.debug("QR session token validated successfully (optional for ADMIN)");
+                    logger.debug("QR session token validated successfully (optional for admin)");
                     
                     // Update MaintenancePlan status to IN_PROGRESS when QR is validated
                     try {
@@ -205,9 +207,9 @@ public class MaintenanceController {
                     // Invalidate token after use
                     qrSessionService.invalidateToken(qrSessionToken);
                 } else {
-                    // ADMIN can create without QR (remote start)
+                    // Admin can create without QR (remote start)
                     startedRemotely = true;
-                    logger.debug("ADMIN creating maintenance without QR (remote start allowed)");
+                    logger.debug("Admin creating maintenance without QR (remote start allowed)");
                 }
             }
             
@@ -389,4 +391,3 @@ public class MaintenanceController {
         }
     }
 }
-

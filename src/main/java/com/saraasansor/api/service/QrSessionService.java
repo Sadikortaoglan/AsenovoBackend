@@ -223,6 +223,7 @@ public class QrSessionService {
         private Long elevatorId;
         private LocalDateTime expiresAt;
         private boolean startedRemotely;
+        private String intent;
         
         public String getQrSessionToken() { return qrSessionToken; }
         public void setQrSessionToken(String qrSessionToken) { this.qrSessionToken = qrSessionToken; }
@@ -232,5 +233,7 @@ public class QrSessionService {
         public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
         public boolean isStartedRemotely() { return startedRemotely; }
         public void setStartedRemotely(boolean startedRemotely) { this.startedRemotely = startedRemotely; }
+        public String getIntent() { return intent; }
+        public void setIntent(String intent) { this.intent = intent; }
     }
 }
