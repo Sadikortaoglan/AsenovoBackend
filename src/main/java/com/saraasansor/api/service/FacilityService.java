@@ -1,6 +1,7 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.CreateFacilityRequest;
+import com.saraasansor.api.dto.B2BUnitFacilityCreateRequest;
 import com.saraasansor.api.dto.FacilityAddressDto;
 import com.saraasansor.api.dto.FacilityDto;
 import com.saraasansor.api.dto.FacilityImportResultDto;
@@ -168,6 +169,14 @@ public class FacilityService {
     }
 
     @Transactional(readOnly = true)
+    public Page<FacilityDto> getFacilitiesByB2BUnit(Long b2bUnitId, String search, Pageable pageable) {
+        enforceReadableB2BUnitScopeAccess(b2bUnitId);
+        Page<Facility> facilities = facilityRepository.search(normalizeNullable(search), b2bUnitId, null, pageable);
+        boolean includeDoorPassword = canViewDoorPassword(getCurrentUser());
+        return facilities.map(facility -> FacilityDto.fromEntity(facility, includeDoorPassword));
+    }
+
+    @Transactional(readOnly = true)
     public List<LookupDto> getLookup(Long b2bUnitId, String query) {
         User currentUser = getCurrentUser();
         Long effectiveB2bUnitId = b2bUnitId;
@@ -225,6 +234,19 @@ public class FacilityService {
         B2BUnit b2bUnit = resolveB2BUnit(request.getB2bUnitId());
         validateDuplicateNameForCreate(request.getName(), b2bUnit.getId());
         applyRequest(facility, request, b2bUnit);
+
+        return FacilityDto.fromEntity(facilityRepository.save(facility), canViewDoorPassword(getCurrentUser()));
+    }
+
+    public FacilityDto createFacilityForB2BUnit(Long b2bUnitId, B2BUnitFacilityCreateRequest request) {
+        enforceNonCariWrite();
+
+        B2BUnit b2bUnit = resolveB2BUnit(b2bUnitId);
+        CreateFacilityRequest createRequest = toCreateFacilityRequest(request, b2bUnitId);
+        validateDuplicateNameForCreate(createRequest.getName(), b2bUnit.getId());
+
+        Facility facility = new Facility();
+        applyRequest(facility, createRequest, b2bUnit);
 
         return FacilityDto.fromEntity(facilityRepository.save(facility), canViewDoorPassword(getCurrentUser()));
     }
@@ -649,6 +671,51 @@ public class FacilityService {
     private B2BUnit resolveB2BUnit(Long id) {
         return b2bUnitRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+    }
+
+    private void enforceReadableB2BUnitScopeAccess(Long b2bUnitId) {
+        B2BUnit b2bUnit = resolveB2BUnit(b2bUnitId);
+        User currentUser = getCurrentUser();
+        if (!isCariUser(currentUser)) {
+            return;
+        }
+
+        Long ownB2bUnitId = getCariB2bUnitId(currentUser);
+        if (!b2bUnit.getId().equals(ownB2bUnitId)) {
+            throw new AccessDeniedException("CARI user can only access own B2B unit facilities");
+        }
+    }
+
+    private CreateFacilityRequest toCreateFacilityRequest(B2BUnitFacilityCreateRequest source, Long b2bUnitId) {
+        CreateFacilityRequest target = new CreateFacilityRequest();
+        target.setName(source.getName());
+        target.setB2bUnitId(b2bUnitId);
+        target.setTaxNumber(source.getTaxNumber());
+        target.setTaxOffice(source.getTaxOffice());
+        target.setType(source.getType());
+        target.setInvoiceType(source.getInvoiceType());
+        target.setCompanyTitle(source.getCompanyTitle());
+        target.setAuthorizedFirstName(source.getAuthorizedFirstName());
+        target.setAuthorizedLastName(source.getAuthorizedLastName());
+        target.setEmail(source.getEmail());
+        target.setPhone(source.getPhone());
+        target.setFacilityType(source.getFacilityType());
+        target.setAttendantFullName(source.getAttendantFullName());
+        target.setManagerFlatNo(source.getManagerFlatNo());
+        target.setDoorPassword(source.getDoorPassword());
+        target.setFloorCount(source.getFloorCount());
+        target.setCityId(source.getCityId());
+        target.setDistrictId(source.getDistrictId());
+        target.setNeighborhoodId(source.getNeighborhoodId());
+        target.setRegionId(source.getRegionId());
+        target.setAddressText(source.getAddressText());
+        target.setDescription(source.getDescription());
+        target.setStatus(source.getStatus());
+        target.setMapLat(source.getMapLat());
+        target.setMapLng(source.getMapLng());
+        target.setMapAddressQuery(source.getMapAddressQuery());
+        target.setAttachmentUrl(source.getAttachmentUrl());
+        return target;
     }
 
     private B2BUnit resolveB2BUnitForImport(String cariName, boolean createMissingB2BUnit) {
