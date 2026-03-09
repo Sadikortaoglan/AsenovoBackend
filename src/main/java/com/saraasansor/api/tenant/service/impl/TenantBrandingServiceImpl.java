@@ -47,7 +47,7 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, noRollbackFor = RuntimeException.class)
     public TenantBrandingResponseDTO getCurrentTenantBranding() {
         Tenant tenant = findTenant(resolveAuthenticatedTenantId());
         return toResponse(tenant);

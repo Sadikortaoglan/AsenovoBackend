@@ -1,16 +1,22 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.B2BUnitCollectionTransactionResponse;
+import com.saraasansor.api.dto.B2BUnitPaymentTransactionResponse;
 import com.saraasansor.api.dto.B2BUnitTransactionPageResponse;
 import com.saraasansor.api.dto.B2BUnitTransactionResponse;
 import com.saraasansor.api.dto.BankCollectionCreateRequest;
+import com.saraasansor.api.dto.BankPaymentCreateRequest;
 import com.saraasansor.api.dto.CashCollectionCreateRequest;
+import com.saraasansor.api.dto.CashPaymentCreateRequest;
 import com.saraasansor.api.dto.CheckCollectionCreateRequest;
+import com.saraasansor.api.dto.CheckPaymentCreateRequest;
 import com.saraasansor.api.dto.CreditCardCollectionCreateRequest;
+import com.saraasansor.api.dto.CreditCardPaymentCreateRequest;
 import com.saraasansor.api.dto.ManualCreditCreateRequest;
 import com.saraasansor.api.dto.ManualDebitCreateRequest;
 import com.saraasansor.api.dto.PaytrCollectionCreateRequest;
 import com.saraasansor.api.dto.PromissoryNoteCollectionCreateRequest;
+import com.saraasansor.api.dto.PromissoryNotePaymentCreateRequest;
 import com.saraasansor.api.model.B2BUnit;
 import com.saraasansor.api.model.B2BUnitTransaction;
 import com.saraasansor.api.model.Facility;
@@ -53,6 +59,14 @@ public class B2BUnitTransactionService {
             B2BUnitTransaction.TransactionType.BANK_COLLECTION,
             B2BUnitTransaction.TransactionType.CHECK_COLLECTION,
             B2BUnitTransaction.TransactionType.PROMISSORY_NOTE_COLLECTION
+    );
+
+    private static final Set<B2BUnitTransaction.TransactionType> PAYMENT_TYPES = EnumSet.of(
+            B2BUnitTransaction.TransactionType.CASH_PAYMENT,
+            B2BUnitTransaction.TransactionType.CREDIT_CARD_PAYMENT,
+            B2BUnitTransaction.TransactionType.BANK_PAYMENT,
+            B2BUnitTransaction.TransactionType.CHECK_PAYMENT,
+            B2BUnitTransaction.TransactionType.PROMISSORY_NOTE_PAYMENT
     );
 
     private final B2BUnitTransactionRepository transactionRepository;
@@ -335,6 +349,142 @@ public class B2BUnitTransactionService {
         return B2BUnitCollectionTransactionResponse.fromEntity(transaction);
     }
 
+    public B2BUnitPaymentTransactionResponse createCashPayment(Long b2bUnitId, CashPaymentCreateRequest request) {
+        enforceCreateAccess("CARI users cannot create payment transactions");
+        validateBaseAmountAndDate(request.getTransactionDate(), request.getAmount());
+        requireCashAccount(request.getCashAccountId());
+
+        Facility facility = resolveOptionalFacility(request.getFacilityId(), b2bUnitId);
+        B2BUnitTransaction transaction = createTransactionRecord(
+                b2bUnitId,
+                request.getTransactionDate(),
+                B2BUnitTransaction.TransactionType.CASH_PAYMENT,
+                normalizeMoney(request.getAmount()),
+                BigDecimal.ZERO,
+                request.getDescription(),
+                B2BUnitTransaction.ReferenceType.PAYMENT_TRANSACTION,
+                null,
+                null,
+                facility,
+                normalizeMoney(request.getAmount()),
+                request.getCashAccountId(),
+                null,
+                null,
+                null,
+                null
+        );
+        return B2BUnitPaymentTransactionResponse.fromEntity(transaction);
+    }
+
+    public B2BUnitPaymentTransactionResponse createCreditCardPayment(Long b2bUnitId, CreditCardPaymentCreateRequest request) {
+        enforceCreateAccess("CARI users cannot create payment transactions");
+        validateBaseAmountAndDate(request.getTransactionDate(), request.getAmount());
+        requireBankAccount(request.getBankAccountId());
+
+        Facility facility = resolveOptionalFacility(request.getFacilityId(), b2bUnitId);
+        B2BUnitTransaction transaction = createTransactionRecord(
+                b2bUnitId,
+                request.getTransactionDate(),
+                B2BUnitTransaction.TransactionType.CREDIT_CARD_PAYMENT,
+                normalizeMoney(request.getAmount()),
+                BigDecimal.ZERO,
+                request.getDescription(),
+                B2BUnitTransaction.ReferenceType.PAYMENT_TRANSACTION,
+                null,
+                null,
+                facility,
+                normalizeMoney(request.getAmount()),
+                null,
+                request.getBankAccountId(),
+                null,
+                null,
+                null
+        );
+        return B2BUnitPaymentTransactionResponse.fromEntity(transaction);
+    }
+
+    public B2BUnitPaymentTransactionResponse createBankPayment(Long b2bUnitId, BankPaymentCreateRequest request) {
+        enforceCreateAccess("CARI users cannot create payment transactions");
+        validateBaseAmountAndDate(request.getTransactionDate(), request.getAmount());
+        requireBankAccount(request.getBankAccountId());
+
+        Facility facility = resolveOptionalFacility(request.getFacilityId(), b2bUnitId);
+        B2BUnitTransaction transaction = createTransactionRecord(
+                b2bUnitId,
+                request.getTransactionDate(),
+                B2BUnitTransaction.TransactionType.BANK_PAYMENT,
+                normalizeMoney(request.getAmount()),
+                BigDecimal.ZERO,
+                request.getDescription(),
+                B2BUnitTransaction.ReferenceType.PAYMENT_TRANSACTION,
+                null,
+                null,
+                facility,
+                normalizeMoney(request.getAmount()),
+                null,
+                request.getBankAccountId(),
+                null,
+                null,
+                null
+        );
+        return B2BUnitPaymentTransactionResponse.fromEntity(transaction);
+    }
+
+    public B2BUnitPaymentTransactionResponse createCheckPayment(Long b2bUnitId, CheckPaymentCreateRequest request) {
+        enforceCreateAccess("CARI users cannot create payment transactions");
+        validateBaseAmountAndDate(request.getTransactionDate(), request.getAmount());
+        validateDueDateAndSerial(request.getDueDate(), request.getSerialNumber());
+
+        Facility facility = resolveOptionalFacility(request.getFacilityId(), b2bUnitId);
+        B2BUnitTransaction transaction = createTransactionRecord(
+                b2bUnitId,
+                request.getTransactionDate(),
+                B2BUnitTransaction.TransactionType.CHECK_PAYMENT,
+                normalizeMoney(request.getAmount()),
+                BigDecimal.ZERO,
+                request.getDescription(),
+                B2BUnitTransaction.ReferenceType.PAYMENT_TRANSACTION,
+                null,
+                null,
+                facility,
+                normalizeMoney(request.getAmount()),
+                null,
+                null,
+                request.getDueDate(),
+                request.getSerialNumber(),
+                null
+        );
+        return B2BUnitPaymentTransactionResponse.fromEntity(transaction);
+    }
+
+    public B2BUnitPaymentTransactionResponse createPromissoryNotePayment(Long b2bUnitId,
+                                                                         PromissoryNotePaymentCreateRequest request) {
+        enforceCreateAccess("CARI users cannot create payment transactions");
+        validateBaseAmountAndDate(request.getTransactionDate(), request.getAmount());
+        validateDueDateAndSerial(request.getDueDate(), request.getSerialNumber());
+
+        Facility facility = resolveOptionalFacility(request.getFacilityId(), b2bUnitId);
+        B2BUnitTransaction transaction = createTransactionRecord(
+                b2bUnitId,
+                request.getTransactionDate(),
+                B2BUnitTransaction.TransactionType.PROMISSORY_NOTE_PAYMENT,
+                normalizeMoney(request.getAmount()),
+                BigDecimal.ZERO,
+                request.getDescription(),
+                B2BUnitTransaction.ReferenceType.PAYMENT_TRANSACTION,
+                null,
+                null,
+                facility,
+                normalizeMoney(request.getAmount()),
+                null,
+                null,
+                request.getDueDate(),
+                request.getSerialNumber(),
+                null
+        );
+        return B2BUnitPaymentTransactionResponse.fromEntity(transaction);
+    }
+
     @Transactional(readOnly = true)
     public B2BUnitCollectionTransactionResponse getCollectionById(Long b2bUnitId, Long transactionId) {
         B2BUnit b2bUnit = b2bUnitRepository.findByIdAndActiveTrue(b2bUnitId)
@@ -349,6 +499,22 @@ public class B2BUnitTransactionService {
         }
 
         return B2BUnitCollectionTransactionResponse.fromEntity(transaction);
+    }
+
+    @Transactional(readOnly = true)
+    public B2BUnitPaymentTransactionResponse getPaymentById(Long b2bUnitId, Long transactionId) {
+        B2BUnit b2bUnit = b2bUnitRepository.findByIdAndActiveTrue(b2bUnitId)
+                .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+        enforceObjectAccess(b2bUnit.getId());
+
+        B2BUnitTransaction transaction = transactionRepository.findByIdAndB2bUnitId(transactionId, b2bUnitId)
+                .orElseThrow(() -> new RuntimeException("Payment transaction not found"));
+
+        if (!PAYMENT_TYPES.contains(transaction.getTransactionType())) {
+            throw new RuntimeException("Payment transaction not found");
+        }
+
+        return B2BUnitPaymentTransactionResponse.fromEntity(transaction);
     }
 
     @Transactional(readOnly = true)

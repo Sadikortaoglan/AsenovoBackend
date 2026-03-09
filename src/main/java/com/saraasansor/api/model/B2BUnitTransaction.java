@@ -106,6 +106,11 @@ public class B2BUnitTransaction {
         BANK_COLLECTION,
         CHECK_COLLECTION,
         PROMISSORY_NOTE_COLLECTION,
+        CASH_PAYMENT,
+        CREDIT_CARD_PAYMENT,
+        BANK_PAYMENT,
+        CHECK_PAYMENT,
+        PROMISSORY_NOTE_PAYMENT,
         MANUAL_DEBIT,
         MANUAL_CREDIT,
         OPENING_BALANCE
@@ -113,7 +118,8 @@ public class B2BUnitTransaction {
 
     public enum ReferenceType {
         MANUAL_TRANSACTION,
-        COLLECTION_TRANSACTION
+        COLLECTION_TRANSACTION,
+        PAYMENT_TRANSACTION
     }
 
     public enum PaymentProvider {

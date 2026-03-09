@@ -29,5 +29,15 @@ public interface B2BUnitTransactionRepository extends JpaRepository<B2BUnitTrans
     @EntityGraph(attributePaths = {"b2bUnit", "facility"})
     java.util.Optional<B2BUnitTransaction> findByIdAndB2bUnitId(Long id, Long b2bUnitId);
 
+    java.util.List<B2BUnitTransaction> findByB2bUnitIdAndTransactionDateBetweenOrderByTransactionDateAscIdAsc(Long b2bUnitId,
+                                                                                                               java.time.LocalDate startDate,
+                                                                                                               java.time.LocalDate endDate);
+
+    java.util.Optional<B2BUnitTransaction> findTopByB2bUnitIdAndTransactionDateLessThanOrderByTransactionDateDescIdDesc(Long b2bUnitId,
+                                                                                                                          java.time.LocalDate date);
+
+    java.util.Optional<B2BUnitTransaction> findTopByB2bUnitIdAndTransactionDateLessThanEqualOrderByTransactionDateDescIdDesc(Long b2bUnitId,
+                                                                                                                               java.time.LocalDate date);
+
     java.util.Optional<B2BUnitTransaction> findTopByB2bUnitIdOrderByTransactionDateDescIdDesc(Long b2bUnitId);
 }
