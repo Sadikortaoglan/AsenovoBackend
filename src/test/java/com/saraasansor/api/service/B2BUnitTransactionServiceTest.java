@@ -10,6 +10,8 @@ import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.model.User;
 import com.saraasansor.api.repository.B2BUnitRepository;
 import com.saraasansor.api.repository.B2BUnitTransactionRepository;
+import com.saraasansor.api.repository.BankAccountRepository;
+import com.saraasansor.api.repository.CashAccountRepository;
 import com.saraasansor.api.repository.FacilityRepository;
 import com.saraasansor.api.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -55,13 +57,26 @@ class B2BUnitTransactionServiceTest {
     private FacilityRepository facilityRepository;
 
     @Mock
+    private CashAccountRepository cashAccountRepository;
+
+    @Mock
+    private BankAccountRepository bankAccountRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     private B2BUnitTransactionService service;
 
     @BeforeEach
     void setUp() {
-        service = new B2BUnitTransactionService(transactionRepository, b2bUnitRepository, facilityRepository, userRepository);
+        service = new B2BUnitTransactionService(
+                transactionRepository,
+                b2bUnitRepository,
+                facilityRepository,
+                cashAccountRepository,
+                bankAccountRepository,
+                userRepository
+        );
     }
 
     @AfterEach

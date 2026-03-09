@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public class B2BUnitTransactionResponse {
+public class B2BUnitCollectionTransactionResponse {
 
     private Long id;
     private Long b2bUnitId;
@@ -17,9 +17,6 @@ public class B2BUnitTransactionResponse {
     private BigDecimal debitAmount;
     private BigDecimal creditAmount;
     private BigDecimal balanceAfterTransaction;
-    private BigDecimal debit;
-    private BigDecimal credit;
-    private BigDecimal balance;
     private String description;
     private Long cashAccountId;
     private Long bankAccountId;
@@ -29,11 +26,8 @@ public class B2BUnitTransactionResponse {
     private B2BUnitTransaction.TransactionStatus status;
     private LocalDateTime createdAt;
 
-    public B2BUnitTransactionResponse() {
-    }
-
-    public static B2BUnitTransactionResponse fromEntity(B2BUnitTransaction transaction) {
-        B2BUnitTransactionResponse response = new B2BUnitTransactionResponse();
+    public static B2BUnitCollectionTransactionResponse fromEntity(B2BUnitTransaction transaction) {
+        B2BUnitCollectionTransactionResponse response = new B2BUnitCollectionTransactionResponse();
         response.setId(transaction.getId());
         response.setB2bUnitId(transaction.getB2bUnit() != null ? transaction.getB2bUnit().getId() : null);
         response.setFacilityId(transaction.getFacility() != null ? transaction.getFacility().getId() : null);
@@ -43,9 +37,6 @@ public class B2BUnitTransactionResponse {
         response.setDebitAmount(transaction.getDebitAmount());
         response.setCreditAmount(transaction.getCreditAmount());
         response.setBalanceAfterTransaction(transaction.getBalanceAfterTransaction());
-        response.setDebit(transaction.getDebitAmount());
-        response.setCredit(transaction.getCreditAmount());
-        response.setBalance(transaction.getBalanceAfterTransaction());
         response.setDescription(transaction.getDescription());
         response.setCashAccountId(transaction.getCashAccountId());
         response.setBankAccountId(transaction.getBankAccountId());
@@ -127,30 +118,6 @@ public class B2BUnitTransactionResponse {
 
     public void setBalanceAfterTransaction(BigDecimal balanceAfterTransaction) {
         this.balanceAfterTransaction = balanceAfterTransaction;
-    }
-
-    public BigDecimal getDebit() {
-        return debit;
-    }
-
-    public void setDebit(BigDecimal debit) {
-        this.debit = debit;
-    }
-
-    public BigDecimal getCredit() {
-        return credit;
-    }
-
-    public void setCredit(BigDecimal credit) {
-        this.credit = credit;
-    }
-
-    public BigDecimal getBalance() {
-        return balance;
-    }
-
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
     }
 
     public String getDescription() {

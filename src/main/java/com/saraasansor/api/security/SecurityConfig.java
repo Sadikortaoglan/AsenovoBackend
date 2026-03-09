@@ -134,6 +134,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/b2b-units/*/account-transactions/manual-debit").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.POST, "/b2b-units/*/account-transactions/manual-credit").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/b2b-units/*/account-transactions/*").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                // B2BUnit collection endpoints (detail collection section)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/collections/cash").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/collections/paytr").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/collections/credit-card").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/collections/bank").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/collections/check").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.POST, "/b2b-units/*/collections/promissory-note").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.GET, "/b2b-units/*/collections/*").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit invoice endpoints (detail invoice section)
                 .requestMatchers(HttpMethod.POST, "/b2b-units/*/invoices/purchase").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.POST, "/b2b-units/*/invoices/sales").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
@@ -164,6 +172,9 @@ public class SecurityConfig {
                 // Invoice lookup endpoints
                 .requestMatchers(HttpMethod.GET, "/warehouses/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/elevators/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                // Collection lookup endpoints
+                .requestMatchers(HttpMethod.GET, "/cash-accounts/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.GET, "/bank-accounts/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 // E-Invoice stub endpoint
                 .requestMatchers(HttpMethod.GET, "/einvoice/query").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 // Everything else requires authentication

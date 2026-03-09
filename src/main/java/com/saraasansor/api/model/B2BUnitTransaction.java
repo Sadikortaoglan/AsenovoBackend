@@ -59,6 +59,22 @@ public class B2BUnitTransaction {
     @Column(name = "reference_code")
     private String referenceCode;
 
+    @Column(name = "cash_account_id")
+    private Long cashAccountId;
+
+    @Column(name = "bank_account_id")
+    private Long bankAccountId;
+
+    @Column(name = "due_date")
+    private LocalDate dueDate;
+
+    @Column(name = "serial_number")
+    private String serialNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_provider", length = 30)
+    private PaymentProvider paymentProvider;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "reference_type", length = 40)
     private ReferenceType referenceType;
@@ -84,13 +100,24 @@ public class B2BUnitTransaction {
         SALE,
         COLLECTION,
         PAYMENT,
+        CASH_COLLECTION,
+        PAYTR_COLLECTION,
+        CREDIT_CARD_COLLECTION,
+        BANK_COLLECTION,
+        CHECK_COLLECTION,
+        PROMISSORY_NOTE_COLLECTION,
         MANUAL_DEBIT,
         MANUAL_CREDIT,
         OPENING_BALANCE
     }
 
     public enum ReferenceType {
-        MANUAL_TRANSACTION
+        MANUAL_TRANSACTION,
+        COLLECTION_TRANSACTION
+    }
+
+    public enum PaymentProvider {
+        PAYTR
     }
 
     public enum TransactionStatus {
@@ -218,6 +245,46 @@ public class B2BUnitTransaction {
 
     public void setReferenceCode(String referenceCode) {
         this.referenceCode = referenceCode;
+    }
+
+    public Long getCashAccountId() {
+        return cashAccountId;
+    }
+
+    public void setCashAccountId(Long cashAccountId) {
+        this.cashAccountId = cashAccountId;
+    }
+
+    public Long getBankAccountId() {
+        return bankAccountId;
+    }
+
+    public void setBankAccountId(Long bankAccountId) {
+        this.bankAccountId = bankAccountId;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public String getSerialNumber() {
+        return serialNumber;
+    }
+
+    public void setSerialNumber(String serialNumber) {
+        this.serialNumber = serialNumber;
+    }
+
+    public PaymentProvider getPaymentProvider() {
+        return paymentProvider;
+    }
+
+    public void setPaymentProvider(PaymentProvider paymentProvider) {
+        this.paymentProvider = paymentProvider;
     }
 
     public ReferenceType getReferenceType() {
