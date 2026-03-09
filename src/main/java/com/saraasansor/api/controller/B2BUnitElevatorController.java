@@ -1,10 +1,10 @@
 package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
-import com.saraasansor.api.dto.B2BUnitFacilityCreateRequest;
-import com.saraasansor.api.dto.FacilityDto;
-import com.saraasansor.api.dto.LookupDto;
-import com.saraasansor.api.service.FacilityService;
+import com.saraasansor.api.dto.B2BUnitElevatorCreateRequest;
+import com.saraasansor.api.dto.B2BUnitElevatorListItemResponse;
+import com.saraasansor.api.dto.ElevatorDto;
+import com.saraasansor.api.service.ElevatorService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,46 +19,37 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/b2b-units")
-public class B2BUnitFacilityController {
+public class B2BUnitElevatorController {
 
-    private final FacilityService facilityService;
+    private final ElevatorService elevatorService;
 
-    public B2BUnitFacilityController(FacilityService facilityService) {
-        this.facilityService = facilityService;
+    public B2BUnitElevatorController(ElevatorService elevatorService) {
+        this.elevatorService = elevatorService;
     }
 
-    @GetMapping("/{id}/facilities")
-    public ResponseEntity<ApiResponse<Page<FacilityDto>>> getFacilitiesByB2BUnit(
+    @GetMapping("/{id}/elevators")
+    public ResponseEntity<ApiResponse<Page<B2BUnitElevatorListItemResponse>>> getElevatorsByB2BUnit(
             @PathVariable Long id,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id,asc") String sort) {
-        Page<FacilityDto> facilities = facilityService.getFacilitiesByB2BUnit(
+        Page<B2BUnitElevatorListItemResponse> elevators = elevatorService.getElevatorsByB2BUnit(
                 id,
                 search,
                 PageRequest.of(page, size, parseSort(sort))
         );
-        return ResponseEntity.ok(ApiResponse.success(facilities));
+        return ResponseEntity.ok(ApiResponse.success(elevators));
     }
 
-    @PostMapping("/{id}/facilities")
-    public ResponseEntity<ApiResponse<FacilityDto>> createFacilityForB2BUnit(
+    @PostMapping("/{id}/elevators")
+    public ResponseEntity<ApiResponse<ElevatorDto>> createElevatorForB2BUnit(
             @PathVariable Long id,
-            @Valid @RequestBody B2BUnitFacilityCreateRequest request) {
-        FacilityDto created = facilityService.createFacilityForB2BUnit(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Facility successfully created", created));
-    }
-
-    @GetMapping("/{id}/facilities/lookup")
-    public ResponseEntity<ApiResponse<List<LookupDto>>> getFacilityLookupByB2BUnit(
-            @PathVariable Long id,
-            @RequestParam(required = false) String query) {
-        return ResponseEntity.ok(ApiResponse.success(facilityService.getLookupByB2BUnit(id, query)));
+            @Valid @RequestBody B2BUnitElevatorCreateRequest request) {
+        ElevatorDto created = elevatorService.createElevatorForB2BUnit(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Elevator successfully added", created));
     }
 
     private Sort parseSort(String sort) {

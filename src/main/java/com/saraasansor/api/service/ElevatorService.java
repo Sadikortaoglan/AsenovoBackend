@@ -1,17 +1,23 @@
 package com.saraasansor.api.service;
 
+import com.saraasansor.api.dto.B2BUnitElevatorCreateRequest;
+import com.saraasansor.api.dto.B2BUnitElevatorListItemResponse;
 import com.saraasansor.api.dto.ElevatorDto;
-import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.ElevatorStatusDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.WarningDto;
 import com.saraasansor.api.dto.WarningElevatorDto;
 import com.saraasansor.api.dto.WarningGroupDto;
 import com.saraasansor.api.exception.NotFoundException;
+import com.saraasansor.api.model.B2BUnit;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.model.LabelType;
+import com.saraasansor.api.model.User;
+import com.saraasansor.api.repository.B2BUnitRepository;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.FacilityRepository;
+import com.saraasansor.api.repository.UserRepository;
 import com.saraasansor.api.tenant.TenantContext;
 import com.saraasansor.api.tenant.data.TenantDescriptor;
 import com.saraasansor.api.util.AuditLogger;
@@ -22,7 +28,14 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -39,6 +52,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,6 +64,12 @@ public class ElevatorService {
 
     @Autowired
     private FacilityRepository facilityRepository;
+
+    @Autowired
+    private B2BUnitRepository b2bUnitRepository;
+
+    @Autowired
+    private UserRepository userRepository;
     
     @Autowired
     private AuditLogger auditLogger;
@@ -58,6 +78,36 @@ public class ElevatorService {
         return elevatorRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
                 .map(ElevatorDto::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<B2BUnitElevatorListItemResponse> getElevatorsByB2BUnit(Long b2bUnitId, String search, Pageable pageable) {
+        enforceReadableB2BUnitScopeAccess(b2bUnitId);
+
+        List<Facility> facilities = facilityRepository.findByB2bUnitIdAndActiveTrue(b2bUnitId);
+        if (facilities.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        Map<String, Facility> facilityByName = facilities.stream()
+                .collect(Collectors.toMap(
+                        facility -> normalizeKey(facility.getName()),
+                        facility -> facility,
+                        (existing, ignored) -> existing
+                ));
+        List<String> buildingNames = new ArrayList<>(facilityByName.keySet());
+
+        Page<Elevator> elevators = elevatorRepository.searchByBuildingNames(
+                buildingNames,
+                normalizeNullable(search),
+                pageable
+        );
+
+        List<B2BUnitElevatorListItemResponse> content = elevators.getContent().stream()
+                .map(elevator -> toListItem(elevator, facilityByName))
+                .toList();
+
+        return new PageImpl<>(content, pageable, elevators.getTotalElements());
     }
 
     @Transactional(readOnly = true)
@@ -268,6 +318,21 @@ public class ElevatorService {
         auditLogger.log("ELEVATOR_CREATED", "ELEVATOR", saved.getId(), metadata);
         
         return ElevatorDto.fromEntity(saved);
+    }
+
+    public ElevatorDto createElevatorForB2BUnit(Long b2bUnitId, B2BUnitElevatorCreateRequest request) {
+        enforceNonCariWrite();
+        enforceReadableB2BUnitScopeAccess(b2bUnitId);
+
+        Facility facility = facilityRepository.findByIdAndActiveTrue(request.getFacilityId())
+                .orElseThrow(() -> new RuntimeException("Facility not found"));
+        Long facilityB2bUnitId = facility.getB2bUnit() != null ? facility.getB2bUnit().getId() : null;
+        if (facilityB2bUnitId == null || !facilityB2bUnitId.equals(b2bUnitId)) {
+            throw new AccessDeniedException("Facility does not belong to selected B2B unit");
+        }
+
+        ElevatorDto dto = mapScopedCreateRequestToElevatorDto(request, facility);
+        return createElevator(dto);
     }
     
     public ElevatorDto updateElevator(Long id, ElevatorDto dto) {
@@ -657,6 +722,95 @@ public class ElevatorService {
                 throw new RuntimeException("End date must be after label date");
             }
         }
+    }
+
+    private ElevatorDto mapScopedCreateRequestToElevatorDto(B2BUnitElevatorCreateRequest request, Facility facility) {
+        ElevatorDto dto = new ElevatorDto();
+        dto.setIdentityNumber(request.getIdentityNumber());
+        dto.setElevatorNumber(request.getName());
+        dto.setBuildingName(facility.getName());
+        dto.setAddress(StringUtils.hasText(request.getAddressText()) ? request.getAddressText() : facility.getAddressText());
+        dto.setDriveType(request.getMaintenanceType());
+        dto.setMachineBrand(request.getBrand());
+        dto.setDoorType(request.getDoorType());
+        dto.setInstallationYear(request.getConstructionYear());
+        dto.setFloorCount(request.getStopCount());
+        dto.setCapacity(request.getCapacity());
+        dto.setSpeed(request.getSpeed());
+        dto.setTechnicalNotes(request.getDescription());
+        dto.setLabelDate(request.getLabelDate());
+        dto.setInspectionDate(request.getLabelDate());
+        dto.setLabelType(request.getLabelType());
+        dto.setExpiryDate(request.getExpiryDate() != null ? request.getExpiryDate() : request.getWarrantyEndDate());
+        dto.setManagerName(request.getManagerName());
+        dto.setManagerTcIdentityNo(request.getManagerTcIdentityNo());
+        dto.setManagerPhone(request.getManagerPhone());
+        dto.setManagerEmail(request.getManagerEmail());
+        return dto;
+    }
+
+    private B2BUnitElevatorListItemResponse toListItem(Elevator elevator, Map<String, Facility> facilityByName) {
+        Facility facility = facilityByName.get(normalizeKey(elevator.getBuildingName()));
+        B2BUnitElevatorListItemResponse response = new B2BUnitElevatorListItemResponse();
+        response.setId(elevator.getId());
+        response.setName(StringUtils.hasText(elevator.getElevatorNumber()) ? elevator.getElevatorNumber() : elevator.getIdentityNumber());
+        response.setFacilityId(facility != null ? facility.getId() : null);
+        response.setFacilityName(elevator.getBuildingName());
+        response.setIdentityNumber(elevator.getIdentityNumber());
+        response.setBrand(elevator.getMachineBrand());
+        response.setStatus(elevator.getStatus() != null ? elevator.getStatus().name() : null);
+        response.setCreatedAt(elevator.getCreatedAt());
+        return response;
+    }
+
+    private String normalizeKey(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void enforceReadableB2BUnitScopeAccess(Long b2bUnitId) {
+        B2BUnit b2bUnit = b2bUnitRepository.findByIdAndActiveTrue(b2bUnitId)
+                .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+
+        User currentUser = getCurrentUser();
+        if (currentUser == null || currentUser.getRole() != User.Role.CARI_USER) {
+            return;
+        }
+
+        Long ownB2bUnitId = currentUser.getB2bUnit() != null ? currentUser.getB2bUnit().getId() : null;
+        if (ownB2bUnitId == null || !ownB2bUnitId.equals(b2bUnit.getId())) {
+            throw new AccessDeniedException("CARI user can only access own B2B unit elevators");
+        }
+    }
+
+    private void enforceNonCariWrite() {
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.getRole() == User.Role.CARI_USER) {
+            throw new AccessDeniedException("CARI user cannot modify elevators");
+        }
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+        String username = null;
+        if (principal instanceof UserDetails userDetails) {
+            username = userDetails.getUsername();
+        } else if (principal instanceof String principalName && !"anonymousUser".equals(principalName)) {
+            username = principalName;
+        }
+
+        if (!StringUtils.hasText(username)) {
+            return null;
+        }
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        return userOpt.orElse(null);
     }
 
     private float drawInfoGrid(PDPageContentStream content,

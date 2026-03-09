@@ -3,6 +3,7 @@ package com.saraasansor.api.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saraasansor.api.config.GlobalExceptionHandler;
 import com.saraasansor.api.dto.FacilityDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.service.FacilityService;
 import com.saraasansor.api.tenant.TenantContext;
@@ -146,6 +147,45 @@ class B2BUnitFacilityControllerTenantIntegrationTest {
                         .content(requestBody))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void facilityLookupEndpointShouldUseResolvedTenantContext() throws Exception {
+        FacilityService facilityService = mock(FacilityService.class);
+        TenantRegistryService tenantRegistryService = mock(TenantRegistryService.class);
+
+        when(tenantRegistryService.findActiveBySubdomain("acme"))
+                .thenReturn(Optional.of(new TenantDescriptor(
+                        1L,
+                        "Acme",
+                        "acme",
+                        Tenant.TenancyMode.SHARED_SCHEMA,
+                        "tenant_acme",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "STARTER"
+                )));
+
+        when(facilityService.getLookupByB2BUnit(5L, "fac"))
+                .thenReturn(List.of(new LookupDto(10L, "Facility A")));
+
+        MockMvc mockMvc = MockMvcBuilders
+                .standaloneSetup(new B2BUnitFacilityController(facilityService))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .addFilter(new TenantResolverFilter(tenantRegistryService))
+                .build();
+
+        mockMvc.perform(get("/b2b-units/5/facilities/lookup?query=fac").with(host("acme.example.com")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].id").value(10))
+                .andExpect(jsonPath("$.data[0].name").value("Facility A"));
+
+        verify(facilityService, times(1)).getLookupByB2BUnit(5L, "fac");
+        assertThat(TenantContext.hasTenant()).isFalse();
     }
 
     private RequestPostProcessor host(String host) {

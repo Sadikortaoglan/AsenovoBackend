@@ -197,6 +197,18 @@ public class FacilityService {
     }
 
     @Transactional(readOnly = true)
+    public List<LookupDto> getLookupByB2BUnit(Long b2bUnitId, String query) {
+        enforceReadableB2BUnitScopeAccess(b2bUnitId);
+        return facilityRepository.findLookupByB2bUnitId(
+                        b2bUnitId,
+                        normalizeNullable(query),
+                        PageRequest.of(0, 200, Sort.by(Sort.Direction.ASC, "name"))
+                ).stream()
+                .map(facility -> new LookupDto(facility.getId(), facility.getName()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public FacilityDto getFacilityById(Long id) {
         Facility facility = findAccessibleFacility(id);
         return FacilityDto.fromEntity(facility, canViewDoorPassword(getCurrentUser()));
