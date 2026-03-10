@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -36,4 +37,13 @@ public interface FacilityRepository extends JpaRepository<Facility, Long> {
     boolean existsByB2bUnitIdAndNameIgnoreCaseAndActiveTrueAndIdNot(Long b2bUnitId, String name, Long id);
 
     long countByB2bUnitIdAndActiveTrue(Long b2bUnitId);
+
+    @EntityGraph(attributePaths = {"b2bUnit"})
+    List<Facility> findByB2bUnitIdAndActiveTrue(Long b2bUnitId);
+
+    @EntityGraph(attributePaths = {"b2bUnit"})
+    @Query("SELECT f FROM Facility f WHERE f.active = true AND f.b2bUnit.id = :b2bUnitId AND " +
+            "(:query IS NULL OR :query = '' OR LOWER(f.name) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+            "ORDER BY f.name ASC")
+    List<Facility> findLookupByB2bUnitId(@Param("b2bUnitId") Long b2bUnitId, @Param("query") String query, Pageable pageable);
 }

@@ -1,5 +1,6 @@
 package com.saraasansor.api.service;
 
+import com.saraasansor.api.dto.B2BUnitDetailResponse;
 import com.saraasansor.api.dto.UpdateB2BUnitRequest;
 import com.saraasansor.api.model.B2BUnit;
 import com.saraasansor.api.model.User;
@@ -160,6 +161,75 @@ class B2BUnitServiceTest {
         B2BUnit found = b2bUnitService.getB2BUnitById(400L);
 
         assertThat(found.getId()).isEqualTo(400L);
+    }
+
+    @Test
+    void detailShouldReturnBaseDataWithMenuAndZeroSummary() {
+        B2BUnit targetUnit = new B2BUnit();
+        targetUnit.setId(410L);
+        targetUnit.setName("Target Unit");
+        targetUnit.setEmail("cari@example.com");
+        targetUnit.setPhone("+905551112233");
+        targetUnit.setTaxNumber("1234567890");
+        targetUnit.setTaxOffice("Kadikoy");
+        targetUnit.setAddress("Istanbul");
+        targetUnit.setPortalUsername("cari-410");
+        targetUnit.setActive(true);
+
+        authenticateAs("staff-user");
+        User staffUser = new User();
+        staffUser.setUsername("staff-user");
+        staffUser.setRole(User.Role.STAFF_USER);
+        staffUser.setUserType(User.UserType.STAFF);
+
+        when(userRepository.findByUsername("staff-user")).thenReturn(Optional.of(staffUser));
+        when(b2bUnitRepository.findByIdAndActiveTrue(410L)).thenReturn(Optional.of(targetUnit));
+
+        B2BUnitDetailResponse detail = b2bUnitService.getB2BUnitDetail(410L);
+
+        assertThat(detail.getId()).isEqualTo(410L);
+        assertThat(detail.getCode()).isEqualTo("cari-410");
+        assertThat(detail.getStatus()).isEqualTo("ACTIVE");
+        assertThat(detail.getMenus()).hasSize(6);
+        assertThat(detail.getMenus())
+                .extracting(B2BUnitDetailResponse.MenuItem::getKey)
+                .containsExactly("filter", "invoice", "account-transactions", "collection", "payment", "reporting");
+        assertThat(detail.getSummary()).isNotNull();
+        assertThat(detail.getSummary().getTotalIncome()).isEqualByComparingTo("0");
+        assertThat(detail.getSummary().getTotalExpense()).isEqualByComparingTo("0");
+        assertThat(detail.getSummary().getTotalBalance()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void detailShouldThrowNotFoundWhenB2BUnitDoesNotExist() {
+        when(b2bUnitRepository.findByIdAndActiveTrue(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> b2bUnitService.getB2BUnitDetail(999L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("B2B unit not found");
+    }
+
+    @Test
+    void detailShouldForbidCariUserForAnotherB2BUnit() {
+        B2BUnit targetUnit = new B2BUnit();
+        targetUnit.setId(420L);
+        targetUnit.setName("Another Unit");
+
+        authenticateAs("cari-username");
+        User currentUser = new User();
+        currentUser.setUsername("cari-username");
+        currentUser.setRole(User.Role.CARI_USER);
+        currentUser.setUserType(User.UserType.CARI);
+        B2BUnit ownUnit = new B2BUnit();
+        ownUnit.setId(421L);
+        currentUser.setB2bUnit(ownUnit);
+
+        when(userRepository.findByUsername("cari-username")).thenReturn(Optional.of(currentUser));
+        when(b2bUnitRepository.findByIdAndActiveTrue(420L)).thenReturn(Optional.of(targetUnit));
+
+        assertThatThrownBy(() -> b2bUnitService.getB2BUnitDetail(420L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("only access own B2B unit");
     }
 
     @Test

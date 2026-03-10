@@ -3,16 +3,23 @@ package com.saraasansor.api.controller;
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.CreateFacilityRequest;
 import com.saraasansor.api.dto.FacilityAddressDto;
+import com.saraasansor.api.dto.FacilityDetailResponse;
 import com.saraasansor.api.dto.FacilityDto;
 import com.saraasansor.api.dto.FacilityImportResultDto;
 import com.saraasansor.api.dto.FacilityMovementDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.UpdateFacilityRequest;
 import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.service.FacilityService;
+import com.saraasansor.api.service.FacilityService.FacilityAttachment;
 import jakarta.validation.Valid;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -26,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/facilities")
@@ -57,9 +66,36 @@ public class FacilityController {
         return ResponseEntity.ok(ApiResponse.success(facilities));
     }
 
+    @GetMapping("/lookup")
+    public ResponseEntity<ApiResponse<List<LookupDto>>> getFacilityLookup(
+            @RequestParam(required = false) Long b2bUnitId,
+            @RequestParam(required = false) String query) {
+        return ResponseEntity.ok(ApiResponse.success(facilityService.getLookup(b2bUnitId, query)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<FacilityDto>> getFacilityById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(facilityService.getFacilityById(id)));
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<ApiResponse<FacilityDetailResponse>> getFacilityDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(facilityService.getFacilityDetail(id)));
+    }
+
+    @GetMapping("/{id}/attachment")
+    public ResponseEntity<?> getFacilityAttachment(@PathVariable Long id) {
+        FacilityAttachment attachment = facilityService.getFacilityAttachment(id);
+        if (attachment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Facility attachment not found"));
+        }
+
+        Resource resource = new FileSystemResource(attachment.filePath());
+        return ResponseEntity.ok()
+                .contentType(resolveMediaType(attachment.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + attachment.fileName() + "\"")
+                .body(resource);
     }
 
     @GetMapping("/{id}/address")
@@ -118,5 +154,15 @@ public class FacilityController {
         }
 
         return Sort.by(Sort.Direction.ASC, sort.trim());
+    }
+
+    private MediaType resolveMediaType(String contentType) {
+        if (StringUtils.hasText(contentType)) {
+            try {
+                return MediaType.parseMediaType(contentType);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

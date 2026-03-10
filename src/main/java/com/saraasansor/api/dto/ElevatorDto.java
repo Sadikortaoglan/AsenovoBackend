@@ -6,7 +6,6 @@ import com.saraasansor.api.model.Elevator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
@@ -16,10 +15,10 @@ public class ElevatorDto {
     @NotBlank(message = "Identity number is required")
     private String identityNumber;
     
-    @NotBlank(message = "Building name is required")
+    @NotNull(message = "Facility id is required")
+    private Long facilityId;
+
     private String buildingName;
-    
-    @NotBlank(message = "Address is required")
     private String address;
     private String elevatorNumber;
     private Integer floorCount;
@@ -84,6 +83,14 @@ public class ElevatorDto {
 
     public void setIdentityNumber(String identityNumber) {
         this.identityNumber = identityNumber;
+    }
+
+    public Long getFacilityId() {
+        return facilityId;
+    }
+
+    public void setFacilityId(Long facilityId) {
+        this.facilityId = facilityId;
     }
 
     public String getBuildingName() {
@@ -309,6 +316,7 @@ public class ElevatorDto {
         ElevatorDto dto = new ElevatorDto();
         dto.setId(elevator.getId());
         dto.setIdentityNumber(elevator.getIdentityNumber());
+        dto.setFacilityId(elevator.getFacility() != null ? elevator.getFacility().getId() : null);
         dto.setBuildingName(elevator.getBuildingName());
         dto.setAddress(elevator.getAddress());
         dto.setElevatorNumber(elevator.getElevatorNumber());

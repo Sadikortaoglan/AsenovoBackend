@@ -3,6 +3,7 @@ package com.saraasansor.api.controller;
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.ElevatorDto;
 import com.saraasansor.api.dto.ElevatorStatusDto;
+import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.service.ElevatorService;
 import jakarta.validation.Valid;
@@ -29,6 +30,13 @@ public class ElevatorController {
     public ResponseEntity<ApiResponse<List<ElevatorDto>>> getAllElevators() {
         List<ElevatorDto> elevators = elevatorService.getAllElevators();
         return ResponseEntity.ok(ApiResponse.success(elevators));
+    }
+
+    @GetMapping("/lookup")
+    public ResponseEntity<ApiResponse<List<LookupDto>>> getLookup(
+            @RequestParam Long facilityId,
+            @RequestParam(required = false) String query) {
+        return ResponseEntity.ok(ApiResponse.success(elevatorService.getLookup(facilityId, query)));
     }
     
     @GetMapping("/{id}/status")

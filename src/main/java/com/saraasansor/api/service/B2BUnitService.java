@@ -1,6 +1,7 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.CreateB2BUnitRequest;
+import com.saraasansor.api.dto.B2BUnitDetailResponse;
 import com.saraasansor.api.dto.UpdateB2BUnitRequest;
 import com.saraasansor.api.model.B2BCurrency;
 import com.saraasansor.api.model.B2BUnit;
@@ -62,6 +63,14 @@ public class B2BUnitService {
                 .orElseThrow(() -> new RuntimeException("B2B unit not found"));
         enforceObjectAccess(unit.getId());
         return unit;
+    }
+
+    @Transactional(readOnly = true)
+    public B2BUnitDetailResponse getB2BUnitDetail(Long id) {
+        B2BUnit unit = b2bUnitRepository.findByIdAndActiveTrue(id)
+                .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+        enforceObjectAccess(unit.getId());
+        return mapToDetailResponse(unit);
     }
 
     @Transactional(readOnly = true)
@@ -296,6 +305,42 @@ public class B2BUnitService {
                 throw new AccessDeniedException("CARI user can only access own B2B unit");
             }
         }
+    }
+
+    private B2BUnitDetailResponse mapToDetailResponse(B2BUnit unit) {
+        B2BUnitDetailResponse response = new B2BUnitDetailResponse();
+        response.setId(unit.getId());
+        response.setCode(resolveCode(unit));
+        response.setName(unit.getName());
+        response.setEmail(unit.getEmail());
+        response.setPhone(unit.getPhone());
+        response.setTaxNumber(unit.getTaxNumber());
+        response.setTaxOffice(unit.getTaxOffice());
+        response.setAddress(unit.getAddress());
+        response.setStatus(Boolean.TRUE.equals(unit.getActive()) ? "ACTIVE" : "PASSIVE");
+        response.setCreatedAt(unit.getCreatedAt());
+        response.setUpdatedAt(unit.getUpdatedAt());
+        response.setMenus(buildDetailMenus());
+        response.setSummary(new B2BUnitDetailResponse.Summary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+        return response;
+    }
+
+    private List<B2BUnitDetailResponse.MenuItem> buildDetailMenus() {
+        return List.of(
+                new B2BUnitDetailResponse.MenuItem("filter", "Filter"),
+                new B2BUnitDetailResponse.MenuItem("invoice", "Invoice"),
+                new B2BUnitDetailResponse.MenuItem("account-transactions", "Account Transactions"),
+                new B2BUnitDetailResponse.MenuItem("collection", "Collection"),
+                new B2BUnitDetailResponse.MenuItem("payment", "Payment"),
+                new B2BUnitDetailResponse.MenuItem("reporting", "Reporting")
+        );
+    }
+
+    private String resolveCode(B2BUnit unit) {
+        if (StringUtils.hasText(unit.getPortalUsername())) {
+            return unit.getPortalUsername();
+        }
+        return unit.getId() != null ? "B2B-" + unit.getId() : null;
     }
 
     private User getCurrentUser() {
