@@ -27,6 +27,26 @@ public interface ElevatorRepository extends JpaRepository<Elevator, Long> {
 
     List<Elevator> findByBuildingNameIgnoreCase(String buildingName);
 
+    List<Elevator> findByFacilityId(Long facilityId);
+
+    @Query("SELECT e FROM Elevator e WHERE e.facility.id IN :facilityIds")
+    Page<Elevator> searchByFacilityIds(@Param("facilityIds") List<Long> facilityIds, Pageable pageable);
+
+    @Query("SELECT e FROM Elevator e WHERE e.facility.id IN :facilityIds")
+    List<Elevator> findByFacilityIds(@Param("facilityIds") List<Long> facilityIds);
+
+    @Query("SELECT e FROM Elevator e WHERE " +
+            "(e.facility.id IN :facilityIds OR (e.facility IS NULL AND LOWER(e.buildingName) IN :buildingNames)) " +
+            "AND (:search IS NULL OR :search = '' OR " +
+            "LOWER(COALESCE(e.elevatorNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(COALESCE(e.buildingName, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(COALESCE(e.identityNumber, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(COALESCE(e.machineBrand, '')) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Elevator> searchByFacilityIdsOrLegacyBuildingNames(@Param("facilityIds") List<Long> facilityIds,
+                                                           @Param("buildingNames") List<String> buildingNames,
+                                                           @Param("search") String search,
+                                                           Pageable pageable);
+
     @Query("SELECT e FROM Elevator e WHERE LOWER(e.buildingName) IN :buildingNames")
     List<Elevator> findByBuildingNames(@Param("buildingNames") List<String> buildingNames);
 

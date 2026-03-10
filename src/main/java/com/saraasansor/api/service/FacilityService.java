@@ -1,6 +1,8 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.CreateFacilityRequest;
+import com.saraasansor.api.dto.FacilityDetailResponse;
+import com.saraasansor.api.dto.FacilityElevatorSummaryResponse;
 import com.saraasansor.api.dto.B2BUnitFacilityCreateRequest;
 import com.saraasansor.api.dto.FacilityAddressDto;
 import com.saraasansor.api.dto.FacilityDto;
@@ -40,6 +42,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -49,6 +52,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -127,6 +132,34 @@ public class FacilityService {
     private final DistrictRepository districtRepository;
     private final NeighborhoodRepository neighborhoodRepository;
     private final RegionRepository regionRepository;
+    private final FileStorageService fileStorageService;
+
+    @Autowired
+    public FacilityService(FacilityRepository facilityRepository,
+                           B2BUnitRepository b2bUnitRepository,
+                           UserRepository userRepository,
+                           ElevatorRepository elevatorRepository,
+                           MaintenanceRepository maintenanceRepository,
+                           PaymentReceiptRepository paymentReceiptRepository,
+                           FaultRepository faultRepository,
+                           CityRepository cityRepository,
+                           DistrictRepository districtRepository,
+                           NeighborhoodRepository neighborhoodRepository,
+                           RegionRepository regionRepository,
+                           FileStorageService fileStorageService) {
+        this.facilityRepository = facilityRepository;
+        this.b2bUnitRepository = b2bUnitRepository;
+        this.userRepository = userRepository;
+        this.elevatorRepository = elevatorRepository;
+        this.maintenanceRepository = maintenanceRepository;
+        this.paymentReceiptRepository = paymentReceiptRepository;
+        this.faultRepository = faultRepository;
+        this.cityRepository = cityRepository;
+        this.districtRepository = districtRepository;
+        this.neighborhoodRepository = neighborhoodRepository;
+        this.regionRepository = regionRepository;
+        this.fileStorageService = fileStorageService;
+    }
 
     public FacilityService(FacilityRepository facilityRepository,
                            B2BUnitRepository b2bUnitRepository,
@@ -139,17 +172,20 @@ public class FacilityService {
                            DistrictRepository districtRepository,
                            NeighborhoodRepository neighborhoodRepository,
                            RegionRepository regionRepository) {
-        this.facilityRepository = facilityRepository;
-        this.b2bUnitRepository = b2bUnitRepository;
-        this.userRepository = userRepository;
-        this.elevatorRepository = elevatorRepository;
-        this.maintenanceRepository = maintenanceRepository;
-        this.paymentReceiptRepository = paymentReceiptRepository;
-        this.faultRepository = faultRepository;
-        this.cityRepository = cityRepository;
-        this.districtRepository = districtRepository;
-        this.neighborhoodRepository = neighborhoodRepository;
-        this.regionRepository = regionRepository;
+        this(
+                facilityRepository,
+                b2bUnitRepository,
+                userRepository,
+                elevatorRepository,
+                maintenanceRepository,
+                paymentReceiptRepository,
+                faultRepository,
+                cityRepository,
+                districtRepository,
+                neighborhoodRepository,
+                regionRepository,
+                new FileStorageService()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -179,21 +215,39 @@ public class FacilityService {
     @Transactional(readOnly = true)
     public List<LookupDto> getLookup(Long b2bUnitId, String query) {
         User currentUser = getCurrentUser();
-        Long effectiveB2bUnitId = b2bUnitId;
         if (isCariUser(currentUser)) {
-            effectiveB2bUnitId = getCariB2bUnitId(currentUser);
-        }
-        if (effectiveB2bUnitId == null) {
-            throw new RuntimeException("b2bUnitId is required");
+            Long ownB2bUnitId = getCariB2bUnitId(currentUser);
+            return facilityRepository.findLookupByB2bUnitId(
+                            ownB2bUnitId,
+                            normalizeNullable(query),
+                            PageRequest.of(0, 200, Sort.by(Sort.Direction.ASC, "name"))
+                    ).stream()
+                    .map(facility -> new LookupDto(facility.getId(), facility.getName()))
+                    .toList();
         }
 
-        return facilityRepository.findLookupByB2bUnitId(
-                        effectiveB2bUnitId,
-                        normalizeNullable(query),
-                        PageRequest.of(0, 200, Sort.by(Sort.Direction.ASC, "name"))
-                ).stream()
-                .map(facility -> new LookupDto(facility.getId(), facility.getName()))
-                .toList();
+        if (b2bUnitId != null) {
+            return facilityRepository.findLookupByB2bUnitId(
+                            b2bUnitId,
+                            normalizeNullable(query),
+                            PageRequest.of(0, 200, Sort.by(Sort.Direction.ASC, "name"))
+                    ).stream()
+                    .map(facility -> new LookupDto(facility.getId(), facility.getName()))
+                    .toList();
+        }
+
+        if (isSystemAdmin(currentUser)) {
+            return facilityRepository.search(
+                            normalizeNullable(query),
+                            null,
+                            null,
+                            PageRequest.of(0, 200, Sort.by(Sort.Direction.ASC, "name"))
+                    ).getContent().stream()
+                    .map(facility -> new LookupDto(facility.getId(), facility.getName()))
+                    .toList();
+        }
+
+        throw new RuntimeException("b2bUnitId is required for this user role");
     }
 
     @Transactional(readOnly = true)
@@ -212,6 +266,26 @@ public class FacilityService {
     public FacilityDto getFacilityById(Long id) {
         Facility facility = findAccessibleFacility(id);
         return FacilityDto.fromEntity(facility, canViewDoorPassword(getCurrentUser()));
+    }
+
+    @Transactional(readOnly = true)
+    public FacilityDetailResponse getFacilityDetail(Long facilityId) {
+        Facility facility = findAccessibleFacility(facilityId);
+        return toFacilityDetailResponse(facility, canViewDoorPassword(getCurrentUser()));
+    }
+
+    @Transactional(readOnly = true)
+    public FacilityDetailResponse getFacilityDetail(Long b2bUnitId, Long facilityId) {
+        Facility facility = findAccessibleFacility(facilityId);
+        enforceReadableB2BUnitScopeAccess(b2bUnitId);
+        validateFacilityBelongsToB2BUnit(facility, b2bUnitId);
+        return toFacilityDetailResponse(facility, canViewDoorPassword(getCurrentUser()));
+    }
+
+    @Transactional(readOnly = true)
+    public FacilityAttachment getFacilityAttachment(Long facilityId) {
+        Facility facility = findAccessibleFacility(facilityId);
+        return resolveFacilityAttachment(facility);
     }
 
     @Transactional(readOnly = true)
@@ -237,6 +311,106 @@ public class FacilityService {
         }
         dto.setAddressText(facility.getAddressText());
         return dto;
+    }
+
+    private FacilityDetailResponse toFacilityDetailResponse(Facility facility, boolean includeDoorPassword) {
+        FacilityDetailResponse dto = new FacilityDetailResponse();
+        dto.setId(facility.getId());
+        dto.setName(facility.getName());
+        dto.setTaxNumber(facility.getTaxNumber());
+        dto.setTaxOffice(facility.getTaxOffice());
+        dto.setType(facility.getType());
+        dto.setInvoiceType(facility.getInvoiceType());
+        dto.setCompanyTitle(facility.getCompanyTitle());
+        dto.setAuthorizedFirstName(facility.getAuthorizedFirstName());
+        dto.setAuthorizedLastName(facility.getAuthorizedLastName());
+        dto.setEmail(facility.getEmail());
+        dto.setPhone(facility.getPhone());
+        dto.setFacilityType(facility.getFacilityType());
+        dto.setAttendantFullName(facility.getAttendantFullName());
+        dto.setManagerFlatNo(facility.getManagerFlatNo());
+        dto.setDoorPassword(includeDoorPassword ? facility.getDoorPassword() : null);
+        dto.setFloorCount(facility.getFloorCount());
+        dto.setCity(facility.getCity() != null ? facility.getCity().getName() : null);
+        dto.setDistrict(facility.getDistrict() != null ? facility.getDistrict().getName() : null);
+        dto.setNeighborhood(facility.getNeighborhood() != null ? facility.getNeighborhood().getName() : null);
+        dto.setRegion(facility.getRegion() != null ? facility.getRegion().getName() : null);
+        dto.setAddressText(facility.getAddressText());
+        dto.setDescription(facility.getDescription());
+        dto.setStatus(facility.getStatus());
+        dto.setMapLat(facility.getMapLat());
+        dto.setMapLng(facility.getMapLng());
+        dto.setReportUrl("/facilities/" + facility.getId() + "/report");
+
+        if (facility.getB2bUnit() != null) {
+            dto.setB2bUnitId(facility.getB2bUnit().getId());
+            dto.setB2bUnitName(facility.getB2bUnit().getName());
+        }
+
+        FacilityAttachment attachment = resolveFacilityAttachment(facility);
+        if (attachment != null) {
+            dto.setAttachmentName(attachment.fileName());
+            dto.setAttachmentPreviewUrl("/facilities/" + facility.getId() + "/attachment");
+        }
+
+        dto.setElevators(buildElevatorSummaries(facility));
+        return dto;
+    }
+
+    private List<FacilityElevatorSummaryResponse> buildElevatorSummaries(Facility facility) {
+        return collectFacilityElevators(facility).stream()
+                .map(this::toElevatorSummary)
+                .toList();
+    }
+
+    private FacilityElevatorSummaryResponse toElevatorSummary(Elevator elevator) {
+        FacilityElevatorSummaryResponse summary = new FacilityElevatorSummaryResponse();
+        summary.setId(elevator.getId());
+        summary.setName(resolveElevatorDisplayName(elevator));
+        return summary;
+    }
+
+    private String resolveElevatorDisplayName(Elevator elevator) {
+        if (StringUtils.hasText(elevator.getElevatorNumber())) {
+            return elevator.getElevatorNumber();
+        }
+        if (StringUtils.hasText(elevator.getIdentityNumber())) {
+            return elevator.getIdentityNumber();
+        }
+        return "Elevator #" + elevator.getId();
+    }
+
+    private FacilityAttachment resolveFacilityAttachment(Facility facility) {
+        if (facility == null || !StringUtils.hasText(facility.getAttachmentUrl())) {
+            return null;
+        }
+
+        try {
+            Path attachmentPath = fileStorageService.resolveStoredPath(facility.getAttachmentUrl());
+            if (!Files.isRegularFile(attachmentPath)) {
+                return null;
+            }
+
+            String fileName = attachmentPath.getFileName() != null
+                    ? attachmentPath.getFileName().toString()
+                    : ("facility-" + facility.getId() + "-attachment");
+            String contentType;
+            try {
+                contentType = Files.probeContentType(attachmentPath);
+            } catch (IOException ignored) {
+                contentType = "application/octet-stream";
+            }
+            return new FacilityAttachment(fileName, contentType, attachmentPath);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private void validateFacilityBelongsToB2BUnit(Facility facility, Long b2bUnitId) {
+        Long facilityB2bUnitId = facility.getB2bUnit() != null ? facility.getB2bUnit().getId() : null;
+        if (facilityB2bUnitId == null || !facilityB2bUnitId.equals(b2bUnitId)) {
+            throw new AccessDeniedException("Facility does not belong to the requested B2B unit");
+        }
     }
 
     public FacilityDto createFacility(CreateFacilityRequest request) {
@@ -280,7 +454,7 @@ public class FacilityService {
         Facility existing = findActiveFacility(id);
         enforceObjectAccess(existing);
 
-        List<Elevator> elevators = elevatorRepository.findByBuildingNameIgnoreCase(existing.getName());
+        List<Elevator> elevators = collectFacilityElevators(existing);
         if (!elevators.isEmpty()) {
             throw new RuntimeException("Facility has related elevators and cannot be deleted");
         }
@@ -501,7 +675,7 @@ public class FacilityService {
 
     private FacilityMovementDto buildMovements(Facility facility) {
         FacilityMovementDto movements = new FacilityMovementDto();
-        List<Elevator> elevators = elevatorRepository.findByBuildingNameIgnoreCase(facility.getName());
+        List<Elevator> elevators = collectFacilityElevators(facility);
         List<Long> elevatorIds = elevators.stream().map(Elevator::getId).toList();
 
         List<Maintenance> maintenances = elevatorIds.isEmpty()
@@ -521,6 +695,33 @@ public class FacilityService {
         movements.setPayments(payments.stream().map(this::toPaymentItem).collect(Collectors.toList()));
         movements.setFaults(faults.stream().map(this::toFaultItem).collect(Collectors.toList()));
         return movements;
+    }
+
+    private List<Elevator> collectFacilityElevators(Facility facility) {
+        List<Elevator> relationElevators = elevatorRepository.findByFacilityId(facility.getId());
+        if (relationElevators == null) {
+            relationElevators = List.of();
+        }
+        if (!StringUtils.hasText(facility.getName())) {
+            return relationElevators;
+        }
+
+        List<Elevator> legacyCandidates = elevatorRepository.findByBuildingNameIgnoreCase(facility.getName());
+        if (legacyCandidates == null) {
+            legacyCandidates = List.of();
+        }
+        List<Elevator> legacyElevators = legacyCandidates.stream()
+                .filter(elevator -> elevator.getFacility() == null)
+                .toList();
+
+        if (legacyElevators.isEmpty()) {
+            return relationElevators;
+        }
+
+        Map<Long, Elevator> merged = new LinkedHashMap<>();
+        relationElevators.forEach(elevator -> merged.put(elevator.getId(), elevator));
+        legacyElevators.forEach(elevator -> merged.put(elevator.getId(), elevator));
+        return new ArrayList<>(merged.values());
     }
 
     private FacilityMovementDto.ElevatorItem toElevatorItem(Elevator elevator) {
@@ -946,6 +1147,10 @@ public class FacilityService {
         return currentUser != null && currentUser.getRole() == User.Role.CARI_USER;
     }
 
+    private boolean isSystemAdmin(User currentUser) {
+        return currentUser != null && currentUser.getRole() == User.Role.SYSTEM_ADMIN;
+    }
+
     private Long getCariB2bUnitId(User currentUser) {
         if (currentUser == null || currentUser.getB2bUnit() == null) {
             throw new AccessDeniedException("CARI user is not linked to a B2B unit");
@@ -1025,6 +1230,9 @@ public class FacilityService {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    public record FacilityAttachment(String fileName, String contentType, Path filePath) {
     }
 
     private record LocationSelection(City city, District district, Neighborhood neighborhood, Region region) {
