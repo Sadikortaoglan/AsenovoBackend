@@ -2,6 +2,7 @@ package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.B2BUnitFacilityCreateRequest;
+import com.saraasansor.api.dto.FacilityDetailResponse;
 import com.saraasansor.api.dto.FacilityDto;
 import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.service.FacilityService;
@@ -44,6 +45,13 @@ public class B2BUnitFacilityController {
                 PageRequest.of(page, size, parseSort(sort))
         );
         return ResponseEntity.ok(ApiResponse.success(facilities));
+    }
+
+    @GetMapping("/{id}/facilities/{facilityId}/detail")
+    public ResponseEntity<ApiResponse<FacilityDetailResponse>> getFacilityDetail(
+            @PathVariable Long id,
+            @PathVariable Long facilityId) {
+        return ResponseEntity.ok(ApiResponse.success(facilityService.getFacilityDetail(id, facilityId)));
     }
 
     @PostMapping("/{id}/facilities")

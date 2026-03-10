@@ -20,6 +20,10 @@ public class Elevator {
     @Column(name = "building_name", nullable = false)
     private String buildingName;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "facility_id")
+    private Facility facility;
+
     @Column(nullable = false)
     private String address;
 
@@ -162,6 +166,14 @@ public class Elevator {
 
     public void setBuildingName(String buildingName) {
         this.buildingName = buildingName;
+    }
+
+    public Facility getFacility() {
+        return facility;
+    }
+
+    public void setFacility(Facility facility) {
+        this.facility = facility;
     }
 
     public String getAddress() {
