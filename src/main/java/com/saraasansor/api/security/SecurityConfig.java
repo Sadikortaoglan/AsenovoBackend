@@ -118,6 +118,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/admin/revision-standards/import").hasAnyRole(SYSTEM_ADMIN, "ADMIN")
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - permit all
                 // Note: context-path is /api, so swagger paths are relative to that

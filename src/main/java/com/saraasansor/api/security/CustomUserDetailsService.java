@@ -18,6 +18,7 @@ import java.util.List;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final String ROLE_PREFIX = "ROLE_";
+    private final String ROLE_ADMIN = "ROLE_ADMIN";
     private final String ROLE_STAFF_ADMIN = "ROLE_STAFF_ADMIN";
     private final String ROLE_STAFF_USER = "ROLE_STAFF_USER";
     private final String ROLE_CARI_USER = "ROLE_CARI_USER";
@@ -46,6 +47,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         authorities.add(new SimpleGrantedAuthority(ROLE_PREFIX + role.name()));
 
         if (role == User.Role.SYSTEM_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority(ROLE_ADMIN));
             authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_ADMIN));
             authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_USER));
             authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
