@@ -1,6 +1,7 @@
 package com.saraasansor.api.config;
 
 import com.saraasansor.api.dto.ApiResponse;
+import com.saraasansor.api.exception.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,14 @@ public class GlobalExceptionHandler {
         logger.warn("Access denied: {}", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDomainValidationException(ValidationException ex) {
+        logger.warn("Validation exception: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
     }
     

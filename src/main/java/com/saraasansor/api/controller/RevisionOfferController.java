@@ -2,6 +2,8 @@ package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.RevisionOfferDto;
+import com.saraasansor.api.dto.RevisionOfferItemDto;
+import com.saraasansor.api.dto.RevisionStandardReferenceDto;
 import com.saraasansor.api.model.Building;
 import com.saraasansor.api.model.CurrentAccount;
 import com.saraasansor.api.model.Elevator;
@@ -26,7 +28,7 @@ public class RevisionOfferController {
     public ResponseEntity<ApiResponse<List<RevisionOfferDto>>> getAllRevisionOffers() {
         try {
             List<RevisionOfferDto> offers = revisionOfferService.getAllRevisionOffers().stream()
-                    .map(RevisionOfferDto::fromEntity)
+                    .map(this::toDto)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(ApiResponse.success(offers));
         } catch (Exception e) {
@@ -39,7 +41,7 @@ public class RevisionOfferController {
     public ResponseEntity<ApiResponse<RevisionOfferDto>> getRevisionOfferById(@PathVariable Long id) {
         try {
             RevisionOffer offer = revisionOfferService.getRevisionOfferById(id);
-            return ResponseEntity.ok(ApiResponse.success(RevisionOfferDto.fromEntity(offer)));
+            return ResponseEntity.ok(ApiResponse.success(toDto(offer)));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -50,7 +52,7 @@ public class RevisionOfferController {
     public ResponseEntity<ApiResponse<List<RevisionOfferDto>>> getByElevatorId(@PathVariable Long elevatorId) {
         try {
             List<RevisionOfferDto> offers = revisionOfferService.getByElevatorId(elevatorId).stream()
-                    .map(RevisionOfferDto::fromEntity)
+                    .map(this::toDto)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(ApiResponse.success(offers));
         } catch (Exception e) {
@@ -79,9 +81,14 @@ public class RevisionOfferController {
                 account.setId(dto.getCurrentAccountId());
                 offer.setCurrentAccount(account);
             }
-            
-            offer.setPartsTotal(dto.getPartsTotal() != null ? dto.getPartsTotal() : BigDecimal.ZERO);
-            offer.setLaborTotal(dto.getLaborTotal() != null ? dto.getLaborTotal() : BigDecimal.ZERO);
+
+            if (dto.getRevisionStandardId() != null) {
+                offer.setRevisionStandardId(dto.getRevisionStandardId());
+            }
+
+            offer.setLaborTotal(resolveLabor(dto));
+            offer.setLaborDescription(dto.getLaborDescription());
+            revisionOfferService.replaceItems(offer, revisionOfferService.buildItems(resolveItems(dto)));
             
             if (dto.getStatus() != null) {
                 try {
@@ -92,7 +99,7 @@ public class RevisionOfferController {
             }
             
             RevisionOffer created = revisionOfferService.createRevisionOffer(offer);
-            return ResponseEntity.ok(ApiResponse.success("Revision offer successfully created", RevisionOfferDto.fromEntity(created)));
+            return ResponseEntity.ok(ApiResponse.success("Revision offer successfully created", toDto(created)));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -108,9 +115,9 @@ public class RevisionOfferController {
             if (dto.getPartsTotal() != null) {
                 offer.setPartsTotal(dto.getPartsTotal());
             }
-            if (dto.getLaborTotal() != null) {
-                offer.setLaborTotal(dto.getLaborTotal());
-            }
+            offer.setLaborTotal(resolveLabor(dto));
+            offer.setLaborDescription(dto.getLaborDescription());
+            revisionOfferService.replaceItems(offer, revisionOfferService.buildItems(resolveItems(dto)));
             if (dto.getStatus() != null) {
                 try {
                     offer.setStatus(RevisionOffer.Status.valueOf(dto.getStatus().toUpperCase()));
@@ -118,9 +125,13 @@ public class RevisionOfferController {
                     throw new RuntimeException("Invalid status: " + dto.getStatus());
                 }
             }
+
+            if (dto.getRevisionStandardId() != null) {
+                offer.setRevisionStandardId(dto.getRevisionStandardId());
+            }
             
             RevisionOffer updated = revisionOfferService.updateRevisionOffer(id, offer);
-            return ResponseEntity.ok(ApiResponse.success("Revision offer successfully updated", RevisionOfferDto.fromEntity(updated)));
+            return ResponseEntity.ok(ApiResponse.success("Revision offer successfully updated", toDto(updated)));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -131,7 +142,7 @@ public class RevisionOfferController {
     public ResponseEntity<ApiResponse<RevisionOfferDto>> convertToSale(@PathVariable Long id) {
         try {
             RevisionOffer converted = revisionOfferService.convertToSale(id);
-            return ResponseEntity.ok(ApiResponse.success("Revision offer converted to sale", RevisionOfferDto.fromEntity(converted)));
+            return ResponseEntity.ok(ApiResponse.success("Revision offer converted to sale", toDto(converted)));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -147,5 +158,32 @@ public class RevisionOfferController {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    private RevisionOfferDto toDto(RevisionOffer offer) {
+        RevisionOfferDto dto = RevisionOfferDto.fromEntity(offer);
+        String revisionStandardCode = revisionOfferService.getRevisionStandardCode(offer.getRevisionStandardId());
+        dto.setRevisionStandardCode(revisionStandardCode);
+        if (dto.getRevisionStandardId() != null || revisionStandardCode != null) {
+            dto.setRevisionStandard(new RevisionStandardReferenceDto(dto.getRevisionStandardId(), revisionStandardCode));
+        }
+        if (dto.getOfferItems().isEmpty() && !dto.getItems().isEmpty()) {
+            dto.setOfferItems(dto.getItems());
+        }
+        return dto;
+    }
+
+    private BigDecimal resolveLabor(RevisionOfferDto dto) {
+        if (dto.getLabor() != null) {
+            return dto.getLabor();
+        }
+        return dto.getLaborTotal() != null ? dto.getLaborTotal() : BigDecimal.ZERO;
+    }
+
+    private List<RevisionOfferItemDto> resolveItems(RevisionOfferDto dto) {
+        if (dto.getParts() != null && !dto.getParts().isEmpty()) {
+            return dto.getParts();
+        }
+        return dto.getItems();
     }
 }

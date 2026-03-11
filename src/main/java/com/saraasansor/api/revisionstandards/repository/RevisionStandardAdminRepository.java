@@ -105,6 +105,29 @@ public class RevisionStandardAdminRepository {
         return count == null ? 0 : count;
     }
 
+    public List<RevisionStandardSet> findStandardSets(String query) {
+        String normalized = normalizeQuery(query);
+        StringBuilder sql = new StringBuilder("""
+                SELECT s.id,
+                       s.standard_code,
+                       s.created_at,
+                       s.updated_at,
+                       COUNT(rs.id) AS article_count
+                FROM public.revision_standard_sets s
+                LEFT JOIN public.revision_standards rs ON rs.standard_code = s.standard_code
+                """);
+        List<Object> params = new ArrayList<>();
+        if (normalized != null) {
+            sql.append(" WHERE s.standard_code ILIKE ? ");
+            params.add("%" + normalized + "%");
+        }
+        sql.append("""
+                GROUP BY s.id, s.standard_code, s.created_at, s.updated_at
+                ORDER BY s.standard_code
+                """);
+        return jdbcTemplate.query(sql.toString(), SET_ROW_MAPPER, params.toArray());
+    }
+
     public Optional<RevisionStandardSet> findStandardSetById(Long id) {
         List<RevisionStandardSet> result = jdbcTemplate.query(
                 """
@@ -139,6 +162,15 @@ public class RevisionStandardAdminRepository {
                 """,
                 SET_ROW_MAPPER,
                 standardCode
+        );
+        return result.stream().findFirst();
+    }
+
+    public Optional<String> findStandardCodeById(Long id) {
+        List<String> result = jdbcTemplate.query(
+                "SELECT standard_code FROM public.revision_standard_sets WHERE id = ?",
+                (rs, rowNum) -> rs.getString("standard_code"),
+                id
         );
         return result.stream().findFirst();
     }
@@ -268,6 +300,45 @@ public class RevisionStandardAdminRepository {
         }
         Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
         return count == null ? 0 : count;
+    }
+
+    public List<RevisionStandard> findArticlesByStandardSetId(Long standardSetId,
+                                                              String query,
+                                                              String tagColor,
+                                                              BigDecimal minPrice,
+                                                              BigDecimal maxPrice) {
+        String standardCode = jdbcTemplate.queryForObject(
+                "SELECT standard_code FROM public.revision_standard_sets WHERE id = ?",
+                String.class,
+                standardSetId
+        );
+        String normalized = normalizeQuery(query);
+        StringBuilder sql = new StringBuilder("""
+                SELECT id, standard_code, article_no, description, tag_color, price, source_file_name, source_version
+                FROM public.revision_standards
+                WHERE standard_code = ?
+                """);
+        List<Object> params = new ArrayList<>();
+        params.add(standardCode);
+        if (normalized != null) {
+            sql.append(" AND (article_no ILIKE ? OR description ILIKE ?) ");
+            params.add(normalized + "%");
+            params.add("%" + normalized + "%");
+        }
+        if (tagColor != null) {
+            sql.append(" AND UPPER(tag_color) = UPPER(?) ");
+            params.add(tagColor);
+        }
+        if (minPrice != null) {
+            sql.append(" AND price >= ? ");
+            params.add(minPrice);
+        }
+        if (maxPrice != null) {
+            sql.append(" AND price <= ? ");
+            params.add(maxPrice);
+        }
+        sql.append(" ORDER BY article_no ");
+        return jdbcTemplate.query(sql.toString(), ARTICLE_ROW_MAPPER, params.toArray());
     }
 
     public Optional<RevisionStandard> findArticleById(Long articleId) {

@@ -6,6 +6,7 @@ import com.saraasansor.api.revisionstandards.dto.RevisionStandardArticleResponse
 import com.saraasansor.api.revisionstandards.dto.RevisionStandardSetResponse;
 import com.saraasansor.api.revisionstandards.dto.UpdateRevisionStandardArticleRequest;
 import com.saraasansor.api.revisionstandards.dto.UpdateRevisionStandardSetRequest;
+import com.saraasansor.api.exception.ValidationException;
 import com.saraasansor.api.revisionstandards.model.RevisionStandard;
 import com.saraasansor.api.revisionstandards.model.RevisionStandardSet;
 import com.saraasansor.api.revisionstandards.repository.RevisionStandardAdminRepository;
@@ -189,7 +190,7 @@ public class RevisionStandardAdminService {
 
     private void validatePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
-            throw new RuntimeException("Minimum fiyat maksimum fiyattan buyuk olamaz");
+            throw new ValidationException("Minimum fiyat maksimum fiyattan buyuk olamaz");
         }
     }
 }

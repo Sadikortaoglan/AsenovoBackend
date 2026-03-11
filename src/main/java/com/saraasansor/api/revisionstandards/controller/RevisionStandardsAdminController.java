@@ -8,8 +8,11 @@ import com.saraasansor.api.revisionstandards.dto.RevisionStandardSetResponse;
 import com.saraasansor.api.revisionstandards.dto.UpdateRevisionStandardArticleRequest;
 import com.saraasansor.api.revisionstandards.dto.UpdateRevisionStandardSetRequest;
 import com.saraasansor.api.revisionstandards.service.RevisionStandardAdminService;
+import com.saraasansor.api.revisionstandards.service.RevisionStandardExportService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,9 +33,12 @@ import java.math.BigDecimal;
 public class RevisionStandardsAdminController {
 
     private final RevisionStandardAdminService revisionStandardAdminService;
+    private final RevisionStandardExportService revisionStandardExportService;
 
-    public RevisionStandardsAdminController(RevisionStandardAdminService revisionStandardAdminService) {
+    public RevisionStandardsAdminController(RevisionStandardAdminService revisionStandardAdminService,
+                                            RevisionStandardExportService revisionStandardExportService) {
         this.revisionStandardAdminService = revisionStandardAdminService;
+        this.revisionStandardExportService = revisionStandardExportService;
     }
 
     @GetMapping("/standards")
@@ -43,7 +49,25 @@ public class RevisionStandardsAdminController {
         return ResponseEntity.ok(ApiResponse.success(revisionStandardAdminService.getStandardSets(query, page, size)));
     }
 
-    @GetMapping("/standards/{standardId}")
+    @GetMapping("/standards/export")
+    public ResponseEntity<?> exportStandards(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "csv") String format) {
+        try {
+            RevisionStandardExportService.ExportFile export = revisionStandardExportService.exportStandards(query, format);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(export.contentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + export.fileName() + "\"")
+                    .contentLength(export.content().length)
+                    .body(export.content());
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(ApiResponse.error("Export failed: " + ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/standards/{standardId:\\d+}")
     public ResponseEntity<ApiResponse<RevisionStandardSetResponse>> getStandard(@PathVariable Long standardId) {
         return ResponseEntity.ok(ApiResponse.success(revisionStandardAdminService.getStandardSet(standardId)));
     }
@@ -55,7 +79,7 @@ public class RevisionStandardsAdminController {
                 revisionStandardAdminService.createStandardSet(request)));
     }
 
-    @PutMapping("/standards/{standardId}")
+    @PutMapping("/standards/{standardId:\\d+}")
     public ResponseEntity<ApiResponse<RevisionStandardSetResponse>> updateStandard(
             @PathVariable Long standardId,
             @Valid @RequestBody UpdateRevisionStandardSetRequest request) {
@@ -63,13 +87,13 @@ public class RevisionStandardsAdminController {
                 revisionStandardAdminService.updateStandardSet(standardId, request)));
     }
 
-    @DeleteMapping("/standards/{standardId}")
+    @DeleteMapping("/standards/{standardId:\\d+}")
     public ResponseEntity<ApiResponse<Void>> deleteStandard(@PathVariable Long standardId) {
         revisionStandardAdminService.deleteStandardSet(standardId);
         return ResponseEntity.ok(ApiResponse.success("Standart basariyla silindi", null));
     }
 
-    @GetMapping("/standards/{standardId}/articles")
+    @GetMapping("/standards/{standardId:\\d+}/articles")
     public ResponseEntity<ApiResponse<Page<RevisionStandardArticleResponse>>> getArticles(
             @PathVariable Long standardId,
             @RequestParam(required = false) String query,
@@ -83,7 +107,31 @@ public class RevisionStandardsAdminController {
         ));
     }
 
-    @PostMapping("/standards/{standardId}/articles")
+    @GetMapping("/standards/{standardId:\\d+}/articles/export")
+    public ResponseEntity<?> exportArticles(
+            @PathVariable Long standardId,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String tagColor,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "csv") String format) {
+        try {
+            RevisionStandardExportService.ExportFile export = revisionStandardExportService.exportArticles(
+                    standardId, query, tagColor, minPrice, maxPrice, format
+            );
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(export.contentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + export.fileName() + "\"")
+                    .contentLength(export.content().length)
+                    .body(export.content());
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(ApiResponse.error("Export failed: " + ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/standards/{standardId:\\d+}/articles")
     public ResponseEntity<ApiResponse<RevisionStandardArticleResponse>> createArticle(
             @PathVariable Long standardId,
             @Valid @RequestBody CreateRevisionStandardArticleRequest request) {

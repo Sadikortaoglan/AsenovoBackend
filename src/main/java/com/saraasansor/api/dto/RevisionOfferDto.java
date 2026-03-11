@@ -3,6 +3,8 @@ package com.saraasansor.api.dto;
 import com.saraasansor.api.model.RevisionOffer;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RevisionOfferDto {
     private Long id;
@@ -12,10 +14,19 @@ public class RevisionOfferDto {
     private String buildingName;
     private Long currentAccountId;
     private String currentAccountName;
+    private CurrentAccountDto currentAccount;
+    private Long revisionStandardId;
+    private String revisionStandardCode;
+    private RevisionStandardReferenceDto revisionStandard;
+    private BigDecimal labor;
+    private String laborDescription;
     private BigDecimal partsTotal;
     private BigDecimal laborTotal;
     private BigDecimal totalPrice;
     private String status; // DRAFT, SENT, APPROVED, REJECTED, CONVERTED_TO_SALE
+    private List<RevisionOfferItemDto> parts = new ArrayList<>();
+    private List<RevisionOfferItemDto> items = new ArrayList<>();
+    private List<RevisionOfferItemDto> offerItems = new ArrayList<>();
 
     public RevisionOfferDto() {
     }
@@ -76,6 +87,54 @@ public class RevisionOfferDto {
         this.currentAccountName = currentAccountName;
     }
 
+    public CurrentAccountDto getCurrentAccount() {
+        return currentAccount;
+    }
+
+    public void setCurrentAccount(CurrentAccountDto currentAccount) {
+        this.currentAccount = currentAccount;
+    }
+
+    public Long getRevisionStandardId() {
+        return revisionStandardId;
+    }
+
+    public void setRevisionStandardId(Long revisionStandardId) {
+        this.revisionStandardId = revisionStandardId;
+    }
+
+    public String getRevisionStandardCode() {
+        return revisionStandardCode;
+    }
+
+    public void setRevisionStandardCode(String revisionStandardCode) {
+        this.revisionStandardCode = revisionStandardCode;
+    }
+
+    public RevisionStandardReferenceDto getRevisionStandard() {
+        return revisionStandard;
+    }
+
+    public void setRevisionStandard(RevisionStandardReferenceDto revisionStandard) {
+        this.revisionStandard = revisionStandard;
+    }
+
+    public BigDecimal getLabor() {
+        return labor;
+    }
+
+    public void setLabor(BigDecimal labor) {
+        this.labor = labor;
+    }
+
+    public String getLaborDescription() {
+        return laborDescription;
+    }
+
+    public void setLaborDescription(String laborDescription) {
+        this.laborDescription = laborDescription;
+    }
+
     public BigDecimal getPartsTotal() {
         return partsTotal;
     }
@@ -108,6 +167,30 @@ public class RevisionOfferDto {
         this.status = status;
     }
 
+    public List<RevisionOfferItemDto> getParts() {
+        return parts;
+    }
+
+    public void setParts(List<RevisionOfferItemDto> parts) {
+        this.parts = parts == null ? new ArrayList<>() : parts;
+    }
+
+    public List<RevisionOfferItemDto> getItems() {
+        return items;
+    }
+
+    public void setItems(List<RevisionOfferItemDto> items) {
+        this.items = items == null ? new ArrayList<>() : items;
+    }
+
+    public List<RevisionOfferItemDto> getOfferItems() {
+        return offerItems;
+    }
+
+    public void setOfferItems(List<RevisionOfferItemDto> offerItems) {
+        this.offerItems = offerItems == null ? new ArrayList<>() : offerItems;
+    }
+
     public static RevisionOfferDto fromEntity(RevisionOffer offer) {
         RevisionOfferDto dto = new RevisionOfferDto();
         dto.setId(offer.getId());
@@ -122,11 +205,23 @@ public class RevisionOfferDto {
         if (offer.getCurrentAccount() != null) {
             dto.setCurrentAccountId(offer.getCurrentAccount().getId());
             dto.setCurrentAccountName(offer.getCurrentAccount().getName());
+            dto.setCurrentAccount(CurrentAccountDto.fromEntity(offer.getCurrentAccount()));
         }
+        dto.setRevisionStandardId(offer.getRevisionStandardId());
+        dto.setLabor(offer.getLaborTotal());
+        dto.setLaborDescription(offer.getLaborDescription());
         dto.setPartsTotal(offer.getPartsTotal());
         dto.setLaborTotal(offer.getLaborTotal());
         dto.setTotalPrice(offer.getTotalPrice());
         dto.setStatus(offer.getStatus() != null ? offer.getStatus().name() : null);
+        if (offer.getItems() != null && !offer.getItems().isEmpty()) {
+            List<RevisionOfferItemDto> itemDtos = offer.getItems().stream()
+                    .map(RevisionOfferItemDto::fromEntity)
+                    .toList();
+            dto.setItems(itemDtos);
+            dto.setParts(itemDtos);
+            dto.setOfferItems(itemDtos);
+        }
         return dto;
     }
 }
