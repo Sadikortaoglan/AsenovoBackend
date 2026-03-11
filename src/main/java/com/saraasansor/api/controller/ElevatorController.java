@@ -2,6 +2,7 @@ package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.ElevatorDto;
+import com.saraasansor.api.dto.ElevatorImportResultResponse;
 import com.saraasansor.api.dto.ElevatorStatusDto;
 import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.exception.NotFoundException;
@@ -10,10 +11,21 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,6 +49,24 @@ public class ElevatorController {
             @RequestParam Long facilityId,
             @RequestParam(required = false) String query) {
         return ResponseEntity.ok(ApiResponse.success(elevatorService.getLookup(facilityId, query)));
+    }
+
+    @PostMapping(value = "/import-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','STAFF_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<ElevatorImportResultResponse>> importExcel(
+            @RequestParam("file") MultipartFile file) {
+        ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
+        return ResponseEntity.ok(ApiResponse.success("Elevator import completed", result));
+    }
+
+    @GetMapping("/import-template")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','STAFF_ADMIN','STAFF_USER')")
+    public ResponseEntity<byte[]> downloadImportTemplate() {
+        byte[] content = elevatorService.generateImportTemplateExcel();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"elevator-import-template.xlsx\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(content);
     }
     
     @GetMapping("/{id}/status")
@@ -64,7 +94,6 @@ public class ElevatorController {
     @PostMapping
     public ResponseEntity<ApiResponse<ElevatorDto>> createElevator(@Valid @RequestBody ElevatorDto dto) {
         try {
-            // Debug log: Log incoming payload for troubleshooting
             org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ElevatorController.class);
             log.info("Incoming Elevator DTO: identityNumber={}, buildingName={}, labelDate={}, labelType={}, expiryDate={}, managerTcIdentityNo={}, managerPhone={}", 
                 dto.getIdentityNumber(), 
@@ -109,15 +138,10 @@ public class ElevatorController {
     @Autowired
     private com.saraasansor.api.service.ElevatorQrService elevatorQrService;
     
-    /**
-     * GET /api/elevators/{id}/qr
-     * Returns QR code image as PNG
-     */
     @GetMapping("/{id}/qr")
     public ResponseEntity<?> getElevatorQr(@PathVariable Long id) {
         logger.debug("Generating QR image for elevator ID: {}", id);
         try {
-            // Check if service is injected
             if (elevatorQrService == null) {
                 logger.error("elevatorQrService is NULL");
                 return ResponseEntity.status(500)
@@ -147,10 +171,6 @@ public class ElevatorController {
         }
     }
     
-    /**
-     * GET /api/elevators/{id}/qr/download?format=png|pdf
-     * Downloads QR code as PNG or PDF
-     */
     @GetMapping("/{id}/qr/download")
     public ResponseEntity<?> downloadElevatorQr(
             @PathVariable Long id,
@@ -182,10 +202,6 @@ public class ElevatorController {
         }
     }
 
-    /**
-     * GET /api/elevators/qr/download-all
-     * Downloads all elevator QR codes as a single PDF.
-     */
     @GetMapping("/qr/download-all")
     public ResponseEntity<?> downloadAllElevatorQrs() {
         try {

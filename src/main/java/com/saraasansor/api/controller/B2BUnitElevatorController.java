@@ -4,12 +4,15 @@ import com.saraasansor.api.dto.ApiResponse;
 import com.saraasansor.api.dto.B2BUnitElevatorCreateRequest;
 import com.saraasansor.api.dto.B2BUnitElevatorListItemResponse;
 import com.saraasansor.api.dto.ElevatorDto;
+import com.saraasansor.api.dto.ElevatorImportResultResponse;
 import com.saraasansor.api.service.ElevatorService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/b2b-units")
@@ -50,6 +54,15 @@ public class B2BUnitElevatorController {
             @Valid @RequestBody B2BUnitElevatorCreateRequest request) {
         ElevatorDto created = elevatorService.createElevatorForB2BUnit(id, request);
         return ResponseEntity.ok(ApiResponse.success("Elevator successfully added", created));
+    }
+
+    @PostMapping(value = "/{id}/elevators/import-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','STAFF_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<ElevatorImportResultResponse>> importElevatorsForB2BUnit(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        ElevatorImportResultResponse result = elevatorService.importFromExcelForB2BUnit(id, file);
+        return ResponseEntity.ok(ApiResponse.success("Elevator import completed", result));
     }
 
     private Sort parseSort(String sort) {
