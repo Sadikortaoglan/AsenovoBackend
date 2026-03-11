@@ -20,6 +20,7 @@ public class RevisionStandardsRepository {
         standard.setArticleNo(rs.getString("article_no"));
         standard.setDescription(rs.getString("description"));
         standard.setTagColor(rs.getString("tag_color"));
+        standard.setPrice(rs.getBigDecimal("price"));
         standard.setSourceFileName(rs.getString("source_file_name"));
         standard.setSourceVersion(rs.getString("source_version"));
         Timestamp createdAt = rs.getTimestamp("created_at");
@@ -59,13 +60,14 @@ public class RevisionStandardsRepository {
         return jdbcTemplate.update(
                 """
                 INSERT INTO public.revision_standards
-                (standard_code, article_no, description, tag_color, source_file_name, source_version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (standard_code, article_no, description, tag_color, price, source_file_name, source_version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 standard.getStandardCode(),
                 standard.getArticleNo(),
                 standard.getDescription(),
                 standard.getTagColor(),
+                standard.getPrice(),
                 standard.getSourceFileName(),
                 standard.getSourceVersion(),
                 Timestamp.valueOf(now),
@@ -79,6 +81,7 @@ public class RevisionStandardsRepository {
                 UPDATE public.revision_standards
                 SET description = ?,
                     tag_color = ?,
+                    price = ?,
                     source_file_name = ?,
                     source_version = ?,
                     updated_at = ?
@@ -86,6 +89,7 @@ public class RevisionStandardsRepository {
                 """,
                 standard.getDescription(),
                 standard.getTagColor(),
+                standard.getPrice(),
                 standard.getSourceFileName(),
                 standard.getSourceVersion(),
                 Timestamp.valueOf(LocalDateTime.now()),
@@ -97,7 +101,7 @@ public class RevisionStandardsRepository {
     public List<RevisionStandard> search(String query, int limit) {
         return jdbcTemplate.query(
                 """
-                SELECT id, article_no, description, standard_code, tag_color, source_file_name, source_version, created_at, updated_at
+                SELECT id, article_no, description, standard_code, tag_color, price, source_file_name, source_version, created_at, updated_at
                 FROM public.revision_standards
                 WHERE article_no ILIKE ? OR description ILIKE ?
                 ORDER BY

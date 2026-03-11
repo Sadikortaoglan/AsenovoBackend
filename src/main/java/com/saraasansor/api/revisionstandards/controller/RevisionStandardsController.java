@@ -39,7 +39,7 @@ public class RevisionStandardsController {
     }
 
     @PostMapping("/admin/revision-standards/import")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SYSTEM_ADMIN', 'STAFF_ADMIN')")
     public ResponseEntity<RevisionStandardImportResponse> importStandards() {
         return ResponseEntity.ok(revisionStandardImportService.importFromClasspath());
     }

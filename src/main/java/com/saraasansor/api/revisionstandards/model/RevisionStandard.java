@@ -1,5 +1,6 @@
 package com.saraasansor.api.revisionstandards.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class RevisionStandard {
@@ -9,6 +10,7 @@ public class RevisionStandard {
     private String articleNo;
     private String description;
     private String tagColor;
+    private BigDecimal price;
     private String sourceFileName;
     private String sourceVersion;
     private LocalDateTime createdAt;
@@ -52,6 +54,14 @@ public class RevisionStandard {
 
     public void setTagColor(String tagColor) {
         this.tagColor = tagColor;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     public String getSourceFileName() {

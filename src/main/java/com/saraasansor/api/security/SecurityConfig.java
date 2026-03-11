@@ -118,7 +118,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/admin/revision-standards/import").hasAnyRole(SYSTEM_ADMIN, "ADMIN")
+                .requestMatchers("/admin/revision-standards/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, "ADMIN")
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - permit all
                 // Note: context-path is /api, so swagger paths are relative to that
@@ -169,7 +169,7 @@ public class SecurityConfig {
                 // B2BUnit endpoints
                 .requestMatchers(HttpMethod.GET, "/b2bunits").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
-                .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasRole(CARI_USER)
+                .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.POST, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.PUT, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)

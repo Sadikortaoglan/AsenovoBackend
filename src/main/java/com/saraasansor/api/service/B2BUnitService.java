@@ -79,11 +79,8 @@ public class B2BUnitService {
         if (currentUser == null) {
             throw new RuntimeException("User not authenticated");
         }
-        if (currentUser.getRole() != User.Role.CARI_USER) {
-            throw new AccessDeniedException("Only CARI users can access own B2B unit");
-        }
         if (currentUser.getB2bUnit() == null) {
-            throw new RuntimeException("No B2B unit linked to current user");
+            return null;
         }
         return getB2BUnitById(currentUser.getB2bUnit().getId());
     }

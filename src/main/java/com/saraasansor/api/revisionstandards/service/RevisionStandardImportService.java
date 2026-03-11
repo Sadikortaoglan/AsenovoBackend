@@ -2,6 +2,7 @@ package com.saraasansor.api.revisionstandards.service;
 
 import com.saraasansor.api.revisionstandards.dto.RevisionStandardImportResponse;
 import com.saraasansor.api.revisionstandards.model.RevisionStandard;
+import com.saraasansor.api.revisionstandards.repository.RevisionStandardAdminRepository;
 import com.saraasansor.api.revisionstandards.repository.RevisionStandardsRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +41,13 @@ public class RevisionStandardImportService {
     private static final Set<String> TAG_COLORS = Set.of("MAVI", "KIRMIZI", "SARI", "YESIL", "TURUNCU", "MOR", "GRI");
 
     private final RevisionStandardsRepository revisionStandardsRepository;
+    private final RevisionStandardAdminRepository revisionStandardAdminRepository;
     private final PathMatchingResourcePatternResolver resourceResolver = new PathMatchingResourcePatternResolver();
 
-    public RevisionStandardImportService(RevisionStandardsRepository revisionStandardsRepository) {
+    public RevisionStandardImportService(RevisionStandardsRepository revisionStandardsRepository,
+                                        RevisionStandardAdminRepository revisionStandardAdminRepository) {
         this.revisionStandardsRepository = revisionStandardsRepository;
+        this.revisionStandardAdminRepository = revisionStandardAdminRepository;
     }
 
     public RevisionStandardImportResponse importFromClasspath() {
@@ -84,6 +89,7 @@ public class RevisionStandardImportService {
             int updated = 0;
 
             log.info("Importing file={} standardCode={}", filename, standardCode);
+            revisionStandardAdminRepository.ensureStandardSetExists(standardCode);
 
             for (RevisionStandard standard : parseResult.articles()) {
                 Optional<Long> existingId = revisionStandardsRepository.findIdByStandardAndArticleNo(
@@ -191,6 +197,7 @@ public class RevisionStandardImportService {
         standard.setArticleNo(articleNo);
         standard.setDescription(parsedContent.description());
         standard.setTagColor(parsedContent.tagColor());
+        standard.setPrice(BigDecimal.ZERO);
         standard.setSourceFileName(sourceFileName);
         standard.setSourceVersion(sourceVersion);
         return standard;
