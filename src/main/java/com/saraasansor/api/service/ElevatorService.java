@@ -3,6 +3,8 @@ package com.saraasansor.api.service;
 import com.saraasansor.api.dto.B2BUnitElevatorCreateRequest;
 import com.saraasansor.api.dto.B2BUnitElevatorListItemResponse;
 import com.saraasansor.api.dto.ElevatorDto;
+import com.saraasansor.api.dto.ElevatorImportResultItemResponse;
+import com.saraasansor.api.dto.ElevatorImportResultResponse;
 import com.saraasansor.api.dto.ElevatorStatusDto;
 import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.dto.WarningDto;
@@ -22,14 +24,22 @@ import com.saraasansor.api.tenant.TenantContext;
 import com.saraasansor.api.tenant.data.TenantDescriptor;
 import com.saraasansor.api.util.AuditLogger;
 import com.saraasansor.api.util.LabelDurationCalculator;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,25 +49,85 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.awt.Color;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class ElevatorService {
+
+    private static final String HEADER_ELEVATOR_NAME = "ASANSÖR ADI";
+    private static final String HEADER_FACILITY_NAME = "TESİS ADI";
+    private static final String HEADER_REGION = "BÖLGE";
+    private static final String HEADER_IDENTITY_NUMBER = "ASANSÖR KİMLİK NUMARASI";
+    private static final String HEADER_ELEVATOR_TYPE = "ASANSÖR TÜRÜ/CİNSİ";
+    private static final String HEADER_DOOR_TYPE = "KAPI TİPİ";
+    private static final String HEADER_DRIVE_TYPE = "TAHRİK TÜRÜ";
+    private static final String HEADER_BRAND = "MARKA";
+    private static final String HEADER_CONSTRUCTION_YEAR = "YAPIM YILI";
+    private static final String HEADER_STOP_COUNT = "DURAK SAYISI";
+    private static final String HEADER_CAPACITY = "KAPASİTE KİŞİ/KG";
+    private static final String HEADER_SPEED = "HIZ M/S";
+    private static final String HEADER_WARRANTY = "GARANTİ";
+    private static final String HEADER_WARRANTY_END_DATE = "GARANTİ BİTİŞ TARİHİ";
+    private static final String HEADER_DESCRIPTION = "AÇIKLAMA";
+    private static final String HEADER_MAINTENANCE_TYPE = "BAKIM TÜRÜ";
+    private static final String HEADER_MAINTENANCE_STAFF_NAME = "BAKIM PERSONELİ AD";
+    private static final String HEADER_MAINTENANCE_STAFF_SURNAME = "BAKIM PERSONELİ SOYAD";
+    private static final String HEADER_FAILURE_STAFF_NAME = "ARIZA PERSONELİ AD";
+    private static final String HEADER_FAILURE_STAFF_SURNAME = "ARIZA PERSONELİ SOYAD";
+    private static final String HEADER_ADDRESS = "ADRES";
+
+    private static final List<String> REQUIRED_IMPORT_HEADERS = List.of(
+            HEADER_ELEVATOR_NAME,
+            HEADER_FACILITY_NAME,
+            HEADER_REGION,
+            HEADER_IDENTITY_NUMBER,
+            HEADER_ELEVATOR_TYPE,
+            HEADER_DOOR_TYPE,
+            HEADER_DRIVE_TYPE,
+            HEADER_BRAND,
+            HEADER_CONSTRUCTION_YEAR,
+            HEADER_STOP_COUNT,
+            HEADER_CAPACITY,
+            HEADER_SPEED,
+            HEADER_WARRANTY,
+            HEADER_WARRANTY_END_DATE,
+            HEADER_DESCRIPTION,
+            HEADER_MAINTENANCE_TYPE,
+            HEADER_MAINTENANCE_STAFF_NAME,
+            HEADER_MAINTENANCE_STAFF_SURNAME,
+            HEADER_FAILURE_STAFF_NAME,
+            HEADER_FAILURE_STAFF_SURNAME,
+            HEADER_ADDRESS
+    );
+
+    private static final List<DateTimeFormatter> IMPORT_DATE_FORMATTERS = List.of(
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("dd.MM.yyyy"),
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy")
+    );
     
     @Autowired
     private ElevatorRepository elevatorRepository;
@@ -139,6 +209,125 @@ public class ElevatorService {
                                 Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .map(this::toLookupDto)
                 .toList();
+    }
+
+    public ElevatorImportResultResponse importFromExcel(MultipartFile file) {
+        enforceNonCariWrite();
+        return importFromExcelInternal(file, null);
+    }
+
+    public ElevatorImportResultResponse importFromExcelForB2BUnit(Long b2bUnitId, MultipartFile file) {
+        enforceNonCariWrite();
+        enforceReadableB2BUnitScopeAccess(b2bUnitId);
+        return importFromExcelInternal(file, b2bUnitId);
+    }
+
+    public byte[] generateImportTemplateExcel() {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("ElevatorImportTemplate");
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < REQUIRED_IMPORT_HEADERS.size(); i++) {
+                headerRow.createCell(i).setCellValue(REQUIRED_IMPORT_HEADERS.get(i));
+            }
+
+            Row sampleRow = sheet.createRow(1);
+            sampleRow.createCell(0).setCellValue("Asansör 1");
+            sampleRow.createCell(1).setCellValue("Örnek Tesis");
+            sampleRow.createCell(2).setCellValue("Merkez");
+            sampleRow.createCell(3).setCellValue("ID-0001");
+            sampleRow.createCell(4).setCellValue("İnsan Asansörü");
+            sampleRow.createCell(5).setCellValue("Otomatik");
+            sampleRow.createCell(6).setCellValue("Elektrikli");
+            sampleRow.createCell(7).setCellValue("MarkaX");
+            sampleRow.createCell(8).setCellValue("2020");
+            sampleRow.createCell(9).setCellValue("10");
+            sampleRow.createCell(10).setCellValue("8");
+            sampleRow.createCell(11).setCellValue("1.6");
+            sampleRow.createCell(12).setCellValue("Var");
+            sampleRow.createCell(13).setCellValue("2027-12-31");
+            sampleRow.createCell(14).setCellValue("Örnek açıklama");
+            sampleRow.createCell(15).setCellValue("Aylık");
+            sampleRow.createCell(16).setCellValue("Ahmet");
+            sampleRow.createCell(17).setCellValue("Yılmaz");
+            sampleRow.createCell(18).setCellValue("Mehmet");
+            sampleRow.createCell(19).setCellValue("Kaya");
+            sampleRow.createCell(20).setCellValue("Örnek adres");
+
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to generate elevator import template", ex);
+        }
+    }
+
+    private ElevatorImportResultResponse importFromExcelInternal(MultipartFile file, Long scopedB2bUnitId) {
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Excel file is required");
+        }
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            throw new RuntimeException("Only .xlsx files are supported");
+        }
+
+        ElevatorImportResultResponse result = new ElevatorImportResultResponse();
+
+        try (InputStream inputStream = file.getInputStream();
+             XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null) {
+                throw new RuntimeException("Excel sheet is empty");
+            }
+
+            DataFormatter formatter = new DataFormatter();
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) {
+                throw new RuntimeException("Excel header row is missing");
+            }
+
+            Map<String, Integer> headerMap = buildHeaderMap(headerRow, formatter);
+            validateImportHeaders(headerMap);
+
+            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if (row == null || isImportRowEmpty(row, formatter)) {
+                    continue;
+                }
+
+                int excelRowNumber = rowIndex + 1;
+                result.setTotalRows(result.getTotalRows() + 1);
+
+                String elevatorName = readCellValue(row, headerMap, HEADER_ELEVATOR_NAME, formatter);
+                String facilityName = readCellValue(row, headerMap, HEADER_FACILITY_NAME, formatter);
+
+                try {
+                    ElevatorDto dto = mapImportRowToElevatorDto(row, headerMap, formatter, scopedB2bUnitId);
+                    createElevator(dto);
+                    result.setSuccessCount(result.getSuccessCount() + 1);
+                    result.addItem(new ElevatorImportResultItemResponse(
+                            excelRowNumber,
+                            ElevatorImportResultItemResponse.Status.SUCCESS.name(),
+                            "Elevator imported successfully",
+                            elevatorName,
+                            facilityName
+                    ));
+                } catch (Exception ex) {
+                    result.setFailureCount(result.getFailureCount() + 1);
+                    result.addItem(new ElevatorImportResultItemResponse(
+                            excelRowNumber,
+                            ElevatorImportResultItemResponse.Status.FAILED.name(),
+                            resolveImportFailureMessage(ex),
+                            elevatorName,
+                            facilityName
+                    ));
+                }
+            }
+
+            return result;
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to parse elevator excel file: " + ex.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)
@@ -818,6 +1007,290 @@ public class ElevatorService {
         relationElevators.forEach(elevator -> merged.put(elevator.getId(), elevator));
         legacyElevators.forEach(elevator -> merged.put(elevator.getId(), elevator));
         return new ArrayList<>(merged.values());
+    }
+
+    private ElevatorDto mapImportRowToElevatorDto(Row row,
+                                                  Map<String, Integer> headerMap,
+                                                  DataFormatter formatter,
+                                                  Long scopedB2bUnitId) {
+        String elevatorName = requireImportValue(readCellValue(row, headerMap, HEADER_ELEVATOR_NAME, formatter), HEADER_ELEVATOR_NAME);
+        String facilityName = requireImportValue(readCellValue(row, headerMap, HEADER_FACILITY_NAME, formatter), HEADER_FACILITY_NAME);
+        String identityNumber = requireImportValue(readCellValue(row, headerMap, HEADER_IDENTITY_NUMBER, formatter), HEADER_IDENTITY_NUMBER);
+
+        Facility facility = resolveFacilityForImport(facilityName, scopedB2bUnitId);
+
+        Integer constructionYear = parseIntegerValue(readCellValue(row, headerMap, HEADER_CONSTRUCTION_YEAR, formatter), HEADER_CONSTRUCTION_YEAR);
+        Integer stopCount = parseIntegerValue(readCellValue(row, headerMap, HEADER_STOP_COUNT, formatter), HEADER_STOP_COUNT);
+        Integer capacity = parseIntegerValue(readCellValue(row, headerMap, HEADER_CAPACITY, formatter), HEADER_CAPACITY);
+        Double speed = parseDoubleValue(readCellValue(row, headerMap, HEADER_SPEED, formatter), HEADER_SPEED);
+        LocalDate warrantyEndDate = parseDateValue(row, headerMap, HEADER_WARRANTY_END_DATE, formatter);
+
+        if (stopCount != null && stopCount < 0) {
+            throw new RuntimeException("DURAK SAYISI must be zero or positive");
+        }
+        if (capacity != null && capacity < 0) {
+            throw new RuntimeException("KAPASİTE KİŞİ/KG must be zero or positive");
+        }
+        if (speed != null && speed < 0) {
+            throw new RuntimeException("HIZ M/S must be zero or positive");
+        }
+        if (constructionYear != null && constructionYear < 0) {
+            throw new RuntimeException("YAPIM YILI must be zero or positive");
+        }
+
+        String region = readCellValue(row, headerMap, HEADER_REGION, formatter);
+        String elevatorType = readCellValue(row, headerMap, HEADER_ELEVATOR_TYPE, formatter);
+        String warrantyStatus = readCellValue(row, headerMap, HEADER_WARRANTY, formatter);
+        String maintenanceType = readCellValue(row, headerMap, HEADER_MAINTENANCE_TYPE, formatter);
+        String maintenanceStaff = joinNameParts(
+                readCellValue(row, headerMap, HEADER_MAINTENANCE_STAFF_NAME, formatter),
+                readCellValue(row, headerMap, HEADER_MAINTENANCE_STAFF_SURNAME, formatter)
+        );
+        String failureStaff = joinNameParts(
+                readCellValue(row, headerMap, HEADER_FAILURE_STAFF_NAME, formatter),
+                readCellValue(row, headerMap, HEADER_FAILURE_STAFF_SURNAME, formatter)
+        );
+
+        ElevatorDto dto = new ElevatorDto();
+        dto.setFacilityId(facility.getId());
+        dto.setIdentityNumber(identityNumber);
+        dto.setElevatorNumber(elevatorName);
+        dto.setBuildingName(facility.getName());
+        dto.setAddress(firstNonBlank(
+                readCellValue(row, headerMap, HEADER_ADDRESS, formatter),
+                facility.getAddressText()
+        ));
+        dto.setDoorType(readCellValue(row, headerMap, HEADER_DOOR_TYPE, formatter));
+        dto.setDriveType(readCellValue(row, headerMap, HEADER_DRIVE_TYPE, formatter));
+        dto.setMachineBrand(readCellValue(row, headerMap, HEADER_BRAND, formatter));
+        dto.setInstallationYear(constructionYear);
+        dto.setFloorCount(stopCount);
+        dto.setCapacity(capacity);
+        dto.setSpeed(speed);
+        dto.setControlSystem(elevatorType);
+        dto.setTechnicalNotes(buildImportTechnicalNotes(
+                readCellValue(row, headerMap, HEADER_DESCRIPTION, formatter),
+                region,
+                warrantyStatus,
+                maintenanceType,
+                maintenanceStaff,
+                failureStaff
+        ));
+
+        LocalDate labelDate = LocalDate.now();
+        dto.setInspectionDate(labelDate);
+        dto.setLabelDate(labelDate);
+        dto.setLabelType("BLUE");
+
+        LocalDate expiryDate = warrantyEndDate;
+        if (expiryDate == null || !expiryDate.isAfter(labelDate)) {
+            expiryDate = labelDate.plusYears(1);
+        }
+        dto.setExpiryDate(expiryDate);
+
+        dto.setManagerName(StringUtils.hasText(maintenanceStaff) ? maintenanceStaff : "Excel Import");
+        dto.setManagerTcIdentityNo("00000000000");
+        dto.setManagerPhone("0000000000");
+        dto.setManagerEmail(null);
+        return dto;
+    }
+
+    private Facility resolveFacilityForImport(String facilityName, Long scopedB2bUnitId) {
+        Page<Facility> candidatesPage = facilityRepository.search(
+                normalizeNullable(facilityName),
+                scopedB2bUnitId,
+                null,
+                PageRequest.of(0, 500, Sort.by(Sort.Direction.ASC, "name"))
+        );
+
+        String normalizedFacilityName = normalizeKey(facilityName);
+        List<Facility> matches = candidatesPage.getContent().stream()
+                .filter(facility -> normalizeKey(facility.getName()).equals(normalizedFacilityName))
+                .toList();
+
+        if (matches.isEmpty()) {
+            throw new RuntimeException("Facility not found for TESİS ADI: " + facilityName);
+        }
+        if (matches.size() > 1) {
+            throw new RuntimeException("Multiple facilities found for TESİS ADI: " + facilityName);
+        }
+
+        Facility facility = matches.get(0);
+        Long facilityB2bUnitId = facility.getB2bUnit() != null ? facility.getB2bUnit().getId() : null;
+        if (scopedB2bUnitId != null && (facilityB2bUnitId == null || !facilityB2bUnitId.equals(scopedB2bUnitId))) {
+            throw new RuntimeException("Facility does not belong to selected B2B unit");
+        }
+        return facility;
+    }
+
+    private Map<String, Integer> buildHeaderMap(Row headerRow, DataFormatter formatter) {
+        Map<String, Integer> headerMap = new HashMap<>();
+        short lastCell = headerRow.getLastCellNum();
+        if (lastCell < 0) {
+            return headerMap;
+        }
+        for (int i = 0; i < lastCell; i++) {
+            Cell cell = headerRow.getCell(i);
+            String header = normalizeNullable(formatter.formatCellValue(cell));
+            if (StringUtils.hasText(header)) {
+                headerMap.put(header, i);
+            }
+        }
+        return headerMap;
+    }
+
+    private void validateImportHeaders(Map<String, Integer> headerMap) {
+        Set<String> missingHeaders = new HashSet<>();
+        for (String required : REQUIRED_IMPORT_HEADERS) {
+            if (!headerMap.containsKey(required)) {
+                missingHeaders.add(required);
+            }
+        }
+        if (!missingHeaders.isEmpty()) {
+            throw new RuntimeException("Excel headers are invalid. Missing: " + String.join(", ", missingHeaders));
+        }
+    }
+
+    private boolean isImportRowEmpty(Row row, DataFormatter formatter) {
+        short lastCell = row.getLastCellNum();
+        if (lastCell < 0) {
+            return true;
+        }
+        for (int i = 0; i < lastCell; i++) {
+            if (StringUtils.hasText(normalizeNullable(formatter.formatCellValue(row.getCell(i))))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String readCellValue(Row row, Map<String, Integer> headerMap, String header, DataFormatter formatter) {
+        Integer columnIndex = headerMap.get(header);
+        if (columnIndex == null) {
+            return null;
+        }
+        Cell cell = row.getCell(columnIndex);
+        return normalizeNullable(formatter.formatCellValue(cell));
+    }
+
+    private String requireImportValue(String value, String columnName) {
+        if (!StringUtils.hasText(value)) {
+            throw new RuntimeException(columnName + " is required");
+        }
+        return value;
+    }
+
+    private Integer parseIntegerValue(String value, String columnName) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.replace(',', '.').trim();
+        String integerToken = normalized.split("[^0-9\\-]")[0];
+        if (!StringUtils.hasText(integerToken)) {
+            throw new RuntimeException(columnName + " must be numeric");
+        }
+        try {
+            return Integer.parseInt(integerToken);
+        } catch (NumberFormatException ex) {
+            throw new RuntimeException(columnName + " must be numeric");
+        }
+    }
+
+    private Double parseDoubleValue(String value, String columnName) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.replace(',', '.').trim();
+        try {
+            return Double.parseDouble(normalized);
+        } catch (NumberFormatException ex) {
+            throw new RuntimeException(columnName + " must be numeric");
+        }
+    }
+
+    private LocalDate parseDateValue(Row row, Map<String, Integer> headerMap, String header, DataFormatter formatter) {
+        Integer columnIndex = headerMap.get(header);
+        if (columnIndex == null) {
+            return null;
+        }
+        Cell cell = row.getCell(columnIndex);
+        if (cell == null) {
+            return null;
+        }
+
+        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+            return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        }
+
+        String value = normalizeNullable(formatter.formatCellValue(cell));
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+
+        for (DateTimeFormatter formatterCandidate : IMPORT_DATE_FORMATTERS) {
+            try {
+                return LocalDate.parse(value, formatterCandidate);
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        throw new RuntimeException(header + " format is invalid");
+    }
+
+    private String buildImportTechnicalNotes(String description,
+                                             String region,
+                                             String warrantyStatus,
+                                             String maintenanceType,
+                                             String maintenanceStaff,
+                                             String failureStaff) {
+        List<String> lines = new ArrayList<>();
+        if (StringUtils.hasText(description)) {
+            lines.add(description);
+        }
+        if (StringUtils.hasText(region)) {
+            lines.add("Region: " + region);
+        }
+        if (StringUtils.hasText(warrantyStatus)) {
+            lines.add("Warranty Status: " + warrantyStatus);
+        }
+        if (StringUtils.hasText(maintenanceType)) {
+            lines.add("Maintenance Type: " + maintenanceType);
+        }
+        if (StringUtils.hasText(maintenanceStaff)) {
+            lines.add("Maintenance Staff: " + maintenanceStaff);
+        }
+        if (StringUtils.hasText(failureStaff)) {
+            lines.add("Failure Staff: " + failureStaff);
+        }
+        return lines.isEmpty() ? null : String.join(" | ", lines);
+    }
+
+    private String joinNameParts(String firstName, String lastName) {
+        String joined = firstNonBlank(
+                StringUtils.hasText(firstName) && StringUtils.hasText(lastName) ? firstName + " " + lastName : null,
+                firstName,
+                lastName
+        );
+        return normalizeNullable(joined);
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private String resolveImportFailureMessage(Exception ex) {
+        String message = ex.getMessage();
+        if (!StringUtils.hasText(message)) {
+            return "Import failed";
+        }
+        return message;
     }
 
     private void enforceReadableB2BUnitScopeAccess(Long b2bUnitId) {
