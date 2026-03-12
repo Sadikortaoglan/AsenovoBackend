@@ -103,13 +103,19 @@ app:
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: ${ASENOVO_DOCS_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: ${ASENOVO_DOCS_ENABLED:true}
     try-it-out-enabled: true
-    config-url: /api-docs/swagger-config
-    urls:
-      - url: /api-docs
-        name: Sara Elevator API
+    persist-authorization: true
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
+
+asenovo:
+  docs:
+    enabled: ${ASENOVO_DOCS_ENABLED:true}
+    server-url: ${ASENOVO_DOCS_SERVER_URL:http://localhost:8080/api}
+    default-tenant-host: ${ASENOVO_DOCS_DEFAULT_TENANT_HOST:default.asenovo.local}
+    allowed-hosts: ${ASENOVO_DOCS_ALLOWED_HOSTS:localhost,127.0.0.1,default.asenovo.local,internal-api.asenovo.local}
+    tenant-options: ${ASENOVO_DOCS_TENANT_OPTIONS:default.asenovo.local,tenant1.asenovo.local,tenant2.asenovo.local}

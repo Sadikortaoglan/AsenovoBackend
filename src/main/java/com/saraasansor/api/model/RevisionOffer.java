@@ -48,6 +48,10 @@ public class RevisionOffer {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Status status = Status.DRAFT;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "converted_to_sale_id")
+    private B2BUnitInvoice convertedToSale;
+
     @OneToMany(mappedBy = "revisionOffer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<RevisionOfferItem> items = new ArrayList<>();
 
@@ -169,6 +173,14 @@ public class RevisionOffer {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public B2BUnitInvoice getConvertedToSale() {
+        return convertedToSale;
+    }
+
+    public void setConvertedToSale(B2BUnitInvoice convertedToSale) {
+        this.convertedToSale = convertedToSale;
     }
 
     public List<RevisionOfferItem> getItems() {

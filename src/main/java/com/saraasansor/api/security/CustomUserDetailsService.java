@@ -22,6 +22,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final String ROLE_STAFF_ADMIN = "ROLE_STAFF_ADMIN";
     private final String ROLE_STAFF_USER = "ROLE_STAFF_USER";
     private final String ROLE_CARI_USER = "ROLE_CARI_USER";
+    private final String ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
+    private final String ROLE_TECHNICIAN = "ROLE_TECHNICIAN";
 
     @Autowired
     private UserRepository userRepository;
@@ -51,11 +53,16 @@ public class CustomUserDetailsService implements UserDetailsService {
             authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_ADMIN));
             authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_USER));
             authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
+            authorities.add(new SimpleGrantedAuthority(ROLE_TENANT_ADMIN));
+            authorities.add(new SimpleGrantedAuthority(ROLE_TECHNICIAN));
         } else if (role == User.Role.STAFF_ADMIN) {
             authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_USER));
             authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
+            authorities.add(new SimpleGrantedAuthority(ROLE_TENANT_ADMIN));
+            authorities.add(new SimpleGrantedAuthority(ROLE_TECHNICIAN));
         } else if (role == User.Role.STAFF_USER) {
             authorities.add(new SimpleGrantedAuthority(ROLE_CARI_USER));
+            authorities.add(new SimpleGrantedAuthority(ROLE_TECHNICIAN));
         }
 
         return authorities;

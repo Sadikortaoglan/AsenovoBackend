@@ -5,6 +5,8 @@
 ```bash
 ssh -i saraasansor.pem ec2-user@51.21.3.85
 cd ~/sara-backend
+cp deploy/env/backend.prod.env.example .env.prod
+# .env.prod içindeki REPLACE_* değerlerini gerçek değerlerle doldur
 ./deploy/scripts/deploy_backend_prod.sh ~/sara-backend http://127.0.0.1:8080/api/health
 ```
 
@@ -13,10 +15,10 @@ Alternatif manuel:
 ```bash
 cd ~/sara-backend
 git pull
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
-docker compose -f docker-compose.prod.yml logs -f app
+docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
+docker compose --env-file .env.prod -f docker-compose.prod.yml build
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f app
 ```
 
 ## B) Frontend deploy (local build -> EC2 nginx)
@@ -38,6 +40,30 @@ Frontend prod env:
 VITE_API_BASE_URL=https://api.asenovo.com/api
 ```
 
+## B2) Sıfırdan canlı DB reset (TÜM VERİ SİLİNİR)
+
+Canlı DB tamamen sıfırlanacaksa:
+
+```bash
+ssh -i saraasansor.pem ec2-user@51.21.3.85
+cd ~/sara-backend
+chmod +x deploy/scripts/reset_prod_database.sh
+./deploy/scripts/reset_prod_database.sh ~/sara-backend http://127.0.0.1:8080/api/health
+```
+
+Beklenen env:
+
+```env
+POSTGRES_DB=asenovo
+POSTGRES_USER=asenovo
+POSTGRES_PASSWORD=asenovo767
+```
+
+Not:
+- Bu işlem PostgreSQL volume'ünü siler.
+- Uygulama tekrar kalkarken Flyway migration'ları baştan çalışır.
+- Bu repodaki mevcut migration seti fresh DB üzerinde başlangıç verilerini yeniden oluşturur.
+
 ## C) Tenant açma (sara/test)
 
 Not: `PGPASSWORD` export edilmeden script çalışmaz.
@@ -50,8 +76,8 @@ export PGPASSWORD='DB_PASSWORD'
 ./deploy/scripts/provision_shared_tenant.sh \
   --db-host DB_HOST \
   --db-port 5432 \
-  --db-name sara \
-  --db-user sara \
+  --db-name asenovo \
+  --db-user asenovo \
   --tenant-subdomain sara \
   --tenant-name 'Sara Tenant' \
   --tenant-schema tenant_sara
@@ -60,8 +86,8 @@ export PGPASSWORD='DB_PASSWORD'
 ./deploy/scripts/provision_shared_tenant.sh \
   --db-host DB_HOST \
   --db-port 5432 \
-  --db-name sara \
-  --db-user sara \
+  --db-name asenovo \
+  --db-user asenovo \
   --tenant-subdomain test \
   --tenant-name 'Test Tenant' \
   --tenant-schema tenant_test

@@ -9,6 +9,9 @@ import com.saraasansor.api.model.B2BUnitInvoice;
 import com.saraasansor.api.model.B2BUnitInvoiceLine;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.Facility;
+import com.saraasansor.api.model.CurrentAccount;
+import com.saraasansor.api.model.RevisionOffer;
+import com.saraasansor.api.model.RevisionOfferItem;
 import com.saraasansor.api.model.User;
 import com.saraasansor.api.model.Warehouse;
 import com.saraasansor.api.repository.B2BUnitInvoiceRepository;
@@ -28,6 +31,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -97,28 +101,40 @@ public class B2BUnitInvoiceService {
         validateElevatorFacilityConsistency(elevator, facility);
         List<InvoiceLineRequest> lines = validateAndGetLines(request.getLines());
 
-        B2BUnitInvoice invoice = new B2BUnitInvoice();
-        invoice.setInvoiceType(B2BUnitInvoice.InvoiceType.SALES);
-        invoice.setB2bUnit(b2bUnit);
-        invoice.setFacility(facility);
-        invoice.setElevator(elevator);
-        invoice.setWarehouse(warehouse);
-        invoice.setInvoiceDate(requireInvoiceDate(request.getInvoiceDate()));
-        invoice.setDescription(normalizeNullable(request.getDescription()));
-        invoice.setStatus(B2BUnitInvoice.InvoiceStatus.POSTED);
-        invoice.setCreatedBy(resolveCurrentUsername());
-
-        applyLinesAndTotals(invoice, lines);
-
-        B2BUnitInvoice saved = invoiceRepository.save(invoice);
-        transactionService.onSalesInvoicePosted(
-                b2bUnitId,
-                saved.getInvoiceDate(),
-                saved.getGrandTotal(),
-                buildReferenceCode(saved),
-                saved.getDescription()
+        B2BUnitInvoice saved = createPostedSalesInvoice(
+                b2bUnit,
+                facility,
+                elevator,
+                warehouse,
+                request.getInvoiceDate(),
+                request.getDescription(),
+                lines
         );
         return InvoiceResponse.fromEntity(saved);
+    }
+
+    public B2BUnitInvoice createSalesInvoiceFromRevisionOffer(RevisionOffer offer) {
+        enforceCreateAccess();
+        if (offer == null) {
+            throw new RuntimeException("Revision offer is required");
+        }
+        Elevator elevator = offer.getElevator();
+        if (elevator == null) {
+            throw new RuntimeException("Revision offer elevator is missing.");
+        }
+        SaleContext saleContext = resolveSaleContextFromRevisionOffer(offer);
+
+        List<InvoiceLineRequest> lines = buildRevisionOfferInvoiceLines(offer);
+        String description = buildRevisionOfferInvoiceDescription(offer);
+        return createPostedSalesInvoice(
+                saleContext.b2bUnit(),
+                saleContext.facility(),
+                elevator,
+                null,
+                LocalDate.now(),
+                description,
+                lines
+        );
     }
 
     @Transactional(readOnly = true)
@@ -297,5 +313,157 @@ public class B2BUnitInvoiceService {
             return null;
         }
         return (invoice.getInvoiceType() == B2BUnitInvoice.InvoiceType.PURCHASE ? "PUR-" : "SAL-") + invoice.getId();
+    }
+
+    public String buildSaleNumber(B2BUnitInvoice invoice) {
+        if (invoice == null || invoice.getInvoiceType() != B2BUnitInvoice.InvoiceType.SALES) {
+            return null;
+        }
+        return buildReferenceCode(invoice);
+    }
+
+    private B2BUnitInvoice createPostedSalesInvoice(B2BUnit b2bUnit,
+                                                    Facility facility,
+                                                    Elevator elevator,
+                                                    Warehouse warehouse,
+                                                    LocalDate invoiceDate,
+                                                    String description,
+                                                    List<InvoiceLineRequest> lines) {
+        validateElevatorFacilityConsistency(elevator, facility);
+
+        B2BUnitInvoice invoice = new B2BUnitInvoice();
+        invoice.setInvoiceType(B2BUnitInvoice.InvoiceType.SALES);
+        invoice.setB2bUnit(b2bUnit);
+        invoice.setFacility(facility);
+        invoice.setElevator(elevator);
+        invoice.setWarehouse(warehouse);
+        invoice.setInvoiceDate(requireInvoiceDate(invoiceDate));
+        invoice.setDescription(normalizeNullable(description));
+        invoice.setStatus(B2BUnitInvoice.InvoiceStatus.POSTED);
+        invoice.setCreatedBy(resolveCurrentUsername());
+
+        applyLinesAndTotals(invoice, validateAndGetLines(lines));
+
+        B2BUnitInvoice saved = invoiceRepository.save(invoice);
+        transactionService.onSalesInvoicePosted(
+                b2bUnit.getId(),
+                saved.getInvoiceDate(),
+                saved.getGrandTotal(),
+                buildReferenceCode(saved),
+                saved.getDescription()
+        );
+        return saved;
+    }
+
+    private List<InvoiceLineRequest> buildRevisionOfferInvoiceLines(RevisionOffer offer) {
+        List<InvoiceLineRequest> lines = new ArrayList<>();
+        if (offer.getItems() != null) {
+            for (RevisionOfferItem item : offer.getItems()) {
+                lines.add(newInvoiceLine(
+                        item.getPart() != null ? item.getPart().getName() : "Revision item",
+                        BigDecimal.valueOf(item.getQuantity() != null ? item.getQuantity() : 0),
+                        BigDecimal.valueOf(item.getUnitPrice() != null ? item.getUnitPrice() : 0D),
+                        BigDecimal.ZERO
+                ));
+            }
+        }
+
+        BigDecimal laborTotal = offer.getLaborTotal() != null ? offer.getLaborTotal() : BigDecimal.ZERO;
+        if (laborTotal.compareTo(BigDecimal.ZERO) > 0) {
+            lines.add(newInvoiceLine("Revision labor", BigDecimal.ONE, laborTotal, BigDecimal.ZERO));
+        }
+
+        return lines;
+    }
+
+    private InvoiceLineRequest newInvoiceLine(String productName,
+                                              BigDecimal quantity,
+                                              BigDecimal unitPrice,
+                                              BigDecimal vatRate) {
+        InvoiceLineRequest line = new InvoiceLineRequest();
+        line.setProductName(productName);
+        line.setQuantity(quantity);
+        line.setUnitPrice(unitPrice);
+        line.setVatRate(vatRate);
+        return line;
+    }
+
+    private String buildRevisionOfferInvoiceDescription(RevisionOffer offer) {
+        String baseDescription = "Converted from revision offer #" + offer.getId();
+        String laborDescription = normalizeNullable(offer.getLaborDescription());
+        if (!StringUtils.hasText(laborDescription)) {
+            return baseDescription;
+        }
+        return baseDescription + " - " + laborDescription;
+    }
+
+    private SaleContext resolveSaleContextFromRevisionOffer(RevisionOffer offer) {
+        Elevator elevator = offer.getElevator();
+        Facility directFacility = elevator.getFacility();
+        if (directFacility != null && directFacility.getB2bUnit() != null) {
+            return new SaleContext(directFacility.getB2bUnit(), directFacility);
+        }
+
+        Facility resolvedFacility = resolveFacilityByRevisionOfferContext(offer);
+        if (resolvedFacility != null && resolvedFacility.getB2bUnit() != null) {
+            return new SaleContext(resolvedFacility.getB2bUnit(), resolvedFacility);
+        }
+
+        B2BUnit fallbackB2BUnit = resolveSingleActiveB2BUnit();
+        if (fallbackB2BUnit != null) {
+            return new SaleContext(fallbackB2BUnit, null);
+        }
+
+        throw new RuntimeException(
+                "This revision offer cannot be converted to sale because no facility or B2B unit mapping could be resolved."
+        );
+    }
+
+    private Facility resolveFacilityByRevisionOfferContext(RevisionOffer offer) {
+        CurrentAccount currentAccount = offer.getCurrentAccount();
+        if (currentAccount != null && currentAccount.getBuilding() != null) {
+            Facility byBuilding = findActiveFacilityByName(currentAccount.getBuilding().getName());
+            if (byBuilding != null) {
+                return byBuilding;
+            }
+        }
+
+        if (currentAccount != null) {
+            Facility byAccountName = findActiveFacilityByName(currentAccount.getName());
+            if (byAccountName != null) {
+                return byAccountName;
+            }
+        }
+
+        if (offer.getBuilding() != null) {
+            Facility byOfferBuilding = findActiveFacilityByName(offer.getBuilding().getName());
+            if (byOfferBuilding != null) {
+                return byOfferBuilding;
+            }
+        }
+
+        Elevator elevator = offer.getElevator();
+        if (elevator != null) {
+            return findActiveFacilityByName(elevator.getBuildingName());
+        }
+
+        return null;
+    }
+
+    private Facility findActiveFacilityByName(String name) {
+        if (!StringUtils.hasText(name)) {
+            return null;
+        }
+        return facilityRepository.findFirstByNameIgnoreCaseAndActiveTrue(name.trim()).orElse(null);
+    }
+
+    private B2BUnit resolveSingleActiveB2BUnit() {
+        if (b2bUnitRepository.countByActiveTrue() != 1) {
+            return null;
+        }
+        return b2bUnitRepository.findFirstByActiveTrueOrderByIdAsc().orElse(null);
+    }
+
+    private record SaleContext(B2BUnit b2bUnit, Facility facility) {
     }
 }

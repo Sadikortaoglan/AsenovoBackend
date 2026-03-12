@@ -37,4 +37,8 @@ public interface B2BUnitRepository extends JpaRepository<B2BUnit, Long> {
     List<B2BUnit> findActiveLookup(@Param("query") String query, Pageable pageable);
 
     Optional<B2BUnit> findFirstByNameIgnoreCaseAndActiveTrue(String name);
+
+    long countByActiveTrue();
+
+    Optional<B2BUnit> findFirstByActiveTrueOrderByIdAsc();
 }

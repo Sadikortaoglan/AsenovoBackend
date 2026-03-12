@@ -1,8 +1,11 @@
 package com.saraasansor.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.saraasansor.api.model.B2BUnitInvoice;
 import com.saraasansor.api.model.RevisionOffer;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,8 +13,12 @@ public class RevisionOfferDto {
     private Long id;
     private Long elevatorId;
     private String elevatorIdentityNumber;
+    private String elevatorBuildingName;
     private Long buildingId;
     private String buildingName;
+    private LocalDateTime createdAt;
+    private Long convertedToSaleId;
+    private String saleNo;
     private Long currentAccountId;
     private String currentAccountName;
     private CurrentAccountDto currentAccount;
@@ -55,6 +62,14 @@ public class RevisionOfferDto {
         this.elevatorIdentityNumber = elevatorIdentityNumber;
     }
 
+    public String getElevatorBuildingName() {
+        return elevatorBuildingName;
+    }
+
+    public void setElevatorBuildingName(String elevatorBuildingName) {
+        this.elevatorBuildingName = elevatorBuildingName;
+    }
+
     public Long getBuildingId() {
         return buildingId;
     }
@@ -69,6 +84,62 @@ public class RevisionOfferDto {
 
     public void setBuildingName(String buildingName) {
         this.buildingName = buildingName;
+    }
+
+    @JsonProperty("building_name")
+    public String getBuildingNameSnakeCase() {
+        return buildingName;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdAt;
+    }
+
+    @JsonProperty("created_date")
+    public LocalDateTime getCreatedDateSnakeCase() {
+        return createdAt;
+    }
+
+    public LocalDateTime getCreationDate() {
+        return createdAt;
+    }
+
+    @JsonProperty("creation_date")
+    public LocalDateTime getCreationDateSnakeCase() {
+        return createdAt;
+    }
+
+    public LocalDateTime getDate() {
+        return createdAt;
+    }
+
+    @JsonProperty("created_at")
+    public LocalDateTime getCreatedAtSnakeCase() {
+        return createdAt;
+    }
+
+    public Long getConvertedToSaleId() {
+        return convertedToSaleId;
+    }
+
+    public void setConvertedToSaleId(Long convertedToSaleId) {
+        this.convertedToSaleId = convertedToSaleId;
+    }
+
+    public String getSaleNo() {
+        return saleNo;
+    }
+
+    public void setSaleNo(String saleNo) {
+        this.saleNo = saleNo;
     }
 
     public Long getCurrentAccountId() {
@@ -197,23 +268,39 @@ public class RevisionOfferDto {
         if (offer.getElevator() != null) {
             dto.setElevatorId(offer.getElevator().getId());
             dto.setElevatorIdentityNumber(offer.getElevator().getIdentityNumber());
+            dto.setElevatorBuildingName(offer.getElevator().getBuildingName());
         }
         if (offer.getBuilding() != null) {
             dto.setBuildingId(offer.getBuilding().getId());
             dto.setBuildingName(offer.getBuilding().getName());
+        }
+        if (dto.getBuildingName() == null && offer.getCurrentAccount() != null && offer.getCurrentAccount().getBuilding() != null) {
+            dto.setBuildingId(offer.getCurrentAccount().getBuilding().getId());
+            dto.setBuildingName(offer.getCurrentAccount().getBuilding().getName());
+        }
+        if (dto.getBuildingName() == null && dto.getElevatorBuildingName() != null) {
+            dto.setBuildingName(dto.getElevatorBuildingName());
+        }
+        if (dto.getBuildingName() == null && offer.getElevator() != null && offer.getElevator().getFacility() != null) {
+            dto.setBuildingName(offer.getElevator().getFacility().getName());
         }
         if (offer.getCurrentAccount() != null) {
             dto.setCurrentAccountId(offer.getCurrentAccount().getId());
             dto.setCurrentAccountName(offer.getCurrentAccount().getName());
             dto.setCurrentAccount(CurrentAccountDto.fromEntity(offer.getCurrentAccount()));
         }
+        dto.setCreatedAt(offer.getCreatedAt());
         dto.setRevisionStandardId(offer.getRevisionStandardId());
         dto.setLabor(offer.getLaborTotal());
         dto.setLaborDescription(offer.getLaborDescription());
         dto.setPartsTotal(offer.getPartsTotal());
         dto.setLaborTotal(offer.getLaborTotal());
         dto.setTotalPrice(offer.getTotalPrice());
-        dto.setStatus(offer.getStatus() != null ? offer.getStatus().name() : null);
+        if (offer.getConvertedToSale() != null) {
+            dto.setConvertedToSaleId(offer.getConvertedToSale().getId());
+            dto.setSaleNo(toSaleNo(offer.getConvertedToSale()));
+        }
+        dto.setStatus(resolveApiStatus(offer));
         if (offer.getItems() != null && !offer.getItems().isEmpty()) {
             List<RevisionOfferItemDto> itemDtos = offer.getItems().stream()
                     .map(RevisionOfferItemDto::fromEntity)
@@ -223,5 +310,30 @@ public class RevisionOfferDto {
             dto.setOfferItems(itemDtos);
         }
         return dto;
+    }
+
+    private static String toApiStatus(RevisionOffer.Status status) {
+        if (status == null) {
+            return null;
+        }
+        return switch (status) {
+            case APPROVED -> "ACCEPTED";
+            case CONVERTED_TO_SALE -> "CONVERTED";
+            default -> status.name();
+        };
+    }
+
+    private static String resolveApiStatus(RevisionOffer offer) {
+        if (offer.getConvertedToSale() != null) {
+            return "CONVERTED";
+        }
+        return toApiStatus(offer.getStatus());
+    }
+
+    private static String toSaleNo(B2BUnitInvoice invoice) {
+        if (invoice == null || invoice.getId() == null || invoice.getInvoiceType() != B2BUnitInvoice.InvoiceType.SALES) {
+            return null;
+        }
+        return "SAL-" + invoice.getId();
     }
 }

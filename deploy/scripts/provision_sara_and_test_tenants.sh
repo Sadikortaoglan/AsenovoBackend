@@ -5,18 +5,18 @@ usage() {
   cat <<USAGE
 Usage:
   export PGPASSWORD='<DB_PASSWORD>'
-  ./deploy/scripts/provision_sara_and_test_tenants.sh --db-host <DB_HOST> [--db-port 5432] [--db-name sara] [--db-user sara]
+  ./deploy/scripts/provision_sara_and_test_tenants.sh --db-host <DB_HOST> [--db-port 5432] [--db-name asenovo] [--db-user asenovo]
 
 Example:
   export PGPASSWORD='StrongPassword123'
-  ./deploy/scripts/provision_sara_and_test_tenants.sh --db-host 127.0.0.1 --db-port 5432 --db-name sara --db-user sara
+  ./deploy/scripts/provision_sara_and_test_tenants.sh --db-host 127.0.0.1 --db-port 5432 --db-name asenovo --db-user asenovo
 USAGE
 }
 
 DB_HOST=""
 DB_PORT="5432"
-DB_NAME="sara"
-DB_USER="sara"
+DB_NAME="asenovo"
+DB_USER="asenovo"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
