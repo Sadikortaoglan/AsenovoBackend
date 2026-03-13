@@ -1,5 +1,6 @@
 package com.saraasansor.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.saraasansor.api.model.User;
 
 public class TenantUserUpdateRequest {
@@ -7,7 +8,10 @@ public class TenantUserUpdateRequest {
     private String username;
     private String password;
     private User.Role role;
+    @JsonProperty("linkedB2BUnitId")
+    private Long linkedB2bUnitId;
     private Long b2bUnitId;
+    private Boolean enabled;
     private Boolean active;
     private Boolean locked;
 
@@ -43,6 +47,22 @@ public class TenantUserUpdateRequest {
         this.b2bUnitId = b2bUnitId;
     }
 
+    public Long getLinkedB2bUnitId() {
+        return linkedB2bUnitId;
+    }
+
+    public void setLinkedB2bUnitId(Long linkedB2bUnitId) {
+        this.linkedB2bUnitId = linkedB2bUnitId;
+    }
+
+    public Boolean getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public Boolean getActive() {
         return active;
     }
@@ -57,5 +77,16 @@ public class TenantUserUpdateRequest {
 
     public void setLocked(Boolean locked) {
         this.locked = locked;
+    }
+
+    public Long resolveLinkedB2bUnitId() {
+        return linkedB2bUnitId != null ? linkedB2bUnitId : b2bUnitId;
+    }
+
+    public Boolean resolveEnabledValue() {
+        if (enabled != null) {
+            return enabled;
+        }
+        return active;
     }
 }

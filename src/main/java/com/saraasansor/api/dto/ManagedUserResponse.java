@@ -1,5 +1,6 @@
 package com.saraasansor.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.saraasansor.api.model.User;
 
 import java.time.LocalDateTime;
@@ -10,6 +11,10 @@ public class ManagedUserResponse {
     private String username;
     private String role;
     private String userType;
+    @JsonProperty("linkedB2BUnitId")
+    private Long linkedB2bUnitId;
+    @JsonProperty("linkedB2BUnitName")
+    private String linkedB2bUnitName;
     private Long b2bUnitId;
     private Boolean active;
     private Boolean enabled;
@@ -24,6 +29,8 @@ public class ManagedUserResponse {
         response.setUsername(user.getUsername());
         response.setRole(user.getCanonicalRole() != null ? user.getCanonicalRole().name() : null);
         response.setUserType(user.getUserType() != null ? user.getUserType().name() : null);
+        response.setLinkedB2bUnitId(user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
+        response.setLinkedB2bUnitName(user.getB2bUnit() != null ? user.getB2bUnit().getName() : null);
         response.setB2bUnitId(user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
         response.setActive(user.getActive());
         response.setEnabled(user.getEnabled());
@@ -72,6 +79,22 @@ public class ManagedUserResponse {
 
     public void setB2bUnitId(Long b2bUnitId) {
         this.b2bUnitId = b2bUnitId;
+    }
+
+    public Long getLinkedB2bUnitId() {
+        return linkedB2bUnitId;
+    }
+
+    public void setLinkedB2bUnitId(Long linkedB2bUnitId) {
+        this.linkedB2bUnitId = linkedB2bUnitId;
+    }
+
+    public String getLinkedB2bUnitName() {
+        return linkedB2bUnitName;
+    }
+
+    public void setLinkedB2bUnitName(String linkedB2bUnitName) {
+        this.linkedB2bUnitName = linkedB2bUnitName;
     }
 
     public Boolean getActive() {

@@ -17,6 +17,8 @@ import com.saraasansor.api.security.UserAuthorizationPolicyService;
 import com.saraasansor.api.tenant.data.TenantDescriptor;
 import com.saraasansor.api.tenant.service.TenantContextExecutionService;
 import com.saraasansor.api.util.AuditLogger;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -185,14 +187,34 @@ public class UserManagementService {
     }
 
     @Transactional(readOnly = true)
-    public List<ManagedUserResponse> getTenantUsersForTenantAdmin() {
+    public Page<ManagedUserResponse> getTenantUsersForTenantAdmin(String query,
+                                                                  String roleFilter,
+                                                                  Boolean enabledFilter,
+                                                                  Pageable pageable) {
         AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
         authorizationPolicyService.requireTenantAdmin(actor);
         authorizationPolicyService.requireTenantScope(actor);
 
-        return userRepository.findByRoleNotInOrderByIdAsc(TENANT_EXCLUDED_ROLES).stream()
-                .map(ManagedUserResponse::fromEntity)
-                .toList();
+        String normalizedQuery = normalizeNullable(query);
+        String queryValue = normalizedQuery != null ? normalizedQuery : "";
+        User.Role persistedRoleFilter = normalizeTenantRoleFilter(roleFilter);
+        return userRepository.searchTenantUsers(
+                        queryValue,
+                        persistedRoleFilter,
+                        enabledFilter,
+                        TENANT_EXCLUDED_ROLES,
+                        pageable)
+                .map(ManagedUserResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public ManagedUserResponse getTenantUserForTenantAdmin(Long userId) {
+        AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
+        authorizationPolicyService.requireTenantAdmin(actor);
+        authorizationPolicyService.requireTenantScope(actor);
+
+        User user = findManageableTenantUserById(userId);
+        return ManagedUserResponse.fromEntity(user);
     }
 
     public ManagedUserResponse createTenantUserForTenantAdmin(TenantUserCreateRequest request) {
@@ -236,8 +258,9 @@ public class UserManagementService {
         user.setPasswordHash(passwordEncoder.encode(normalizeRequired(request.getPassword(), "password")));
         user.setRole(requestedCanonicalRole.toPersistenceRole());
         user.setUserType(resolveUserType(requestedCanonicalRole));
-        user.setB2bUnit(resolveB2BUnit(requestedCanonicalRole, request.getB2bUnitId()));
-        boolean enabled = request.getActive() == null || request.getActive();
+        user.setB2bUnit(resolveB2BUnitForCreate(requestedCanonicalRole, request.resolveLinkedB2bUnitId()));
+        Boolean requestedEnabled = request.resolveEnabledValue();
+        boolean enabled = requestedEnabled == null || requestedEnabled;
         user.setActive(enabled);
         user.setEnabled(enabled);
         user.setLocked(false);
@@ -252,16 +275,14 @@ public class UserManagementService {
                                                          AuthenticatedUserContext actor,
                                                          Long tenantId,
                                                          boolean allowTenantAdminRoleByPlatform) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Tenant user not found: " + userId));
+        User user = findManageableTenantUserById(userId);
 
         User.Role existingCanonicalRole = user.getCanonicalRole();
-        if (existingCanonicalRole != null && existingCanonicalRole.isPlatformAdmin()) {
-            throw new RuntimeException("Platform users cannot be managed from tenant scope");
-        }
         if (!allowTenantAdminRoleByPlatform && existingCanonicalRole == User.Role.TENANT_ADMIN) {
             throw new RuntimeException("TENANT_ADMIN cannot be updated by TENANT_ADMIN");
         }
+
+        Long previousLinkedB2bUnitId = user.getB2bUnit() != null ? user.getB2bUnit().getId() : null;
 
         if (request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
             String normalizedUsername = request.getUsername().trim();
@@ -292,13 +313,12 @@ public class UserManagementService {
             user.setLocked(request.getLocked());
         }
 
-        if (request.getB2bUnitId() != null || (targetCanonicalRole != null && targetCanonicalRole.isCariUser())) {
-            user.setB2bUnit(resolveB2BUnit(targetCanonicalRole, request.getB2bUnitId()));
-        }
+        user.setB2bUnit(resolveB2BUnitForUpdate(targetCanonicalRole, request.resolveLinkedB2bUnitId(), user.getB2bUnit()));
 
-        if (request.getActive() != null) {
-            user.setActive(request.getActive());
-            user.setEnabled(request.getActive());
+        Boolean requestedEnabled = request.resolveEnabledValue();
+        if (requestedEnabled != null) {
+            user.setActive(requestedEnabled);
+            user.setEnabled(requestedEnabled);
         }
 
         User saved = userRepository.save(user);
@@ -306,6 +326,14 @@ public class UserManagementService {
                 ? "TENANT_USER_UPDATED_BY_PLATFORM"
                 : "TENANT_USER_UPDATED_BY_TENANT_ADMIN";
         auditLogger.log(action, "USER", saved.getId(), metadata(actor, saved, tenantId));
+
+        Long newLinkedB2bUnitId = saved.getB2bUnit() != null ? saved.getB2bUnit().getId() : null;
+        if (!Objects.equals(previousLinkedB2bUnitId, newLinkedB2bUnitId)) {
+            String linkageAction = allowTenantAdminRoleByPlatform
+                    ? "TENANT_USER_B2BUNIT_LINK_CHANGED_BY_PLATFORM"
+                    : "TENANT_USER_B2BUNIT_LINK_CHANGED_BY_TENANT_ADMIN";
+            auditLogger.log(linkageAction, "USER", saved.getId(), metadata(actor, saved, tenantId));
+        }
         return ManagedUserResponse.fromEntity(saved);
     }
 
@@ -314,13 +342,9 @@ public class UserManagementService {
                                                              AuthenticatedUserContext actor,
                                                              Long tenantId,
                                                              boolean allowTenantAdminRoleByPlatform) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Tenant user not found: " + userId));
+        User user = findManageableTenantUserById(userId);
 
         User.Role canonicalRole = user.getCanonicalRole();
-        if (canonicalRole != null && canonicalRole.isPlatformAdmin()) {
-            throw new RuntimeException("Platform users cannot be managed from tenant scope");
-        }
         if (!allowTenantAdminRoleByPlatform && canonicalRole == User.Role.TENANT_ADMIN) {
             throw new RuntimeException("TENANT_ADMIN cannot be managed by TENANT_ADMIN");
         }
@@ -367,21 +391,80 @@ public class UserManagementService {
         return User.UserType.STAFF;
     }
 
-    private B2BUnit resolveB2BUnit(User.Role canonicalRole, Long b2bUnitId) {
+    private B2BUnit resolveB2BUnitForCreate(User.Role canonicalRole, Long linkedB2bUnitId) {
         if (canonicalRole != null && canonicalRole.isCariUser()) {
-            if (b2bUnitId == null) {
-                throw new RuntimeException("b2bUnitId is required for CARI_USER");
+            if (linkedB2bUnitId == null) {
+                throw new RuntimeException("linkedB2bUnitId is required for CARI_USER");
             }
-            return b2bUnitRepository.findByIdAndActiveTrue(b2bUnitId)
+            return b2bUnitRepository.findByIdAndActiveTrue(linkedB2bUnitId)
                     .orElseThrow(() -> new RuntimeException("B2B unit not found"));
         }
 
-        if (b2bUnitId == null) {
+        if (linkedB2bUnitId != null) {
+            throw new RuntimeException("linkedB2bUnitId can only be set for CARI_USER");
+        }
+
+        return null;
+    }
+
+    private B2BUnit resolveB2BUnitForUpdate(User.Role canonicalRole,
+                                            Long linkedB2bUnitId,
+                                            B2BUnit existingB2bUnit) {
+        if (canonicalRole != null && canonicalRole.isCariUser()) {
+            if (linkedB2bUnitId != null) {
+                return b2bUnitRepository.findByIdAndActiveTrue(linkedB2bUnitId)
+                        .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+            }
+            if (existingB2bUnit != null) {
+                return existingB2bUnit;
+            }
+            throw new RuntimeException("linkedB2bUnitId is required for CARI_USER");
+        }
+
+        if (linkedB2bUnitId != null) {
+            throw new RuntimeException("linkedB2bUnitId can only be set for CARI_USER");
+        }
+
+        return null;
+    }
+
+    private User findManageableTenantUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Tenant user not found: " + userId));
+        if (user.getCanonicalRole() != null && user.getCanonicalRole().isPlatformAdmin()) {
+            throw new NotFoundException("Tenant user not found: " + userId);
+        }
+        return user;
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private User.Role normalizeTenantRoleFilter(String roleFilter) {
+        String normalizedRole = normalizeNullable(roleFilter);
+        if (normalizedRole == null) {
             return null;
         }
 
-        return b2bUnitRepository.findByIdAndActiveTrue(b2bUnitId)
-                .orElseThrow(() -> new RuntimeException("B2B unit not found"));
+        User.Role canonicalRole;
+        try {
+            canonicalRole = User.Role.fromExternalName(normalizedRole).toCanonical();
+        } catch (IllegalArgumentException ex) {
+            throw new RuntimeException("Invalid role filter: " + roleFilter);
+        }
+
+        if (canonicalRole.isPlatformAdmin()) {
+            throw new RuntimeException("PLATFORM_ADMIN cannot be used as tenant user role filter");
+        }
+        return canonicalRole.toPersistenceRole();
     }
 
     private String normalizeRequired(String value, String fieldName) {
@@ -393,6 +476,7 @@ public class UserManagementService {
 
     private Map<String, Object> metadata(AuthenticatedUserContext actor, User targetUser, Long tenantId) {
         Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("actorUserId", actor != null ? actor.getUserId() : null);
         metadata.put("actorUsername", actor != null ? actor.getUsername() : null);
         metadata.put("actorRole", actor != null && actor.getRole() != null ? actor.getRole().name() : null);
         metadata.put("authScopeType", actor != null && actor.getAuthScopeType() != null ? actor.getAuthScopeType().name() : null);
@@ -400,6 +484,8 @@ public class UserManagementService {
         metadata.put("targetUserId", targetUser != null ? targetUser.getId() : null);
         metadata.put("targetUsername", targetUser != null ? targetUser.getUsername() : null);
         metadata.put("targetRole", targetUser != null && targetUser.getCanonicalRole() != null ? targetUser.getCanonicalRole().name() : null);
+        metadata.put("targetLinkedB2bUnitId", targetUser != null && targetUser.getB2bUnit() != null ? targetUser.getB2bUnit().getId() : null);
+        metadata.put("targetLinkedB2bUnitName", targetUser != null && targetUser.getB2bUnit() != null ? targetUser.getB2bUnit().getName() : null);
         return metadata;
     }
 }
