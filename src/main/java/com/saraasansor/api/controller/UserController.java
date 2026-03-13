@@ -19,7 +19,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
-@PreAuthorize("hasRole('TENANT_ADMIN')")
+@PreAuthorize("denyAll()")
 public class UserController {
     
     @Autowired

@@ -9,11 +9,14 @@ public class LoginResponse {
     private String role;
     private String userType;
     private Long b2bUnitId;
+    private String authScopeType;
+    private Long tenantId;
+    private String tenantSchema;
 
     public LoginResponse() {
     }
 
-    public LoginResponse(String accessToken, String refreshToken, String tokenType, Long userId, String username, String role, String userType, Long b2bUnitId) {
+    public LoginResponse(String accessToken, String refreshToken, String tokenType, Long userId, String username, String role, String userType, Long b2bUnitId, String authScopeType, Long tenantId, String tenantSchema) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenType = tokenType;
@@ -22,6 +25,9 @@ public class LoginResponse {
         this.role = role;
         this.userType = userType;
         this.b2bUnitId = b2bUnitId;
+        this.authScopeType = authScopeType;
+        this.tenantId = tenantId;
+        this.tenantSchema = tenantSchema;
     }
 
     public String getAccessToken() {
@@ -86,5 +92,29 @@ public class LoginResponse {
 
     public void setB2bUnitId(Long b2bUnitId) {
         this.b2bUnitId = b2bUnitId;
+    }
+
+    public String getAuthScopeType() {
+        return authScopeType;
+    }
+
+    public void setAuthScopeType(String authScopeType) {
+        this.authScopeType = authScopeType;
+    }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public String getTenantSchema() {
+        return tenantSchema;
+    }
+
+    public void setTenantSchema(String tenantSchema) {
+        this.tenantSchema = tenantSchema;
     }
 }

@@ -57,7 +57,7 @@ public class B2BUnitElevatorController {
     }
 
     @PostMapping(value = "/{id}/elevators/import-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','STAFF_ADMIN','STAFF_USER')")
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
     public ResponseEntity<ApiResponse<ElevatorImportResultResponse>> importElevatorsForB2BUnit(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Entity
 @Table(name = "users")
@@ -55,10 +56,55 @@ public class User {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public enum Role {
+        PLATFORM_ADMIN,
+        TENANT_ADMIN,
+        // Legacy compatibility roles
         SYSTEM_ADMIN,
         STAFF_ADMIN,
         STAFF_USER,
-        CARI_USER
+        CARI_USER;
+
+        public Role toCanonical() {
+            return switch (this) {
+                case PLATFORM_ADMIN, SYSTEM_ADMIN -> PLATFORM_ADMIN;
+                case TENANT_ADMIN, STAFF_ADMIN -> TENANT_ADMIN;
+                case STAFF_USER -> STAFF_USER;
+                case CARI_USER -> CARI_USER;
+            };
+        }
+
+        public Role toPersistenceRole() {
+            return switch (toCanonical()) {
+                case PLATFORM_ADMIN -> SYSTEM_ADMIN;
+                case TENANT_ADMIN -> STAFF_ADMIN;
+                case STAFF_USER -> STAFF_USER;
+                case CARI_USER -> CARI_USER;
+                default -> this;
+            };
+        }
+
+        public boolean isPlatformAdmin() {
+            return toCanonical() == PLATFORM_ADMIN;
+        }
+
+        public boolean isTenantAdmin() {
+            return toCanonical() == TENANT_ADMIN;
+        }
+
+        public boolean isCariUser() {
+            return toCanonical() == CARI_USER;
+        }
+
+        public static Role fromExternalName(String value) {
+            if (value == null || value.trim().isEmpty()) {
+                throw new IllegalArgumentException("Role is required");
+            }
+            String normalized = value.trim().toUpperCase(Locale.ROOT);
+            if (normalized.startsWith("ROLE_")) {
+                normalized = normalized.substring(5);
+            }
+            return Role.valueOf(normalized);
+        }
     }
 
     public enum UserType {
@@ -140,6 +186,10 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public Role getCanonicalRole() {
+        return role != null ? role.toCanonical() : null;
     }
 
     public UserType getUserType() {

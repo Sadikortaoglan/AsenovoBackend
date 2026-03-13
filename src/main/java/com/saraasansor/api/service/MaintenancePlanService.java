@@ -351,7 +351,7 @@ public class MaintenancePlanService {
      * 
      * Business Rules:
      * - STAFF_USER: QR token is REQUIRED
-     * - SYSTEM_ADMIN/STAFF_ADMIN: Can start remotely (remoteStart = true) without QR, or with QR (remoteStart = false)
+     * - PLATFORM_ADMIN/TENANT_ADMIN: Can start remotely (remoteStart = true) without QR, or with QR (remoteStart = false)
      * - QR token must match elevatorId
      * - Audit logging: startedRemotely, startedByRole, startedAt, startedByUserId, ipAddress
      */
@@ -365,7 +365,7 @@ public class MaintenancePlanService {
         
         // Get current user and role
         User currentUser = getCurrentUser();
-        User.Role userRole = currentUser.getRole();
+        User.Role userRole = currentUser.getCanonicalRole();
         
         // Log start attempt
         logger.debug("Starting maintenance plan - Plan ID: {}, User: {}, Role: {}, Remote Start: {}", 
@@ -375,7 +375,8 @@ public class MaintenancePlanService {
         Boolean isRemoteStart = false;
         
         // Role-based validation
-        if ((userRole == User.Role.SYSTEM_ADMIN || userRole == User.Role.STAFF_ADMIN)
+        if (userRole != null
+                && (userRole.isPlatformAdmin() || userRole.isTenantAdmin())
                 && remoteStart != null && remoteStart) {
             // TODO: Sadık production'da admin QR zorunlu yapmayı isteyebilir. Şimdilik bilinçli olarak açık bırakıldı.
             logger.debug("Admin remote start - skipping QR validation");

@@ -47,8 +47,11 @@ public class SecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     private static final String APPLICATION_JSON = "application/json";
 
-    private final String SYSTEM_ADMIN = "SYSTEM_ADMIN";
-    private final String STAFF_ADMIN = "STAFF_ADMIN";
+    private final String PLATFORM_ADMIN = "PLATFORM_ADMIN";
+    private final String TENANT_ADMIN = "TENANT_ADMIN";
+    // Canonical aliases used across existing matcher blocks
+    private final String SYSTEM_ADMIN = "PLATFORM_ADMIN";
+    private final String STAFF_ADMIN = "TENANT_ADMIN";
     private final String STAFF_USER = "STAFF_USER";
     private final String CARI_USER = "CARI_USER";
 
@@ -66,6 +69,9 @@ public class SecurityConfig {
 
     @Autowired
     private RateLimitFilter rateLimitFilter;
+
+    @Autowired
+    private PlatformAdminTenantScopeFilter platformAdminTenantScopeFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -89,6 +95,8 @@ public class SecurityConfig {
     public RoleHierarchy roleHierarchy() {
         RoleHierarchyImpl hierarchy = new RoleHierarchyImpl();
         hierarchy.setHierarchy("""
+            ROLE_PLATFORM_ADMIN > ROLE_SYSTEM_ADMIN
+            ROLE_TENANT_ADMIN > ROLE_STAFF_ADMIN
             ROLE_SYSTEM_ADMIN > ROLE_STAFF_ADMIN
             ROLE_STAFF_ADMIN > ROLE_STAFF_USER
             ROLE_STAFF_USER > ROLE_CARI_USER
@@ -118,14 +126,18 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                // Platform control plane endpoints
+                .requestMatchers("/system-admin/**").hasRole(PLATFORM_ADMIN)
+                // Tenant-scoped user management endpoints
+                .requestMatchers("/tenant-admin/**").hasRole(TENANT_ADMIN)
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - permit all
                 // Note: context-path is /api, so swagger paths are relative to that
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/swagger-ui.html/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/api-docs/**", "/swagger-config/**").permitAll()
                 .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
-                // Users endpoint - staff administration
-                .requestMatchers("/users/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
+                // Legacy users endpoint is intentionally closed
+                .requestMatchers("/users/**").denyAll()
                 // B2BUnit detail endpoint (new detail page backbone)
                 .requestMatchers(HttpMethod.GET, "/b2b-units/*/detail").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit scoped facility endpoints (detail elevator operations > facilities)
@@ -215,7 +227,8 @@ public class SecurityConfig {
             // Resolve tenant (if any) before JWT authentication so that security and data access are tenant-aware
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(rateLimitFilter, TenantResolverFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(platformAdminTenantScopeFilter, JwtAuthenticationFilter.class);
         
         return http.build();
     }

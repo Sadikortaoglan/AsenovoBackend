@@ -15,9 +15,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
         JOIN FETCH s.plan
         WHERE s.tenant.id = :tenantId
         AND s.active = true
-        AND s.startsAt <= CURRENT_TIMESTAMP
-        AND (s.endsAt IS NULL OR s.endsAt >= CURRENT_TIMESTAMP)
+        AND s.startsAt <= CURRENT_DATE
+        AND (s.endsAt IS NULL OR s.endsAt >= CURRENT_DATE)
     """)
     Optional<Subscription> findActiveSubscription(Long tenantId);
-}
 
+    Optional<Subscription> findFirstByTenantIdOrderByIdAsc(Long tenantId);
+}

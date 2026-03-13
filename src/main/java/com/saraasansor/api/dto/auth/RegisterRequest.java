@@ -10,7 +10,7 @@ public class RegisterRequest {
     private String password;
 
     @NotBlank(message = "Role cannot be empty")
-    private String role; // STAFF_ADMIN | STAFF_USER | CARI_USER
+    private String role; // TENANT_ADMIN | STAFF_USER | CARI_USER (legacy STAFF_ADMIN accepted for compatibility)
 
     public RegisterRequest() {
     }
