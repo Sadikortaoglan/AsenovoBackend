@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -37,6 +38,7 @@ import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.List;
 
 @Configuration
@@ -113,6 +115,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        RequestMatcher swaggerRequestMatcher = this::isAllowedSwaggerRequest;
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -126,11 +129,16 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                .requestMatchers("/admin/revision-standards/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, "ADMIN")
                 // Platform control plane endpoints
                 .requestMatchers("/system-admin/**").hasRole(PLATFORM_ADMIN)
                 // Tenant-scoped user management endpoints
                 .requestMatchers("/tenant-admin/**").hasRole(TENANT_ADMIN)
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
+                // Swagger/OpenAPI endpoints - internal host only
+                .requestMatchers(swaggerRequestMatcher).permitAll()
+                // Users endpoint - staff administration
+                .requestMatchers("/users/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
                 // Swagger/OpenAPI endpoints - permit all
                 // Note: context-path is /api, so swagger paths are relative to that
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/swagger-ui.html/**").permitAll()
@@ -180,6 +188,7 @@ public class SecurityConfig {
                 // B2BUnit endpoints
                 .requestMatchers(HttpMethod.GET, "/b2bunits").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2b-units/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasRole(CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
@@ -327,5 +336,79 @@ public class SecurityConfig {
         }
 
         return allowedOriginPatterns;
+    }
+
+    private boolean isAllowedSwaggerRequest(jakarta.servlet.http.HttpServletRequest request) {
+        if (!isDocsEnabled()) {
+            return false;
+        }
+        if (!isSwaggerPath(request.getRequestURI())) {
+            return false;
+        }
+        return isAllowedDocsHost(request);
+    }
+
+    private boolean isDocsEnabled() {
+        return environment.getProperty("asenovo.docs.enabled", Boolean.class, Boolean.TRUE);
+    }
+
+    private boolean isSwaggerPath(String requestUri) {
+        return requestUri.startsWith("/api/swagger-ui")
+                || requestUri.startsWith("/api/v3/api-docs")
+                || requestUri.startsWith("/api/api-docs")
+                || requestUri.startsWith("/api/swagger-config")
+                || requestUri.startsWith("/api/swagger-resources")
+                || requestUri.startsWith("/api/webjars");
+    }
+
+    private boolean isAllowedDocsHost(jakarta.servlet.http.HttpServletRequest request) {
+        String requestHost = extractHost(request.getHeader("X-Forwarded-Host"));
+        if (requestHost == null) {
+            requestHost = extractHost(request.getHeader("Host"));
+        }
+        if (requestHost == null) {
+            requestHost = extractHost(request.getServerName());
+        }
+
+        List<String> allowedHosts = resolveAllowedDocsHosts();
+        return requestHost != null && allowedHosts.contains(requestHost.toLowerCase(Locale.ROOT));
+    }
+
+    private List<String> resolveAllowedDocsHosts() {
+        List<String> hosts = new ArrayList<>();
+
+        String configured = environment.getProperty("asenovo.docs.allowed-hosts");
+        if (configured != null && !configured.isBlank()) {
+            for (String host : configured.split(",")) {
+                String trimmed = extractHost(host);
+                if (trimmed != null && !trimmed.isBlank()) {
+                    hosts.add(trimmed.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        if (environment.acceptsProfiles(Profiles.of("dev", "default"))) {
+            addHostIfMissing(hosts, "localhost");
+            addHostIfMissing(hosts, "127.0.0.1");
+            addHostIfMissing(hosts, "default.asenovo.local");
+            addHostIfMissing(hosts, "internal-api.asenovo.local");
+        }
+
+        return hosts;
+    }
+
+    private void addHostIfMissing(List<String> hosts, String host) {
+        if (!hosts.contains(host)) {
+            hosts.add(host);
+        }
+    }
+
+    private String extractHost(String rawHost) {
+        if (rawHost == null || rawHost.isBlank()) {
+            return null;
+        }
+        String first = rawHost.split(",")[0].trim();
+        int colonIndex = first.indexOf(':');
+        return colonIndex >= 0 ? first.substring(0, colonIndex) : first;
     }
 }

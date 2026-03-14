@@ -1,9 +1,13 @@
 package com.saraasansor.api.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "revision_offers")
@@ -24,18 +28,32 @@ public class RevisionOffer {
     @JoinColumn(name = "current_account_id", nullable = false)
     private CurrentAccount currentAccount;
 
+    @Column(name = "revision_standard_id")
+    private Long revisionStandardId;
+
     @Column(name = "parts_total", nullable = false, precision = 14, scale = 2)
     private BigDecimal partsTotal = BigDecimal.ZERO;
 
     @Column(name = "labor_total", nullable = false, precision = 14, scale = 2)
     private BigDecimal laborTotal = BigDecimal.ZERO;
 
+    @Column(name = "labor_description", columnDefinition = "TEXT")
+    private String laborDescription;
+
     @Column(name = "total_price", nullable = false, precision = 14, scale = 2)
     private BigDecimal totalPrice = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "revision_offer_status")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private Status status = Status.DRAFT;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "converted_to_sale_id")
+    private B2BUnitInvoice convertedToSale;
+
+    @OneToMany(mappedBy = "revisionOffer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<RevisionOfferItem> items = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -107,6 +125,14 @@ public class RevisionOffer {
         this.currentAccount = currentAccount;
     }
 
+    public Long getRevisionStandardId() {
+        return revisionStandardId;
+    }
+
+    public void setRevisionStandardId(Long revisionStandardId) {
+        this.revisionStandardId = revisionStandardId;
+    }
+
     public BigDecimal getPartsTotal() {
         return partsTotal;
     }
@@ -125,6 +151,14 @@ public class RevisionOffer {
         this.totalPrice = partsTotal.add(laborTotal);
     }
 
+    public String getLaborDescription() {
+        return laborDescription;
+    }
+
+    public void setLaborDescription(String laborDescription) {
+        this.laborDescription = laborDescription;
+    }
+
     public BigDecimal getTotalPrice() {
         return totalPrice;
     }
@@ -139,6 +173,22 @@ public class RevisionOffer {
 
     public void setStatus(Status status) {
         this.status = status;
+    }
+
+    public B2BUnitInvoice getConvertedToSale() {
+        return convertedToSale;
+    }
+
+    public void setConvertedToSale(B2BUnitInvoice convertedToSale) {
+        this.convertedToSale = convertedToSale;
+    }
+
+    public List<RevisionOfferItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<RevisionOfferItem> items) {
+        this.items = items;
     }
 
     public LocalDateTime getCreatedAt() {

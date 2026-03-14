@@ -18,11 +18,15 @@ import java.util.List;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private static final String ROLE_PREFIX = "ROLE_";
+    private final String ROLE_PREFIX = "ROLE_";
+    private final String ROLE_STAFF_ADMIN = "ROLE_STAFF_ADMIN";
+    private final String ROLE_STAFF_USER = "ROLE_STAFF_USER";
+    private final String ROLE_CARI_USER = "ROLE_CARI_USER";
     private static final String ROLE_PLATFORM_ADMIN = "ROLE_PLATFORM_ADMIN";
     private static final String ROLE_TENANT_ADMIN = "ROLE_TENANT_ADMIN";
     private static final String ROLE_SYSTEM_ADMIN = "ROLE_SYSTEM_ADMIN";
-    private static final String ROLE_STAFF_ADMIN = "ROLE_STAFF_ADMIN";
+    private final String ROLE_ADMIN = "ROLE_ADMIN";
+    private final String ROLE_TECHNICIAN = "ROLE_TECHNICIAN";
 
     @Autowired
     private UserRepository userRepository;
@@ -45,7 +49,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (!tenantRequest && !canonicalRole.isPlatformAdmin()) {
             throw new UsernameNotFoundException("Tenant users must authenticate from tenant scope");
         }
-        
+
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPasswordHash(),
@@ -66,7 +70,10 @@ public class CustomUserDetailsService implements UserDetailsService {
             authorities.add(new SimpleGrantedAuthority(ROLE_SYSTEM_ADMIN)); // compatibility
         } else if (canonicalRole == User.Role.TENANT_ADMIN) {
             authorities.add(new SimpleGrantedAuthority(ROLE_TENANT_ADMIN));
-            authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_ADMIN)); // compatibility
+            authorities.add(new SimpleGrantedAuthority(ROLE_STAFF_ADMIN));
+            authorities.add(new SimpleGrantedAuthority(ROLE_TECHNICIAN));// compatibility
+        } else if(canonicalRole == User.Role.STAFF_USER){
+            authorities.add(new SimpleGrantedAuthority(ROLE_TECHNICIAN));
         }
 
         return authorities;

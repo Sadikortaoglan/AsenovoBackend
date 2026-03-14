@@ -23,7 +23,7 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: update  # TEMPORARY: First deploy only - will change back to validate after schema is created
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -109,13 +109,19 @@ app:
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: ${ASENOVO_DOCS_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: ${ASENOVO_DOCS_ENABLED:false}
     try-it-out-enabled: true
-    config-url: /api-docs/swagger-config
-    urls:
-      - url: /api-docs
-        name: Sara Elevator API
+    persist-authorization: true
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
+
+asenovo:
+  docs:
+    enabled: ${ASENOVO_DOCS_ENABLED:false}
+    server-url: ${ASENOVO_DOCS_SERVER_URL:https://internal-api.asenovo.com/api}
+    default-tenant-host: ${ASENOVO_DOCS_DEFAULT_TENANT_HOST:default.asenovo.com}
+    allowed-hosts: ${ASENOVO_DOCS_ALLOWED_HOSTS:internal-api.asenovo.com}
+    tenant-options: ${ASENOVO_DOCS_TENANT_OPTIONS:default.asenovo.com,tenant1.asenovo.com,tenant2.asenovo.com}

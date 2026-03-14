@@ -48,6 +48,9 @@ public class B2BUnitController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<B2BUnitDto>> getMyB2BUnit() {
         B2BUnit unit = b2bUnitService.getMyB2BUnit();
+        if (unit == null) {
+            return ResponseEntity.ok(ApiResponse.success((B2BUnitDto) null));
+        }
         return ResponseEntity.ok(ApiResponse.success(B2BUnitDto.fromEntity(unit)));
     }
 

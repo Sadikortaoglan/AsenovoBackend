@@ -10,8 +10,8 @@ Kaynak dosya:
 Sunucuda kullanım:
 
 ```bash
-cp deploy/env/backend.prod.env.example /home/ec2-user/sara-backend/.env
-# sonra .env içindeki REPLACE_* alanlarını gerçek değerlerle doldur
+cp deploy/env/backend.prod.env.example /home/ec2-user/sara-backend/.env.prod
+# sonra .env.prod içindeki REPLACE_* alanlarını gerçek değerlerle doldur
 ```
 
 ## Frontend

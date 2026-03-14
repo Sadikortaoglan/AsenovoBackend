@@ -1,0 +1,3692 @@
+{
+  "info": {
+    "name": "ASENOVO API",
+    "_postman_id": "0ce6b6c2-4b7c-4e31-bf2d-9e21b0d4f001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "ASENOVO Spring Boot backend icin tam Postman collection. Tum endpointler modullere gore gruplanmistir."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const token = pm.environment.get('token') || pm.collectionVariables.get('token');",
+          "const tenantHost = pm.environment.get('tenantHost') || pm.collectionVariables.get('tenantHost');",
+          "if (token) {",
+          "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
+          "}",
+          "if (tenantHost) {",
+          "  pm.request.headers.upsert({ key: 'X-Forwarded-Host', value: tenantHost });",
+          "}",
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": "<JWT_TOKEN>"
+    },
+    {
+      "key": "tenantHost",
+      "value": "default.asenovo.local"
+    },
+    {
+      "key": "tenantSubdomain",
+      "value": "default"
+    }
+  ],
+  "item": [
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"patron\",\n  \"password\": \"password\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Kullanici girisi."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const json = pm.response.json();",
+                  "  const accessToken = json?.data?.accessToken;",
+                  "  if (accessToken) {",
+                  "    pm.environment.set('token', accessToken);",
+                  "  }",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "login success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"patron\",\n  \"password\": \"password\"\n}"
+                },
+                "url": "{{baseUrl}}/api/auth/login"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"accessToken\": \"{{token}}\",\n    \"refreshToken\": \"refresh-token\",\n    \"user\": {\n      \"username\": \"patron\",\n      \"role\": \"STAFF_ADMIN\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "refresh token",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"refresh-token\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/refresh"
+          },
+          "response": [
+            {
+              "name": "refresh success",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/auth/refresh"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Token refreshed\",\n  \"data\": {\n    \"accessToken\": \"{{token}}\",\n    \"refreshToken\": \"refresh-token\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new-user\",\n  \"password\": \"password\",\n  \"role\": \"STAFF_USER\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          },
+          "response": [
+            {
+              "name": "register success",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/auth/register"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"User successfully registered and logged in\",\n  \"data\": {\n    \"accessToken\": \"{{token}}\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"refresh-token\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/logout"
+          },
+          "response": [
+            {
+              "name": "logout success",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/auth/logout"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logout successful\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "revision-standards",
+      "item": [
+        {
+          "name": "search revision standards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/revision-standards/search?q=7.5&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "revision-standards",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "7.5"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "search example",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/revision-standards/search?q=7.5&limit=20"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "[\n  {\n    \"id\": 15,\n    \"articleNo\": \"7.5.26\",\n    \"description\": \"Tamamen acik alanda insa edilen...\",\n    \"standardCode\": \"TS EN 81-20\",\n    \"tagColor\": \"MAVI\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "import revision standards",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/revision-standards/import",
+            "description": "PDF dosyalarini okuyup public.revision_standards tablosuna upsert eder."
+          },
+          "response": [
+            {
+              "name": "import example",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/admin/revision-standards/import"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"filesProcessed\": 2,\n  \"articlesParsed\": 642,\n  \"articlesInserted\": 620,\n  \"articlesUpdated\": 22,\n  \"errors\": []\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "elevators",
+      "item": [
+        {
+          "name": "get elevators",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators"
+          },
+          "response": [
+            {
+              "name": "elevator list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"elevatorNumber\": \"AS-001\",\n      \"buildingName\": \"Site A\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "get elevator status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators/1/status"
+          },
+          "response": [
+            {
+              "name": "elevator status",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators/1/status"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"elevatorId\": 1,\n    \"status\": \"ACTIVE\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "get elevator by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators/1"
+          },
+          "response": [
+            {
+              "name": "elevator detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1,\n    \"buildingName\": \"Site A\",\n    \"identityNumber\": \"ELEV-001\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "create elevator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identityNumber\": \"ELEV-001\",\n  \"buildingName\": \"Site A\",\n  \"managerName\": \"Test User\"\n}"
+            },
+            "url": "{{baseUrl}}/api/elevators"
+          },
+          "response": [
+            {
+              "name": "create elevator example",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/elevators"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Elevator successfully added\",\n  \"data\": {\n    \"id\": 1,\n    \"identityNumber\": \"ELEV-001\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "update elevator",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buildingName\": \"Updated Site A\"\n}"
+            },
+            "url": "{{baseUrl}}/api/elevators/1"
+          },
+          "response": [
+            {
+              "name": "update elevator example",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/elevators/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Elevator successfully updated\",\n  \"data\": {\n    \"id\": 1,\n    \"buildingName\": \"Updated Site A\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "delete elevator",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/elevators/1"
+          },
+          "response": [
+            {
+              "name": "delete elevator example",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/elevators/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Elevator successfully deleted\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "get elevator qr",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators/1/qr"
+          },
+          "response": [
+            {
+              "name": "qr png",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators/1/qr"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "PNG binary response"
+            }
+          ]
+        },
+        {
+          "name": "download elevator qr",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators/1/qr/download?format=png"
+          },
+          "response": [
+            {
+              "name": "qr download",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators/1/qr/download?format=png"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "PNG or PDF binary response"
+            }
+          ]
+        },
+        {
+          "name": "download all elevator qrs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators/qr/download-all"
+          },
+          "response": [
+            {
+              "name": "all qr pdf",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators/qr/download-all"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "PDF binary response"
+            }
+          ]
+        },
+        {
+          "name": "get elevator report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/elevators/1/report"
+          },
+          "response": [
+            {
+              "name": "report pdf",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/elevators/1/report"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "PDF binary response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "revision-offers",
+      "item": [
+        {
+          "name": "get revision offers",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/revision-offers"
+          },
+          "response": [
+            {
+              "name": "revision offers list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/revision-offers"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "get revision offer by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/revision-offers/1"
+          },
+          "response": [
+            {
+              "name": "revision offer detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/revision-offers/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1,\n    \"status\": \"DRAFT\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "get revision offers by elevator",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/revision-offers/elevator/1"
+          },
+          "response": [
+            {
+              "name": "revision offers by elevator",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/revision-offers/elevator/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "create revision offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1,\n  \"buildingId\": 1,\n  \"currentAccountId\": 1,\n  \"partsTotal\": 1000,\n  \"laborTotal\": 500,\n  \"status\": \"DRAFT\"\n}"
+            },
+            "url": "{{baseUrl}}/api/revision-offers"
+          },
+          "response": [
+            {
+              "name": "create revision offer",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/revision-offers"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Revision offer successfully created\",\n  \"data\": {\n    \"id\": 1,\n    \"status\": \"DRAFT\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "update revision offer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partsTotal\": 1200,\n  \"laborTotal\": 700,\n  \"status\": \"SENT\"\n}"
+            },
+            "url": "{{baseUrl}}/api/revision-offers/1"
+          },
+          "response": [
+            {
+              "name": "update revision offer",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/revision-offers/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Revision offer successfully updated\",\n  \"data\": {\n    \"id\": 1,\n    \"status\": \"SENT\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "convert revision offer to sale",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/revision-offers/1/convert-to-sale"
+          },
+          "response": [
+            {
+              "name": "convert revision offer",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/revision-offers/1/convert-to-sale"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Revision offer converted to sale\",\n  \"data\": {\n    \"id\": 1,\n    \"status\": \"CONVERTED_TO_SALE\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "delete revision offer",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/revision-offers/1"
+          },
+          "response": [
+            {
+              "name": "delete revision offer",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/revision-offers/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Revision offer successfully deleted\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "offers",
+      "item": [
+        {
+          "name": "get offers",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/offers"
+          },
+          "response": [
+            {
+              "name": "offer list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/offers"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "get offer by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/offers/1"
+          },
+          "response": [
+            {
+              "name": "offer detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/offers/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "get offers by elevator",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/offers/elevator/1"
+          },
+          "response": [
+            {
+              "name": "offers by elevator",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/offers/elevator/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "create offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1,\n  \"amount\": 1000\n}"
+            },
+            "url": "{{baseUrl}}/api/offers"
+          },
+          "response": [
+            {
+              "name": "create offer",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/offers"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Offer successfully created\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "update offer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1200\n}"
+            },
+            "url": "{{baseUrl}}/api/offers/1"
+          },
+          "response": [
+            {
+              "name": "update offer",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/offers/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Offer successfully updated\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "delete offer",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/offers/1"
+          },
+          "response": [
+            {
+              "name": "delete offer",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/offers/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Offer successfully deleted\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maintenance",
+      "item": [
+        {
+          "name": "get maintenances",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenances?paid=true&dateFrom=2026-01-01&dateTo=2026-01-31"
+          },
+          "response": [
+            {
+              "name": "maintenance list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenances?paid=true&dateFrom=2026-01-01&dateTo=2026-01-31"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenances/summary?month=2026-01"
+          },
+          "response": [
+            {
+              "name": "maintenance summary",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenances/summary?month=2026-01"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"month\": \"2026-01\",\n    \"count\": 12\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenances by elevator",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenances/elevator/1"
+          },
+          "response": [
+            {
+              "name": "maintenance by elevator",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenances/elevator/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenances/1"
+          },
+          "response": [
+            {
+              "name": "maintenance detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenances/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1,\n    \"elevatorId\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "create maintenance multipart",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "elevatorId",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "date",
+                  "value": "2026-01-15",
+                  "type": "text"
+                },
+                {
+                  "key": "labelType",
+                  "value": "BLUE",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Aylik bakim",
+                  "type": "text"
+                },
+                {
+                  "key": "amount",
+                  "value": "1500",
+                  "type": "text"
+                },
+                {
+                  "key": "photos",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/maintenances",
+            "description": "Gereken minimum 4 foto icin photos alanini Postman'de cogaltin."
+          },
+          "response": [
+            {
+              "name": "create maintenance",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenances"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Maintenance successfully created\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "update maintenance",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Guncellenmis bakim\",\n  \"amount\": 1750\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenances/1"
+          },
+          "response": [
+            {
+              "name": "update maintenance",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/maintenances/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Maintenance successfully updated\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "delete maintenance",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/maintenances/1"
+          },
+          "response": [
+            {
+              "name": "delete maintenance",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/maintenances/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Maintenance successfully deleted\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "mark maintenance paid",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/maintenances/1/mark-paid?paid=true"
+          },
+          "response": [
+            {
+              "name": "mark paid",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenances/1/mark-paid?paid=true"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Maintenance payment status updated\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "upload maintenance photos",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/maintenances/1/photos"
+          },
+          "response": [
+            {
+              "name": "upload maintenance photos",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenances/1/photos"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Photos uploaded successfully\",\n  \"data\": []\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maintenance-plans",
+      "item": [
+        {
+          "name": "create maintenance plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1,\n  \"plannedDate\": \"2026-02-01T09:00:00\",\n  \"templateId\": 1,\n  \"technicianId\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-plans"
+          },
+          "response": [
+            {
+              "name": "create plan",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-plans"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plan created successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance plans",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-plans?month=2026-02&year=2026&elevatorId=1&status=PLANNED"
+          },
+          "response": [
+            {
+              "name": "plan list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-plans?month=2026-02&year=2026&elevatorId=1&status=PLANNED"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plans retrieved successfully\",\n  \"data\": []\n}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance plan by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-plans/1"
+          },
+          "response": [
+            {
+              "name": "plan detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-plans/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plan retrieved successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "update maintenance plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plannedDate\": \"2026-02-02T10:00:00\",\n  \"technicianId\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-plans/1"
+          },
+          "response": [
+            {
+              "name": "update plan",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/maintenance-plans/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plan updated successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "patch maintenance plan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plannedDate\": \"2026-02-03T11:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-plans/1"
+          },
+          "response": [
+            {
+              "name": "patch plan",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{baseUrl}}/api/maintenance-plans/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plan updated successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "reschedule maintenance plan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plannedDate\": \"2026-02-05T08:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-plans/1/reschedule"
+          },
+          "response": [
+            {
+              "name": "reschedule plan",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{baseUrl}}/api/maintenance-plans/1/reschedule"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plan rescheduled successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "delete maintenance plan",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/maintenance-plans/1"
+          },
+          "response": [
+            {
+              "name": "delete plan",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/maintenance-plans/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Plan cancelled successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "start maintenance plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrToken\": \"optional-qr-token\",\n  \"remoteStart\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-plans/1/start"
+          },
+          "response": [
+            {
+              "name": "start plan",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-plans/1/start"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Maintenance started successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "complete maintenance plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrProofId\": 1,\n  \"photoUrls\": [\"https://example.com/1.jpg\"],\n  \"note\": \"Tamamlandi\",\n  \"price\": 2500\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-plans/1/complete"
+          },
+          "response": [
+            {
+              "name": "complete plan",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-plans/1/complete"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Maintenance completed successfully\",\n  \"data\": {\"id\": 1}\n}"
+            }
+          ]
+        },
+        {
+          "name": "get completed maintenance plans",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-plans/completed?from=2026-02-01T00:00:00&to=2026-02-28T23:59:59"
+          },
+          "response": [
+            {
+              "name": "completed plans",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-plans/completed?from=2026-02-01T00:00:00&to=2026-02-28T23:59:59"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"Completed plans retrieved successfully\",\n  \"data\": []\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maintenance-templates",
+      "item": [
+        {
+          "name": "get maintenance templates",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-templates"
+          },
+          "response": [
+            {
+              "name": "template list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-templates"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get active maintenance templates",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-templates/active"
+          },
+          "response": [
+            {
+              "name": "active template list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-templates/active"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance template by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-templates/1"
+          },
+          "response": [
+            {
+              "name": "template detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-templates/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "create maintenance template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aylik Bakim\",\n  \"description\": \"Standart aylik kontrol listesi\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-templates"
+          },
+          "response": [
+            {
+              "name": "create template",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-templates"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Template created successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update maintenance template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aylik Bakim v2\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-templates/1"
+          },
+          "response": [
+            {
+              "name": "update template",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/maintenance-templates/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Template updated successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "duplicate maintenance template",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/maintenance-templates/1/duplicate"
+          },
+          "response": [
+            {
+              "name": "duplicate template",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-templates/1/duplicate"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Template duplicated successfully\", \"data\": {\"id\": 2}}"
+            }
+          ]
+        },
+        {
+          "name": "delete maintenance template",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/maintenance-templates/1"
+          },
+          "response": [
+            {
+              "name": "delete template",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/maintenance-templates/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Template deleted successfully\", \"data\": null}"
+            }
+          ]
+        },
+        {
+          "name": "get template sections",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenance-templates/1/sections"
+          },
+          "response": [
+            {
+              "name": "template sections",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenance-templates/1/sections"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "create template section",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guvenlik Kontrolleri\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-templates/1/sections"
+          },
+          "response": [
+            {
+              "name": "create section",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-templates/1/sections"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Section created successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maintenance-sections",
+      "item": [
+        {
+          "name": "update maintenance section",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guncel Bolum\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-sections/1"
+          },
+          "response": [
+            {
+              "name": "update section",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/maintenance-sections/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Section updated successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete maintenance section",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/maintenance-sections/1"
+          },
+          "response": [
+            {
+              "name": "delete section",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/maintenance-sections/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Section deleted successfully\", \"data\": null}"
+            }
+          ]
+        },
+        {
+          "name": "create maintenance item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kapilar kontrol edildi\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-sections/1/items"
+          },
+          "response": [
+            {
+              "name": "create item",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenance-sections/1/items"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Item created successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maintenance-items",
+      "item": [
+        {
+          "name": "update maintenance item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guncel item\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenance-items/1"
+          },
+          "response": [
+            {
+              "name": "update item",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/maintenance-items/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Item updated successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete maintenance item",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/maintenance-items/1"
+          },
+          "response": [
+            {
+              "name": "delete item",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/maintenance-items/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Item deleted successfully\", \"data\": null}"
+            }
+          ]
+        },
+        {
+          "name": "toggle maintenance item active",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/maintenance-items/1/toggle-active"
+          },
+          "response": [
+            {
+              "name": "toggle item",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{baseUrl}}/api/maintenance-items/1/toggle-active"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Item active status toggled\", \"data\": {\"id\": 1, \"active\": false}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maintenance-sessions",
+      "item": [
+        {
+          "name": "start maintenance session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maintenanceId\": 1,\n  \"technicianId\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenances/sessions/start"
+          },
+          "response": [
+            {
+              "name": "start session",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenances/sessions/start"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Session started successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance session",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenances/sessions/1"
+          },
+          "response": [
+            {
+              "name": "session detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenances/sessions/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update maintenance session step",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DONE\",\n  \"note\": \"Tamamlandi\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenances/sessions/1/steps/1"
+          },
+          "response": [
+            {
+              "name": "update session step",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/maintenances/sessions/1/steps/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Step updated successfully\", \"data\": {\"sessionId\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "finalize maintenance session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Bitti\"\n}"
+            },
+            "url": "{{baseUrl}}/api/maintenances/sessions/1/finalize"
+          },
+          "response": [
+            {
+              "name": "finalize session",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/maintenances/sessions/1/finalize"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Session finalized successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "get maintenance session report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/maintenances/sessions/1/report"
+          },
+          "response": [
+            {
+              "name": "session report",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/maintenances/sessions/1/report"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "PDF or report response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "inspections",
+      "item": [
+        {
+          "name": "get inspections",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/inspections"
+          },
+          "response": [
+            {
+              "name": "inspection list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/inspections"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get inspection by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/inspections/1"
+          },
+          "response": [
+            {
+              "name": "inspection detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/inspections/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "get inspections by elevator",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/inspections/elevator/1"
+          },
+          "response": [
+            {
+              "name": "inspections by elevator",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/inspections/elevator/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "create inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1,\n  \"date\": \"2026-01-20\",\n  \"result\": \"PASS\"\n}"
+            },
+            "url": "{{baseUrl}}/api/inspections"
+          },
+          "response": [
+            {
+              "name": "create inspection",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/inspections"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Inspection successfully added\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update inspection",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"FAIL\"\n}"
+            },
+            "url": "{{baseUrl}}/api/inspections/1"
+          },
+          "response": [
+            {
+              "name": "update inspection",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/inspections/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Inspection successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete inspection",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/inspections/1"
+          },
+          "response": [
+            {
+              "name": "delete inspection",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/inspections/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Inspection successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "faults",
+      "item": [
+        {
+          "name": "get faults",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/faults?status=OPEN"
+          },
+          "response": [
+            {
+              "name": "fault list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/faults?status=OPEN"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get fault by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/faults/1"
+          },
+          "response": [
+            {
+              "name": "fault detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/faults/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "create fault",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1,\n  \"description\": \"Kapi arizasi\"\n}"
+            },
+            "url": "{{baseUrl}}/api/faults"
+          },
+          "response": [
+            {
+              "name": "create fault",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/faults"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Fault record successfully added\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update fault status",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/faults/1/status?status=RESOLVED"
+          },
+          "response": [
+            {
+              "name": "update fault status",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/faults/1/status?status=RESOLVED"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Fault status updated\", \"data\": {\"id\": 1, \"status\": \"RESOLVED\"}}"
+            }
+          ]
+        },
+        {
+          "name": "update fault",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Guncellenmis ariza\"\n}"
+            },
+            "url": "{{baseUrl}}/api/faults/1"
+          },
+          "response": [
+            {
+              "name": "update fault",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/faults/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Fault record successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete fault",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/faults/1"
+          },
+          "response": [
+            {
+              "name": "delete fault",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/faults/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Fault record successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "buildings",
+      "item": [
+        {
+          "name": "get buildings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/buildings"
+          },
+          "response": [
+            {
+              "name": "building list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/buildings"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get building by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/buildings/1"
+          },
+          "response": [
+            {
+              "name": "building detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/buildings/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "create building",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Yeni Bina\",\n  \"address\": \"Istanbul\"\n}"
+            },
+            "url": "{{baseUrl}}/api/buildings"
+          },
+          "response": [
+            {
+              "name": "create building",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/buildings"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Building successfully created\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update building",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guncel Bina\"\n}"
+            },
+            "url": "{{baseUrl}}/api/buildings/1"
+          },
+          "response": [
+            {
+              "name": "update building",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/buildings/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Building successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete building",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/buildings/1"
+          },
+          "response": [
+            {
+              "name": "delete building",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/buildings/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Building successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "facilities",
+      "item": [
+        {
+          "name": "get facilities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/facilities?query=test&b2b_unit_id=1&status=ACTIVE&page=0&size=20&sort=id,asc"
+          },
+          "response": [
+            {
+              "name": "facility list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/facilities?query=test&b2b_unit_id=1&status=ACTIVE&page=0&size=20&sort=id,asc"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"content\": []}}"
+            }
+          ]
+        },
+        {
+          "name": "get facility by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/facilities/1"
+          },
+          "response": [
+            {
+              "name": "facility detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/facilities/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "get facility address",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/facilities/1/address"
+          },
+          "response": [
+            {
+              "name": "facility address",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/facilities/1/address"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"city\": \"Istanbul\"}}"
+            }
+          ]
+        },
+        {
+          "name": "create facility",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Yeni Tesis\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/facilities"
+          },
+          "response": [
+            {
+              "name": "create facility",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/facilities"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Facility successfully created\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update facility",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guncel Tesis\"\n}"
+            },
+            "url": "{{baseUrl}}/api/facilities/1"
+          },
+          "response": [
+            {
+              "name": "update facility",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/facilities/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Facility successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete facility",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/facilities/1"
+          },
+          "response": [
+            {
+              "name": "delete facility",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/facilities/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Facility successfully deactivated (soft delete)\", \"data\": null}"
+            }
+          ]
+        },
+        {
+          "name": "get facility movements",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/facilities/1/movements"
+          },
+          "response": [
+            {
+              "name": "facility movements",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/facilities/1/movements"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"entries\": []}}"
+            }
+          ]
+        },
+        {
+          "name": "get facility report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/facilities/1/report"
+          },
+          "response": [
+            {
+              "name": "facility report",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/facilities/1/report"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "<html>...</html>"
+            }
+          ]
+        },
+        {
+          "name": "import facilities excel",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "createMissingB2BUnit",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/facilities/import-excel"
+          },
+          "response": [
+            {
+              "name": "facility import",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/facilities/import-excel"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Facility import completed\", \"data\": {\"inserted\": 10, \"updated\": 2}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b2bunits",
+      "item": [
+        {
+          "name": "get b2b units",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/b2bunits?query=test&page=0&size=20&sort=id,asc"
+          },
+          "response": [
+            {
+              "name": "b2b unit list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/b2bunits?query=test&page=0&size=20&sort=id,asc"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"content\": []}}"
+            }
+          ]
+        },
+        {
+          "name": "get b2b unit by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/b2bunits/1"
+          },
+          "response": [
+            {
+              "name": "b2b unit detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/b2bunits/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "get current b2b unit",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/b2bunits/me"
+          },
+          "response": [
+            {
+              "name": "b2b unit me",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/b2bunits/me"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "lookup b2b units",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/b2bunits/lookup?query=test"
+          },
+          "response": [
+            {
+              "name": "b2b unit lookup",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/b2bunits/lookup?query=test"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "create b2b unit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"B2B Musteri\"\n}"
+            },
+            "url": "{{baseUrl}}/api/b2bunits"
+          },
+          "response": [
+            {
+              "name": "create b2b unit",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/b2bunits"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"B2B unit successfully created\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update b2b unit",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guncel B2B Musteri\"\n}"
+            },
+            "url": "{{baseUrl}}/api/b2bunits/1"
+          },
+          "response": [
+            {
+              "name": "update b2b unit",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/b2bunits/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"B2B unit successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete b2b unit",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/b2bunits/1"
+          },
+          "response": [
+            {
+              "name": "delete b2b unit",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/b2bunits/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"B2B unit successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b2bunit-groups",
+      "item": [
+        {
+          "name": "get b2b unit groups",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/b2bunit-groups"
+          },
+          "response": [
+            {
+              "name": "group list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/b2bunit-groups"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get b2b unit group by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/b2bunit-groups/1"
+          },
+          "response": [
+            {
+              "name": "group detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/b2bunit-groups/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "create b2b unit group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kurumsal Musteriler\"\n}"
+            },
+            "url": "{{baseUrl}}/api/b2bunit-groups"
+          },
+          "response": [
+            {
+              "name": "create group",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/b2bunit-groups"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"B2B unit group successfully created\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update b2b unit group",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guncel Grup\"\n}"
+            },
+            "url": "{{baseUrl}}/api/b2bunit-groups/1"
+          },
+          "response": [
+            {
+              "name": "update group",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/b2bunit-groups/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"B2B unit group successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete b2b unit group",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/b2bunit-groups/1"
+          },
+          "response": [
+            {
+              "name": "delete group",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/b2bunit-groups/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"B2B unit group successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "current-accounts",
+      "item": [
+        {
+          "name": "get current accounts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/current-accounts"
+          },
+          "response": [
+            {
+              "name": "account list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/current-accounts"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get current account by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/current-accounts/1"
+          },
+          "response": [
+            {
+              "name": "account detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/current-accounts/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "get current account by building",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/current-accounts/building/1"
+          },
+          "response": [
+            {
+              "name": "account by building",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/current-accounts/building/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update current account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cari Hesap Guncel\"\n}"
+            },
+            "url": "{{baseUrl}}/api/current-accounts/1"
+          },
+          "response": [
+            {
+              "name": "update account",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/current-accounts/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Current account updated successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "patch current account balance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"debt\": 100,\n  \"credit\": 50\n}"
+            },
+            "url": "{{baseUrl}}/api/current-accounts/1/balance"
+          },
+          "response": [
+            {
+              "name": "patch account balance",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{baseUrl}}/api/current-accounts/1/balance"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Balance updated successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "item": [
+        {
+          "name": "get payments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/payments?dateFrom=2026-01-01&dateTo=2026-01-31"
+          },
+          "response": [
+            {
+              "name": "payment list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/payments?dateFrom=2026-01-01&dateTo=2026-01-31"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get payment summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/payments/summary"
+          },
+          "response": [
+            {
+              "name": "payment summary",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/payments/summary"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"total\": 10000}}"
+            }
+          ]
+        },
+        {
+          "name": "get payment by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/payments/1"
+          },
+          "response": [
+            {
+              "name": "payment detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/payments/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "create payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"currentAccountId\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/payments"
+          },
+          "response": [
+            {
+              "name": "create payment",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/payments"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Payment receipt successfully added\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update payment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1200\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/1"
+          },
+          "response": [
+            {
+              "name": "update payment",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/payments/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Payment receipt successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete payment",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/payments/1"
+          },
+          "response": [
+            {
+              "name": "delete payment",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/payments/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Payment receipt successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "item": [
+        {
+          "name": "get users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users"
+          },
+          "response": [
+            {
+              "name": "user list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/users"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get user by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/users/1"
+          },
+          "response": [
+            {
+              "name": "user detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/users/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1, \"username\": \"admin\"}}"
+            }
+          ]
+        },
+        {
+          "name": "create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"new-user\",\n  \"password\": \"password\",\n  \"role\": \"STAFF_USER\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users"
+          },
+          "response": [
+            {
+              "name": "create user",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/users"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"User successfully created\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STAFF_ADMIN\",\n  \"active\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/users/1"
+          },
+          "response": [
+            {
+              "name": "update user",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/users/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"User successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete user",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/users/1"
+          },
+          "response": [
+            {
+              "name": "delete user",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/users/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"User successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "locations",
+      "item": [
+        {
+          "name": "get cities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/locations/cities?query=is"
+          },
+          "response": [
+            {
+              "name": "city list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/locations/cities?query=is"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": [{\"value\": 34, \"label\": \"Istanbul\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "get districts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/locations/districts?cityId=34&query=bes"
+          },
+          "response": [
+            {
+              "name": "district list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/locations/districts?cityId=34&query=bes"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get neighborhoods",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/locations/neighborhoods?districtId=1&query=merkez"
+          },
+          "response": [
+            {
+              "name": "neighborhood list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/locations/neighborhoods?districtId=1&query=merkez"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get regions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/locations/regions?neighborhoodId=1&query=1"
+          },
+          "response": [
+            {
+              "name": "region list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/locations/regions?neighborhoodId=1&query=1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dashboard",
+      "item": [
+        {
+          "name": "get dashboard summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/dashboard/summary"
+          },
+          "response": [
+            {
+              "name": "dashboard summary",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/dashboard/summary"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"revenue\": 1000}}"
+            }
+          ]
+        },
+        {
+          "name": "get dashboard counts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/dashboard/counts"
+          },
+          "response": [
+            {
+              "name": "dashboard counts",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/dashboard/counts"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"elevators\": 10, \"faults\": 2}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "qr",
+      "item": [
+        {
+          "name": "issue qr session token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorPublicCode\": \"ELEV-001\",\n  \"sig\": \"signature\",\n  \"deviceMeta\": \"iPhone\"\n}"
+            },
+            "url": "{{baseUrl}}/api/qr/issue-session-token"
+          },
+          "response": [
+            {
+              "name": "issue qr token",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/qr/issue-session-token"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"token\": \"session-token\"}}"
+            }
+          ]
+        },
+        {
+          "name": "validate qr get",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/qr/validate?e=ELEV-001&s=signature"
+          },
+          "response": [
+            {
+              "name": "validate qr get",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/qr/validate?e=ELEV-001&s=signature"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"QR code is valid\", \"data\": {\"valid\": true, \"elevatorId\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "validate qr and create session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrCode\": \"e=ELEV-001&s=signature\",\n  \"elevatorId\": 1,\n  \"intent\": \"START_MAINTENANCE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/qr/validate"
+          },
+          "response": [
+            {
+              "name": "validate qr post",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/qr/validate"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"QR validated and session token created\", \"data\": {\"qrSessionToken\": \"token\", \"elevatorId\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "remote start qr",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elevatorId\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/qr/remote-start"
+          },
+          "response": [
+            {
+              "name": "remote start qr",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/qr/remote-start"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"qrSessionToken\": \"token\", \"startedRemotely\": true}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "qr-codes",
+      "item": [
+        {
+          "name": "get qr codes",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/qr-codes?search=test&page=0&size=20&sort=createdAt,desc"
+          },
+          "response": [
+            {
+              "name": "qr code list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/qr-codes?search=test&page=0&size=20&sort=createdAt,desc"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"content\": []}}"
+            }
+          ]
+        },
+        {
+          "name": "create qr code for elevator",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/qr-codes/1"
+          },
+          "response": [
+            {
+              "name": "create qr code",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/qr-codes/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"QR code created successfully\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete qr code",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/qr-codes/1"
+          },
+          "response": [
+            {
+              "name": "delete qr code",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/qr-codes/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"QR code deleted successfully\", \"data\": null}"
+            }
+          ]
+        },
+        {
+          "name": "print qr code",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/qr-codes/1/print"
+          },
+          "response": [
+            {
+              "name": "print qr code",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/qr-codes/1/print"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "PNG binary response"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tenant-branding",
+      "item": [
+        {
+          "name": "get tenant branding",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tenant/branding"
+          },
+          "response": [
+            {
+              "name": "branding detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/tenant/branding"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"primaryColor\": \"#000000\"}}"
+            }
+          ]
+        },
+        {
+          "name": "update tenant branding",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"ASENOVO\",\n  \"primaryColor\": \"#0055AA\"\n}"
+            },
+            "url": "{{baseUrl}}/api/tenant/branding"
+          },
+          "response": [
+            {
+              "name": "update branding",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/tenant/branding"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Branding updated successfully\", \"data\": {\"primaryColor\": \"#0055AA\"}}"
+            }
+          ]
+        },
+        {
+          "name": "upload tenant logo",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/tenant/branding/logo"
+          },
+          "response": [
+            {
+              "name": "upload logo",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/tenant/branding/logo"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Logo uploaded successfully\", \"data\": {\"logoUrl\": \"https://example.com/logo.png\"}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "currencies",
+      "item": [
+        {
+          "name": "get currencies",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/currencies"
+          },
+          "response": [
+            {
+              "name": "currency list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/currencies"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": [{\"code\": \"TRY\"}]}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "warnings",
+      "item": [
+        {
+          "name": "get warnings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/warnings?type=EXPIRING"
+          },
+          "response": [
+            {
+              "name": "warning list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/warnings?type=EXPIRING"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get grouped warnings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/warnings/grouped?type=EXPIRING"
+          },
+          "response": [
+            {
+              "name": "grouped warnings",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/warnings/grouped?type=EXPIRING"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"EXPIRING\": []}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "einvoice",
+      "item": [
+        {
+          "name": "query einvoice",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/einvoice/query?taxNumber=1234567890"
+          },
+          "response": [
+            {
+              "name": "einvoice query",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/einvoice/query?taxNumber=1234567890"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"taxNumber\": \"1234567890\", \"registered\": true}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "parts",
+      "item": [
+        {
+          "name": "get parts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/parts"
+          },
+          "response": [
+            {
+              "name": "part list",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/parts"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": []}"
+            }
+          ]
+        },
+        {
+          "name": "get part by id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/parts/1"
+          },
+          "response": [
+            {
+              "name": "part detail",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/parts/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "create part",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Motor\",\n  \"price\": 5000\n}"
+            },
+            "url": "{{baseUrl}}/api/parts"
+          },
+          "response": [
+            {
+              "name": "create part",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/parts"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Part successfully added\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "update part",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 5500\n}"
+            },
+            "url": "{{baseUrl}}/api/parts/1"
+          },
+          "response": [
+            {
+              "name": "update part",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{baseUrl}}/api/parts/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Part successfully updated\", \"data\": {\"id\": 1}}"
+            }
+          ]
+        },
+        {
+          "name": "delete part",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/parts/1"
+          },
+          "response": [
+            {
+              "name": "delete part",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/parts/1"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\": true, \"message\": \"Part successfully deleted\", \"data\": null}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "health check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          },
+          "response": [
+            {
+              "name": "health response",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{baseUrl}}/api/health"
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"status\": \"UP\"}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -22,7 +22,7 @@ Usage:
 
 Example:
   PGPASSWORD='StrongPassword123' ./deploy/scripts/provision_shared_tenant.sh \
-    --db-host 127.0.0.1 --db-port 5432 --db-name sara --db-user sara \
+    --db-host 127.0.0.1 --db-port 5432 --db-name asenovo --db-user asenovo \
     --tenant-subdomain sara --tenant-name 'Sara Tenant'
 USAGE
 }

@@ -42,6 +42,9 @@ public interface FacilityRepository extends JpaRepository<Facility, Long> {
     List<Facility> findByB2bUnitIdAndActiveTrue(Long b2bUnitId);
 
     @EntityGraph(attributePaths = {"b2bUnit"})
+    Optional<Facility> findFirstByNameIgnoreCaseAndActiveTrue(String name);
+
+    @EntityGraph(attributePaths = {"b2bUnit"})
     @Query("SELECT f FROM Facility f WHERE f.active = true AND f.b2bUnit.id = :b2bUnitId AND " +
             "(:query IS NULL OR :query = '' OR LOWER(f.name) LIKE LOWER(CONCAT('%', :query, '%'))) " +
             "ORDER BY f.name ASC")
