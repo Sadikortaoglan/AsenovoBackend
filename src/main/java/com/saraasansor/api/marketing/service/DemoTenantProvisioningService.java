@@ -19,7 +19,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.net.URI;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -52,6 +54,12 @@ public class DemoTenantProvisioningService {
 
     @Value("${asenovo.marketing.app-base-domain:asenovo.com}")
     private String appBaseDomain;
+
+    @Value("${asenovo.marketing.app-url-template:}")
+    private String appUrlTemplate;
+
+    @Value("${asenovo.marketing.environment:local}")
+    private String marketingEnvironment;
 
     @Value("${asenovo.marketing.demo-db.admin-url:}")
     private String demoDbAdminUrl;
@@ -88,7 +96,8 @@ public class DemoTenantProvisioningService {
 
     @Transactional
     public TrialProvisionResponseDto provisionDemoTenant(TrialRequestDto request) {
-        String tenantSlug = generateTenantSlug();
+        validateEnvironmentGuardrails();
+        String tenantSlug = generateTenantSlug(request);
         String databaseName = buildDatabaseName(tenantSlug);
         String temporaryPassword = generateTemporaryPassword();
         LocalDate expiresOn = LocalDate.now().plusDays(7);
@@ -125,6 +134,7 @@ public class DemoTenantProvisioningService {
 
     @Transactional
     public String rotateExistingDemoPassword(TrialRequestProjection request) {
+        validateEnvironmentGuardrails();
         Optional<Tenant> tenantOpt = tenantRepository.findBySubdomain(request.tenantSlug());
         if (tenantOpt.isEmpty() || !tenantOpt.get().isActive()) {
             throw new IllegalStateException("Aktif demo ortami bulunamadi");
@@ -584,7 +594,62 @@ public class DemoTenantProvisioningService {
     }
 
     private String buildDatabaseName(String tenantSlug) {
-        return demoDbNamePrefix + tenantSlug.replace('-', '_');
+        String normalizedTenantPart = tenantSlug == null ? "" : tenantSlug.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        if (normalizedTenantPart.startsWith("demo_")) {
+            normalizedTenantPart = normalizedTenantPart.substring("demo_".length());
+        }
+        return demoDbNamePrefix + normalizedTenantPart;
+    }
+
+    private void validateEnvironmentGuardrails() {
+        String environment = marketingEnvironment == null ? "local" : marketingEnvironment.trim().toLowerCase(Locale.ROOT);
+        String loginUrl = buildLoginUrl("guard-check").toLowerCase(Locale.ROOT);
+        String dbPrefix = demoDbNamePrefix == null ? "" : demoDbNamePrefix.trim().toLowerCase(Locale.ROOT);
+
+        boolean prodLike = environment.equals("prod") || environment.equals("production") || environment.equals("live");
+
+        if (prodLike) {
+            validateProdLoginUrl(loginUrl);
+            if (dbPrefix.contains("_local_")) {
+                throw new IllegalStateException("Production marketing environment cannot use local demo database prefixes");
+            }
+            return;
+        }
+
+        validateNonProdLoginUrl(loginUrl);
+        if (!(dbPrefix.contains("_local_") || dbPrefix.contains("_staging_") || dbPrefix.contains("_test_"))) {
+            throw new IllegalStateException("Non-production marketing environment must use a non-production demo database prefix");
+        }
+    }
+
+    private void validateProdLoginUrl(String loginUrl) {
+        URI uri = parseLoginUrl(loginUrl);
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalStateException("Production marketing environment must generate HTTPS demo login URLs");
+        }
+        if (!host.endsWith(".asenovo.com")) {
+            throw new IllegalStateException("Production marketing environment must generate .asenovo.com demo domains");
+        }
+    }
+
+    private void validateNonProdLoginUrl(String loginUrl) {
+        URI uri = parseLoginUrl(loginUrl);
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        if (host.endsWith(".asenovo.com")) {
+            throw new IllegalStateException("Non-production marketing environment cannot generate .asenovo.com demo domains");
+        }
+        if (!host.endsWith(".lvh.me")) {
+            throw new IllegalStateException("Non-production marketing environment must generate .lvh.me demo domains");
+        }
+    }
+
+    private URI parseLoginUrl(String loginUrl) {
+        try {
+            return URI.create(loginUrl);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Marketing demo login URL configuration is invalid", ex);
+        }
     }
 
     private com.saraasansor.api.tenant.data.TenantDescriptor tenantDescriptorOf(Tenant tenant) {
@@ -613,6 +678,9 @@ public class DemoTenantProvisioningService {
     }
 
     private String buildLoginUrl(String tenantSlug) {
+        if (StringUtils.hasText(appUrlTemplate)) {
+            return appUrlTemplate.replace("{tenant}", tenantSlug);
+        }
         return "https://" + tenantSlug + "." + appBaseDomain + "/login";
     }
 
@@ -625,12 +693,40 @@ public class DemoTenantProvisioningService {
         return preferred != null && !preferred.isBlank() ? preferred.trim() : fallback;
     }
 
-    private String generateTenantSlug() {
+    private String generateTenantSlug(TrialRequestDto request) {
+        String companySlug = sanitizeCompanySlug(request.getCompany());
         String slug;
         do {
-            slug = "demo-" + randomSuffix(6);
+            String suffix = randomSuffix(6);
+            slug = companySlug == null ? "demo-" + suffix : companySlug + "-" + suffix;
         } while (tenantRepository.existsBySubdomain(slug));
         return slug;
+    }
+
+    private String sanitizeCompanySlug(String company) {
+        if (company == null || company.isBlank()) {
+            return null;
+        }
+
+        String normalized = company
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replace('ç', 'c')
+                .replace('ğ', 'g')
+                .replace('ı', 'i')
+                .replace('ö', 'o')
+                .replace('ş', 's')
+                .replace('ü', 'u');
+
+        normalized = normalized.replaceAll("[^a-z0-9]+", "-");
+        normalized = normalized.replaceAll("^-+", "");
+        normalized = normalized.replaceAll("-+$", "");
+
+        if (normalized.isBlank()) {
+            return null;
+        }
+
+        return normalized.length() > 24 ? normalized.substring(0, 24) : normalized;
     }
 
     private String generateTemporaryPassword() {

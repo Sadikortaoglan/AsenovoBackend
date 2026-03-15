@@ -22,7 +22,7 @@ public class AuthController {
         this.authService = authService;
     }
     
-    @PostMapping(value = "/login", consumes = "application/json", produces = "application/json")
+    @PostMapping(value = {"/login", "/api/login"}, consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         try {
             LoginResponse response = authService.login(request);
@@ -36,7 +36,7 @@ public class AuthController {
         }
     }
     
-    @PostMapping(value = "/refresh", consumes = "application/json", produces = "application/json")
+    @PostMapping(value = {"/refresh", "/api/refresh"}, consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<LoginResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         try {
             LoginResponse response = authService.refreshToken(request.getRefreshToken());
@@ -47,7 +47,7 @@ public class AuthController {
         }
     }
     
-    @PostMapping(value = "/register", consumes = "application/json", produces = "application/json")
+    @PostMapping(value = {"/register", "/api/register"}, consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<LoginResponse>> register(@Valid @RequestBody RegisterRequest request) {
         try {
             LoginResponse response = authService.register(request);
@@ -58,7 +58,7 @@ public class AuthController {
         }
     }
     
-    @PostMapping("/logout")
+    @PostMapping({"/logout", "/api/logout"})
     public ResponseEntity<ApiResponse<Void>> logout(
             @RequestBody(required = false) com.saraasansor.api.dto.auth.RefreshTokenRequest request) {
         try {

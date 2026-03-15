@@ -49,8 +49,8 @@ public class MarketingFormController {
     @GetMapping("/trial-request/{requestToken}")
     public ResponseEntity<ApiResponse<TrialProvisionResponseDto>> getTrialRequestStatus(@PathVariable String requestToken) {
         try {
-            TrialProvisionResponseDto response = marketingLeadService.getTrialRequestStatus(requestToken);
-            return ResponseEntity.ok(ApiResponse.success("Trial durumu getirildi.", response));
+            TrialSubmissionResultDto result = marketingLeadService.getTrialRequestStatus(requestToken);
+            return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result.getResponse()));
         } catch (RuntimeException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error(ex.getMessage()));

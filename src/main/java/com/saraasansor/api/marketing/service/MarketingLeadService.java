@@ -81,9 +81,10 @@ public class MarketingLeadService {
     }
 
     @Transactional(readOnly = true)
-    public TrialProvisionResponseDto getTrialRequestStatus(String requestToken) {
+    public TrialSubmissionResultDto getTrialRequestStatus(String requestToken) {
         TrialRequestProjection request = repository.findTrialRequestByToken(requestToken);
-        return toResponse(request);
+        TrialProvisionResponseDto response = toResponse(request);
+        return new TrialSubmissionResultDto(buildTrialStatusMessage(response), response);
     }
 
     @Transactional
@@ -166,9 +167,11 @@ public class MarketingLeadService {
             } catch (RuntimeException ex) {
                 repository.markTrialEmailFailed(existingRequest.id(), ex.getMessage());
                 response.setAccessEmailSent(false);
+                response.setEmailError(ex.getMessage());
                 logger.warn("Existing demo access refresh failed for token={}: {}", existingRequest.requestToken(), ex.getMessage());
             }
 
+            applyAccessDeliveryPresentation(response);
             return new TrialSubmissionResultDto(buildExistingReadyMessage(response.getAccessEmailSent()), response);
         }
 
@@ -193,6 +196,7 @@ public class MarketingLeadService {
         response.setExistingDemo(false);
         response.setAccessEmailSent(request.emailed());
         response.setEmailError(request.emailError());
+        applyAccessDeliveryPresentation(response);
         return response;
     }
 
@@ -200,7 +204,40 @@ public class MarketingLeadService {
         if (Boolean.TRUE.equals(accessEmailSent)) {
             return "Bu e-posta ve sirket icin aktif bir demo ortaminiz zaten bulunuyor. Yeni demo acilmadi, erisim bilgileriniz e-posta adresinize tekrar gonderildi.";
         }
-        return "Bu e-posta ve sirket icin aktif bir demo ortaminiz zaten bulunuyor. Yeni demo acilmadi, mevcut demo hesabinizi kullanabilirsiniz.";
+        return "Bu e-posta ve sirket icin aktif bir demo ortaminiz zaten bulunuyor. Yeni demo acilmadi, e-posta iletiminde sorun oldugu icin gecici sifrenizi bu ekrandan kullanabilirsiniz.";
+    }
+
+    private String buildTrialStatusMessage(TrialProvisionResponseDto response) {
+        if (response == null || response.getStatus() == null) {
+            return "Trial durumu getirildi.";
+        }
+
+        return switch (response.getStatus()) {
+            case "PENDING" -> "Demo ortaminiz hazirlaniyor.";
+            case "PROVISIONING" -> "Demo ortaminiz hazirlaniyor. Bu islem kisa surebilir.";
+            case "READY" -> Boolean.TRUE.equals(response.getAccessEmailSent())
+                    ? "Demo ortaminiz hazir. Erisim bilgileriniz e-posta adresinize gonderildi. Sifrenizi mailinizden alin."
+                    : "Demo ortaminiz hazir. E-posta gonderilemedigi icin gecici sifrenizi bu ekrandan kullanin.";
+            case "FAILED" -> response.getProvisioningError() != null && !response.getProvisioningError().isBlank()
+                    ? "Demo olusturulamadi: " + response.getProvisioningError()
+                    : "Demo olusturulamadi.";
+            case "EXPIRED" -> "Demo suresi doldu.";
+            case "CLEANED_UP" -> "Demo ortami kapatildi.";
+            default -> "Trial durumu getirildi.";
+        };
+    }
+
+    private void applyAccessDeliveryPresentation(TrialProvisionResponseDto response) {
+        if (response == null || !"READY".equals(response.getStatus())) {
+            response.setShowTemporaryPassword(false);
+            return;
+        }
+
+        boolean accessEmailSent = Boolean.TRUE.equals(response.getAccessEmailSent());
+        response.setShowTemporaryPassword(!accessEmailSent);
+        if (accessEmailSent) {
+            response.setTemporaryPassword(null);
+        }
     }
 
     private void registerAfterCommit(Runnable runnable) {

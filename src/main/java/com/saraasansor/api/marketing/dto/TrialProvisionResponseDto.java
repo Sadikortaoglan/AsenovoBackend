@@ -15,6 +15,7 @@ public class TrialProvisionResponseDto {
     private Boolean existingDemo;
     private Boolean accessEmailSent;
     private String emailError;
+    private Boolean showTemporaryPassword;
 
     public String getRequestToken() {
         return requestToken;
@@ -110,5 +111,13 @@ public class TrialProvisionResponseDto {
 
     public void setEmailError(String emailError) {
         this.emailError = emailError;
+    }
+
+    public Boolean getShowTemporaryPassword() {
+        return showTemporaryPassword;
+    }
+
+    public void setShowTemporaryPassword(Boolean showTemporaryPassword) {
+        this.showTemporaryPassword = showTemporaryPassword;
     }
 }

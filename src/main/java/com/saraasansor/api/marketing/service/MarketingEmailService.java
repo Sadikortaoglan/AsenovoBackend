@@ -28,6 +28,12 @@ public class MarketingEmailService {
     @Value("${asenovo.marketing.from-email:no-reply@asenovo.com}")
     private String fromEmail;
 
+    @Value("${asenovo.marketing.mail-enabled:true}")
+    private boolean mailEnabled;
+
+    @Value("${asenovo.marketing.environment:local}")
+    private String marketingEnvironment;
+
     public MarketingEmailService(ObjectProvider<JavaMailSender> mailSenderProvider) {
         this.mailSenderProvider = mailSenderProvider;
     }
@@ -122,6 +128,16 @@ public class MarketingEmailService {
     }
 
     private boolean sendEmail(String to, String replyTo, String subject, String body) {
+        if (!mailEnabled) {
+            logger.info(
+                    "Marketing email skipped because mail is disabled for environment={}. to={} subject={}",
+                    marketingEnvironment,
+                    to,
+                    subject
+            );
+            return false;
+        }
+
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
         if (mailSender == null) {
             logger.warn("Marketing email skipped because JavaMailSender is not configured. to={} subject={}", to, subject);

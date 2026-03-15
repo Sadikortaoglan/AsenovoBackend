@@ -48,8 +48,8 @@ spring:
   mail:
     host: ${SMTP_HOST:email-smtp.eu-north-1.amazonaws.com}
     port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:${SES_SMTP_USERNAME:AKIAUNXJTBJ2UQCXW6OJ}}
-    password: ${SMTP_PASSWORD:${SES_SMTP_PASSWORD:BK2g+tXF2d08Ig0GtQrzmRrF/PDlt9Kt+HD/rsvezG0t}}
+    username: ${SMTP_USERNAME:${SES_SMTP_USERNAME:}}
+    password: ${SMTP_PASSWORD:${SES_SMTP_PASSWORD:}}
     properties:
       mail:
         smtp:
@@ -133,7 +133,10 @@ asenovo:
     allowed-hosts: ${ASENOVO_DOCS_ALLOWED_HOSTS:localhost,127.0.0.1,default.asenovo.local,internal-api.asenovo.local}
     tenant-options: ${ASENOVO_DOCS_TENANT_OPTIONS:default.asenovo.local,tenant1.asenovo.local,tenant2.asenovo.local}
   marketing:
+    environment: ${ASENOVO_MARKETING_ENVIRONMENT:local}
     app-base-domain: ${ASENOVO_MARKETING_APP_BASE_DOMAIN:asenovo.local}
+    app-url-template: ${ASENOVO_MARKETING_APP_URL_TEMPLATE:http://{tenant}.lvh.me:5173/login}
+    mail-enabled: ${ASENOVO_MARKETING_MAIL_ENABLED:false}
     support-email: ${ASENOVO_MARKETING_SUPPORT_EMAIL:support@asenovo.com}
     from-email: ${ASENOVO_MARKETING_FROM_EMAIL:no-reply@asenovo.com}
     trial-cleanup-grace-days: ${ASENOVO_MARKETING_TRIAL_CLEANUP_GRACE_DAYS:7}
@@ -143,5 +146,5 @@ asenovo:
       admin-url: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_URL:}
       admin-username: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_USERNAME:}
       admin-password: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_PASSWORD:}
-      name-prefix: ${ASENOVO_MARKETING_DEMO_DB_NAME_PREFIX:asenovo_demo_}
+      name-prefix: ${ASENOVO_MARKETING_DEMO_DB_NAME_PREFIX:asenovo_demo_local_}
       template-name: ${ASENOVO_MARKETING_DEMO_DB_TEMPLATE_NAME:asenovo_demo_template}

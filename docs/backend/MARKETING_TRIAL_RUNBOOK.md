@@ -32,10 +32,18 @@ ayri Route53 kaydi gerektirmez.
 
 ## Uygulama davranisi
 
-- local ortamda `asenovo.marketing.app-base-domain=asenovo.local`
-- canli ortamda `asenovo.marketing.app-base-domain=asenovo.com`
+- local ortamda `asenovo.marketing.app-url-template=http://{tenant}.lvh.me:5173/login`
+- canli ortamda `asenovo.marketing.app-url-template=https://{tenant}.asenovo.com/login`
+- local ortamda `asenovo.marketing.mail-enabled=false`
+- canli ortamda `asenovo.marketing.mail-enabled=true`
 
 Bu sayede login URL environment'a gore dogru uretilir.
+
+Ek guard:
+
+- `local/staging/test` ortaminda `.com` demo domain uretilirse backend istegi bloklar
+- `prod` ortaminda `.local` demo domain uretilirse backend istegi bloklar
+- `local/staging/test` ortaminda demo DB prefix'i non-prod olmak zorundadir
 
 ## Trial duplicate kurali
 
@@ -69,7 +77,9 @@ Akis:
 ## Gerekli prod env degerleri
 
 ```env
-ASENOVO_MARKETING_APP_BASE_DOMAIN=asenovo.com
+ASENOVO_MARKETING_ENVIRONMENT=prod
+ASENOVO_MARKETING_MAIL_ENABLED=true
+ASENOVO_MARKETING_APP_URL_TEMPLATE=https://{tenant}.asenovo.com/login
 ASENOVO_MARKETING_SUPPORT_EMAIL=support@asenovo.com
 ASENOVO_MARKETING_FROM_EMAIL=no-reply@asenovo.com
 ASENOVO_MARKETING_TRIAL_CLEANUP_GRACE_DAYS=7
@@ -99,12 +109,24 @@ AWS SES kullaniliyorsa:
 
 ## Local notu
 
+Local varsayilanlari:
+
+```env
+ASENOVO_MARKETING_ENVIRONMENT=local
+ASENOVO_MARKETING_MAIL_ENABLED=false
+ASENOVO_MARKETING_APP_URL_TEMPLATE=http://{tenant}.lvh.me:5173/login
+ASENOVO_MARKETING_DEMO_DB_NAME_PREFIX=asenovo_demo_local_
+```
+
+Bu durumda:
+
+- local demo local DB'de acilir
+- mail gercek kullaniciya gitmez
+- login URL icin hosts kaydi gerekmez
+- erisim bilgileri sadece ekranda kullanilir
+
 `/etc/hosts` wildcard desteklemez.
 
-Local alternatifler:
-
-- `dnsmasq`
-- `nip.io` / `sslip.io`
-- tek tek hosts kaydi
+Bu nedenle local default olarak `lvh.me` kullanilir. `lvh.me` localhost'a cozuldugu icin her yeni demo icin tek tek hosts kaydi gerekmez.
 
 Canli tarafta bu problem wildcard DNS ile cozulecegi icin her tenant icin tek tek Route53 kaydi acilmaz.

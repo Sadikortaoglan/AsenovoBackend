@@ -129,7 +129,7 @@ public class SecurityConfig {
                 // Error endpoint - permit all (needed for exception handling)
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
-                .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                .requestMatchers("/auth/**", "/api/auth/**", "/login", "/refresh", "/register", "/logout", "/api/login", "/api/refresh", "/api/register", "/api/logout").permitAll()
                 // Marketing website public form endpoints
                 .requestMatchers(
                         HttpMethod.POST,
@@ -316,6 +316,8 @@ public class SecurityConfig {
             allowedOriginPatterns.add("http://localhost:*");
             allowedOriginPatterns.add("http://127.0.0.1:*");
             allowedOriginPatterns.add("http://*.asenovo.local:*");
+            allowedOriginPatterns.add("http://*.lvh.me:*");
+            allowedOriginPatterns.add("https://*.lvh.me:*");
         }
 
         // Comma-separated explicit list/patterns from env

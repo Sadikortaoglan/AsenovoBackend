@@ -9,10 +9,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -30,9 +33,11 @@ public class TenantResolverFilter extends OncePerRequestFilter {
     );
 
     private final TenantRegistryService tenantRegistryService;
+    private final Environment environment;
 
-    public TenantResolverFilter(TenantRegistryService tenantRegistryService) {
+    public TenantResolverFilter(TenantRegistryService tenantRegistryService, Environment environment) {
         this.tenantRegistryService = tenantRegistryService;
+        this.environment = environment;
     }
 
     @Override
@@ -110,7 +115,21 @@ public class TenantResolverFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(forwardedHost)) {
             return forwardedHost;
         }
-        return request.getServerName();
+
+        String serverName = request.getServerName();
+        if (isDevProfile() && isLocalProxyHost(serverName)) {
+            String inferredHost = extractHostFromUrlHeader(request.getHeader("Origin"));
+            if (StringUtils.hasText(inferredHost)) {
+                return inferredHost;
+            }
+
+            inferredHost = extractHostFromUrlHeader(request.getHeader("Referer"));
+            if (StringUtils.hasText(inferredHost)) {
+                return inferredHost;
+            }
+        }
+
+        return serverName;
     }
 
     private String normalizeHost(String host) {
@@ -124,5 +143,27 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             normalized = normalized.substring(0, portSeparator);
         }
         return normalized;
+    }
+
+    private boolean isDevProfile() {
+        return environment.acceptsProfiles(Profiles.of("dev", "default"));
+    }
+
+    private boolean isLocalProxyHost(String host) {
+        String normalized = normalizeHost(host);
+        return "localhost".equals(normalized) || "127.0.0.1".equals(normalized);
+    }
+
+    private String extractHostFromUrlHeader(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+
+        try {
+            URI uri = URI.create(value.trim());
+            return normalizeHost(uri.getHost());
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

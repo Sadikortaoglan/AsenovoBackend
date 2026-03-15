@@ -126,9 +126,18 @@ asenovo:
     allowed-hosts: ${ASENOVO_DOCS_ALLOWED_HOSTS:internal-api.asenovo.com}
     tenant-options: ${ASENOVO_DOCS_TENANT_OPTIONS:default.asenovo.com,tenant1.asenovo.com,tenant2.asenovo.com}
   marketing:
+    environment: ${ASENOVO_MARKETING_ENVIRONMENT:prod}
     app-base-domain: ${ASENOVO_MARKETING_APP_BASE_DOMAIN:asenovo.com}
+    app-url-template: ${ASENOVO_MARKETING_APP_URL_TEMPLATE:https://{tenant}.asenovo.com/login}
+    mail-enabled: ${ASENOVO_MARKETING_MAIL_ENABLED:true}
     support-email: ${ASENOVO_MARKETING_SUPPORT_EMAIL:support@asenovo.com}
     from-email: ${ASENOVO_MARKETING_FROM_EMAIL:no-reply@asenovo.com}
     trial-cleanup-grace-days: ${ASENOVO_MARKETING_TRIAL_CLEANUP_GRACE_DAYS:7}
     trial-expire-cron: ${ASENOVO_MARKETING_TRIAL_EXPIRE_CRON:0 0 4 * * *}
     trial-cleanup-cron: ${ASENOVO_MARKETING_TRIAL_CLEANUP_CRON:0 30 4 * * *}
+    demo-db:
+      admin-url: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_URL:}
+      admin-username: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_USERNAME:}
+      admin-password: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_PASSWORD:}
+      name-prefix: ${ASENOVO_MARKETING_DEMO_DB_NAME_PREFIX:asenovo_demo_}
+      template-name: ${ASENOVO_MARKETING_DEMO_DB_TEMPLATE_NAME:asenovo_demo_template}
