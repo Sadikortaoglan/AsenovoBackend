@@ -1,5 +1,6 @@
 package com.saraasansor.api.config;
 
+import com.saraasansor.api.tenant.DedicatedTenantDataSourceRegistry;
 import com.saraasansor.api.tenant.TenantRoutingDataSource;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -9,9 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 import javax.sql.DataSource;
-import java.util.HashMap;
-import java.util.Map;
-
 @Configuration
 public class TenantDataSourceConfig {
 
@@ -26,23 +24,9 @@ public class TenantDataSourceConfig {
         return sharedDataSourceProperties.initializeDataSourceBuilder().build();
     }
 
-    /**
-     * Uygulamanin ana DataSource'u olarak TenantRoutingDataSource kullanilir.
-     * Simdilik tum istekler, tenant olsa da olmasa da, tek bir SHARED DataSource'a
-     * yonlenir; DEDICATED_DB tenant'lar icin ayri havuzlar bir sonraki adimda eklenecektir.
-     */
     @Bean
     @Primary
-    public DataSource dataSource(DataSource sharedDataSource) {
-        TenantRoutingDataSource routingDataSource = new TenantRoutingDataSource();
-
-        Map<Object, Object> targetDataSources = new HashMap<>();
-        targetDataSources.put(TenantRoutingDataSource.SHARED_KEY, sharedDataSource);
-
-        routingDataSource.setDefaultTargetDataSource(sharedDataSource);
-        routingDataSource.setTargetDataSources(targetDataSources);
-        routingDataSource.afterPropertiesSet();
-
-        return routingDataSource;
+    public DataSource dataSource(DataSource sharedDataSource, DedicatedTenantDataSourceRegistry dedicatedTenantDataSourceRegistry) {
+        return new TenantRoutingDataSource(sharedDataSource, dedicatedTenantDataSourceRegistry);
     }
 }

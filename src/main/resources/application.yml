@@ -45,6 +45,19 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  mail:
+    host: ${SMTP_HOST:email-smtp.eu-north-1.amazonaws.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:${SES_SMTP_USERNAME:AKIAUNXJTBJ2UQCXW6OJ}}
+    password: ${SMTP_PASSWORD:${SES_SMTP_PASSWORD:BK2g+tXF2d08Ig0GtQrzmRrF/PDlt9Kt+HD/rsvezG0t}}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          debug: true
+          starttls:
+            enable: true
+
 server:
   port: 8080
   servlet:
@@ -119,3 +132,16 @@ asenovo:
     default-tenant-host: ${ASENOVO_DOCS_DEFAULT_TENANT_HOST:default.asenovo.local}
     allowed-hosts: ${ASENOVO_DOCS_ALLOWED_HOSTS:localhost,127.0.0.1,default.asenovo.local,internal-api.asenovo.local}
     tenant-options: ${ASENOVO_DOCS_TENANT_OPTIONS:default.asenovo.local,tenant1.asenovo.local,tenant2.asenovo.local}
+  marketing:
+    app-base-domain: ${ASENOVO_MARKETING_APP_BASE_DOMAIN:asenovo.local}
+    support-email: ${ASENOVO_MARKETING_SUPPORT_EMAIL:support@asenovo.com}
+    from-email: ${ASENOVO_MARKETING_FROM_EMAIL:no-reply@asenovo.com}
+    trial-cleanup-grace-days: ${ASENOVO_MARKETING_TRIAL_CLEANUP_GRACE_DAYS:7}
+    trial-expire-cron: ${ASENOVO_MARKETING_TRIAL_EXPIRE_CRON:0 0 4 * * *}
+    trial-cleanup-cron: ${ASENOVO_MARKETING_TRIAL_CLEANUP_CRON:0 30 4 * * *}
+    demo-db:
+      admin-url: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_URL:}
+      admin-username: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_USERNAME:}
+      admin-password: ${ASENOVO_MARKETING_DEMO_DB_ADMIN_PASSWORD:}
+      name-prefix: ${ASENOVO_MARKETING_DEMO_DB_NAME_PREFIX:asenovo_demo_}
+      template-name: ${ASENOVO_MARKETING_DEMO_DB_TEMPLATE_NAME:asenovo_demo_template}

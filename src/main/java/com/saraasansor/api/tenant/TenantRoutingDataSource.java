@@ -1,33 +1,45 @@
 package com.saraasansor.api.tenant;
 
-import com.saraasansor.api.tenant.model.Tenant;
 import com.saraasansor.api.tenant.data.TenantDescriptor;
-import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
+import com.saraasansor.api.tenant.model.Tenant;
+import org.springframework.jdbc.datasource.AbstractDataSource;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 /**
- * Runtime'da aktif tenant'a gore uygun DataSource'u sececek routing katmani.
- * Simdilik tum tenantlar ortak SHARED DataSource'u kullanir; DEDICATED_DB
- * destegi bir sonraki adimda DynamicDataSourceRegistry ile eklenecektir.
+ * Runtime'da aktif tenant'a gore uygun DataSource'u secer.
+ * Shared tenant davranisi ayni kalir; yalniz DEDICATED_DB tenant'lar lazy
+ * registry uzerinden ayri havuza yonlenir.
  */
-public class TenantRoutingDataSource extends AbstractRoutingDataSource {
+public class TenantRoutingDataSource extends AbstractDataSource {
 
-    public static final String SHARED_KEY = "SHARED";
+    private final DataSource sharedDataSource;
+    private final DedicatedTenantDataSourceRegistry dedicatedRegistry;
 
-    @Override
-    protected Object determineCurrentLookupKey() {
+    public TenantRoutingDataSource(DataSource sharedDataSource, DedicatedTenantDataSourceRegistry dedicatedRegistry) {
+        this.sharedDataSource = sharedDataSource;
+        this.dedicatedRegistry = dedicatedRegistry;
+    }
+
+    private DataSource determineCurrentDataSource() {
         TenantDescriptor tenant = TenantContext.getCurrentTenant();
 
-        if (tenant == null) {
-            // Subdomain yoksa veya tenant cozumlenemediyse mevcut tek-tenant davranisi
-            return SHARED_KEY;
+        if (tenant == null || tenant.getTenancyMode() == Tenant.TenancyMode.SHARED_SCHEMA) {
+            return sharedDataSource;
         }
 
-        if (tenant.getTenancyMode() == Tenant.TenancyMode.SHARED_SCHEMA) {
-            return SHARED_KEY;
-        }
+        return dedicatedRegistry.resolve(tenant);
+    }
 
-        // DEDICATED_DB tenant'lar icin benzersiz key (ileride DynamicDataSourceRegistry ile desteklenecek)
-        return "TENANT_DB_" + tenant.getId();
+    @Override
+    public Connection getConnection() throws SQLException {
+        return determineCurrentDataSource().getConnection();
+    }
+
+    @Override
+    public Connection getConnection(String username, String password) throws SQLException {
+        return determineCurrentDataSource().getConnection(username, password);
     }
 }
-

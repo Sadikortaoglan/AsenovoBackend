@@ -2,6 +2,7 @@ package com.saraasansor.api.security;
 
 import com.saraasansor.api.tenant.filter.TenantResolverFilter;
 import com.saraasansor.api.tenant.filter.RateLimitFilter;
+import com.saraasansor.api.marketing.filter.PublicMarketingRateLimitFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -69,6 +70,9 @@ public class SecurityConfig {
     @Autowired
     private RateLimitFilter rateLimitFilter;
 
+    @Autowired
+    private PublicMarketingRateLimitFilter publicMarketingRateLimitFilter;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -126,6 +130,16 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**").permitAll()
+                // Marketing website public form endpoints
+                .requestMatchers(
+                        HttpMethod.POST,
+                        "/demo-request", "/trial-request", "/plan-request", "/contact",
+                        "/api/demo-request", "/api/trial-request", "/api/plan-request", "/api/contact"
+                ).permitAll()
+                .requestMatchers(
+                        HttpMethod.GET,
+                        "/trial-request/*", "/api/trial-request/*"
+                ).permitAll()
                 .requestMatchers("/admin/revision-standards/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, "ADMIN")
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - internal host only
@@ -218,9 +232,11 @@ public class SecurityConfig {
                 })
             )
             .authenticationProvider(authenticationProvider())
-            // Resolve tenant (if any) before JWT authentication so that security and data access are tenant-aware
+            // Keep custom filters anchored to framework filters only; using a custom filter
+            // class as the anchor causes startup failures because it has no registered order.
+            .addFilterBefore(publicMarketingRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(rateLimitFilter, TenantResolverFilter.class)
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();

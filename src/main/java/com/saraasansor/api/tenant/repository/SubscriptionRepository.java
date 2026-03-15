@@ -19,5 +19,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
         AND (s.endsAt IS NULL OR s.endsAt >= CURRENT_TIMESTAMP)
     """)
     Optional<Subscription> findActiveSubscription(Long tenantId);
-}
 
+    Optional<Subscription> findByTenantIdAndActiveTrue(Long tenantId);
+}

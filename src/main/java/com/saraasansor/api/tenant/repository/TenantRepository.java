@@ -14,6 +14,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     @Query("SELECT t FROM Tenant t JOIN FETCH t.plan WHERE t.subdomain = :subdomain AND t.active = true")
     Optional<Tenant> findBySubdomainAndActiveIsTrue(@Param("subdomain") String subdomain);
 
+    @Query("SELECT t FROM Tenant t JOIN FETCH t.plan WHERE t.subdomain = :subdomain")
+    Optional<Tenant> findBySubdomain(@Param("subdomain") String subdomain);
+
     boolean existsBySubdomain(String subdomain);
 }
-

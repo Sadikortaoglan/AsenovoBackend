@@ -125,3 +125,10 @@ asenovo:
     default-tenant-host: ${ASENOVO_DOCS_DEFAULT_TENANT_HOST:default.asenovo.com}
     allowed-hosts: ${ASENOVO_DOCS_ALLOWED_HOSTS:internal-api.asenovo.com}
     tenant-options: ${ASENOVO_DOCS_TENANT_OPTIONS:default.asenovo.com,tenant1.asenovo.com,tenant2.asenovo.com}
+  marketing:
+    app-base-domain: ${ASENOVO_MARKETING_APP_BASE_DOMAIN:asenovo.com}
+    support-email: ${ASENOVO_MARKETING_SUPPORT_EMAIL:support@asenovo.com}
+    from-email: ${ASENOVO_MARKETING_FROM_EMAIL:no-reply@asenovo.com}
+    trial-cleanup-grace-days: ${ASENOVO_MARKETING_TRIAL_CLEANUP_GRACE_DAYS:7}
+    trial-expire-cron: ${ASENOVO_MARKETING_TRIAL_EXPIRE_CRON:0 0 4 * * *}
+    trial-cleanup-cron: ${ASENOVO_MARKETING_TRIAL_CLEANUP_CRON:0 30 4 * * *}
