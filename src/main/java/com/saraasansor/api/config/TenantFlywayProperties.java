@@ -2,6 +2,7 @@ package com.saraasansor.api.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @ConfigurationProperties(prefix = "app.tenancy.migration")
@@ -15,6 +16,10 @@ public class TenantFlywayProperties {
     private boolean baselineOnMigrate = true;
     private int connectRetries = 1;
     private List<String> locations = List.of("classpath:db/migration");
+    private boolean validateOnMigrate = false;
+    private boolean outOfOrder = true;
+    private boolean repairBeforeMigrate = true;
+    private List<String> ignoreMigrationPatterns = new ArrayList<>(List.of("*:ignored"));
 
     public boolean isEnabled() {
         return enabled;
@@ -79,5 +84,36 @@ public class TenantFlywayProperties {
     public void setLocations(List<String> locations) {
         this.locations = locations;
     }
-}
 
+    public boolean isValidateOnMigrate() {
+        return validateOnMigrate;
+    }
+
+    public void setValidateOnMigrate(boolean validateOnMigrate) {
+        this.validateOnMigrate = validateOnMigrate;
+    }
+
+    public boolean isOutOfOrder() {
+        return outOfOrder;
+    }
+
+    public void setOutOfOrder(boolean outOfOrder) {
+        this.outOfOrder = outOfOrder;
+    }
+
+    public boolean isRepairBeforeMigrate() {
+        return repairBeforeMigrate;
+    }
+
+    public void setRepairBeforeMigrate(boolean repairBeforeMigrate) {
+        this.repairBeforeMigrate = repairBeforeMigrate;
+    }
+
+    public List<String> getIgnoreMigrationPatterns() {
+        return ignoreMigrationPatterns;
+    }
+
+    public void setIgnoreMigrationPatterns(List<String> ignoreMigrationPatterns) {
+        this.ignoreMigrationPatterns = ignoreMigrationPatterns;
+    }
+}

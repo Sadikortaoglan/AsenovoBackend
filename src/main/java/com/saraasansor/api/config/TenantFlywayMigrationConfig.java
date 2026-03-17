@@ -1,6 +1,7 @@
 package com.saraasansor.api.config;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -80,16 +81,20 @@ public class TenantFlywayMigrationConfig {
             throw new IllegalStateException("Could not prepare schema for tenant " + tenant.id(), ex);
         }
 
-        Flyway.configure()
-                .dataSource(sharedDataSource)
-                .locations(properties.getLocations().toArray(new String[0]))
-                .schemas(targetSchema)
-                .defaultSchema(targetSchema)
-                .table(properties.getHistoryTable())
-                .baselineOnMigrate(properties.isBaselineOnMigrate())
-                .connectRetries(properties.getConnectRetries())
-                .load()
-                .migrate();
+        runRepairAndMigrate(
+                Flyway.configure()
+                        .dataSource(sharedDataSource)
+                        .locations(properties.getLocations().toArray(new String[0]))
+                        .schemas(targetSchema)
+                        .defaultSchema(targetSchema)
+                        .table(properties.getHistoryTable())
+                        .baselineOnMigrate(properties.isBaselineOnMigrate())
+                        .connectRetries(properties.getConnectRetries())
+                        .validateOnMigrate(properties.isValidateOnMigrate())
+                        .outOfOrder(properties.isOutOfOrder())
+                        .ignoreMigrationPatterns(properties.getIgnoreMigrationPatterns().toArray(new String[0])),
+                properties
+        );
     }
 
     private void migrateDedicatedDbTenant(TenantFlywayProperties properties, TenantRow tenant) {
@@ -104,14 +109,26 @@ public class TenantFlywayMigrationConfig {
             url = "jdbc:postgresql://" + tenant.dbHost() + "/" + tenant.dbName();
         }
 
-        Flyway.configure()
-                .dataSource(url, tenant.dbUsername(), tenant.dbPassword())
-                .locations(properties.getLocations().toArray(new String[0]))
-                .table(properties.getHistoryTable())
-                .baselineOnMigrate(properties.isBaselineOnMigrate())
-                .connectRetries(properties.getConnectRetries())
-                .load()
-                .migrate();
+        runRepairAndMigrate(
+                Flyway.configure()
+                        .dataSource(url, tenant.dbUsername(), tenant.dbPassword())
+                        .locations(properties.getLocations().toArray(new String[0]))
+                        .table(properties.getHistoryTable())
+                        .baselineOnMigrate(properties.isBaselineOnMigrate())
+                        .connectRetries(properties.getConnectRetries())
+                        .validateOnMigrate(properties.isValidateOnMigrate())
+                        .outOfOrder(properties.isOutOfOrder())
+                        .ignoreMigrationPatterns(properties.getIgnoreMigrationPatterns().toArray(new String[0])),
+                properties
+        );
+    }
+
+    private void runRepairAndMigrate(FluentConfiguration configuration, TenantFlywayProperties properties) {
+        Flyway flyway = configuration.load();
+        if (properties.isRepairBeforeMigrate()) {
+            flyway.repair();
+        }
+        flyway.migrate();
     }
 
     private boolean isBlank(String value) {
