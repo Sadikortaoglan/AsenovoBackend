@@ -17,6 +17,8 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
         Long getElevatorId();
         String getElevatorName();
         String getBuildingName();
+        Long getFacilityId();
+        String getFacilityName();
         String getCustomerName();
         java.time.LocalDateTime getCreatedAt();
         String getQrValue();
@@ -24,16 +26,21 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
 
     boolean existsByQrValue(String qrValue);
 
+    java.util.Optional<ElevatorQrCode> findByIdAndCompanyId(Long id, Long companyId);
+
     @Query(value = """
         SELECT q.id AS qrId,
                q.uuid AS uuid,
                e.id AS elevatorId,
                e.elevatorNumber AS elevatorName,
                e.buildingName AS buildingName,
+               f.id AS facilityId,
+               COALESCE(f.name, e.buildingName) AS facilityName,
                e.managerName AS customerName,
                q.createdAt AS createdAt,
                q.qrValue AS qrValue
         FROM Elevator e
+        LEFT JOIN e.facility f
         LEFT JOIN ElevatorQrCode q ON q.elevator = e AND q.companyId = :companyId
         WHERE (
               q.id IS NULL OR q.id = (

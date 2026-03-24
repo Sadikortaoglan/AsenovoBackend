@@ -10,6 +10,8 @@ public class QrCodeResponseDTO {
     private Long elevatorId;
     private String elevatorName;
     private String buildingName;
+    private Long facilityId;
+    private String facilityName;
     private String customerName;
     private LocalDateTime createdAt;
     private boolean hasQr;
@@ -53,6 +55,22 @@ public class QrCodeResponseDTO {
 
     public void setBuildingName(String buildingName) {
         this.buildingName = buildingName;
+    }
+
+    public Long getFacilityId() {
+        return facilityId;
+    }
+
+    public void setFacilityId(Long facilityId) {
+        this.facilityId = facilityId;
+    }
+
+    public String getFacilityName() {
+        return facilityName;
+    }
+
+    public void setFacilityName(String facilityName) {
+        this.facilityName = facilityName;
     }
 
     public String getCustomerName() {
