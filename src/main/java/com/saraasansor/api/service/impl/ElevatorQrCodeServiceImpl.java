@@ -7,6 +7,8 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import com.saraasansor.api.dto.ElevatorLabelCreateRequest;
+import com.saraasansor.api.dto.ElevatorLabelUpdateRequest;
 import com.saraasansor.api.dto.QrCodeResponseDTO;
 import com.saraasansor.api.exception.QrCodeNotFoundException;
 import com.saraasansor.api.model.Elevator;
@@ -52,8 +54,14 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
 
     @Override
     public QrCodeResponseDTO create(Long elevatorId, Long companyId) {
-        Elevator elevator = elevatorRepository.findById(elevatorId)
-                .orElseThrow(() -> new QrCodeNotFoundException("Elevator not found: " + elevatorId));
+        ElevatorLabelCreateRequest request = new ElevatorLabelCreateRequest();
+        request.setElevatorId(elevatorId);
+        return create(request, companyId);
+    }
+
+    @Override
+    public QrCodeResponseDTO create(ElevatorLabelCreateRequest request, Long companyId) {
+        Elevator elevator = resolveElevator(request != null ? request.getElevatorId() : null);
 
         ElevatorQrCode qrCode = new ElevatorQrCode();
         qrCode.setUuid(UUID.randomUUID());
@@ -62,6 +70,20 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
         qrCode.setCompanyId(companyId);
 
         return toDto(qrCodeRepository.save(qrCode));
+    }
+
+    @Override
+    public QrCodeResponseDTO update(Long id, ElevatorLabelUpdateRequest request, Long companyId) {
+        ElevatorQrCode qrCode = findByIdAndCompanyId(id, companyId);
+        Elevator elevator = resolveElevator(request != null ? request.getElevatorId() : null);
+        qrCode.setElevator(elevator);
+        return toDto(qrCodeRepository.save(qrCode));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QrCodeResponseDTO getById(Long id, Long companyId) {
+        return toDto(findByIdAndCompanyId(id, companyId));
     }
 
     @Override
@@ -105,37 +127,58 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
     }
 
     private ElevatorQrCode findByIdAndCompanyId(Long id, Long companyId) {
-        ElevatorQrCode qrCode = qrCodeRepository.findById(id)
+        return qrCodeRepository.findByIdAndCompanyId(id, companyId)
                 .orElseThrow(() -> new QrCodeNotFoundException("QR code not found: " + id));
-        if (!qrCode.getCompanyId().equals(companyId)) {
-            throw new QrCodeNotFoundException("QR code not found: " + id);
+    }
+
+    private Elevator resolveElevator(Long elevatorId) {
+        if (elevatorId == null) {
+            throw new RuntimeException("elevatorId is required");
         }
-        return qrCode;
+        return elevatorRepository.findById(elevatorId)
+                .orElseThrow(() -> new QrCodeNotFoundException("Elevator not found: " + elevatorId));
     }
 
     private QrCodeResponseDTO toDto(ElevatorQrCode entity) {
         QrCodeResponseDTO dto = new QrCodeResponseDTO();
+        Elevator elevator = entity.getElevator();
+        String elevatorName = resolveElevatorName(elevator.getElevatorNumber(), elevator.getIdentityNumber(), elevator.getId());
+        String buildingName = nullSafe(elevator.getBuildingName());
+        String facilityName = elevator.getFacility() != null
+                ? nullSafe(elevator.getFacility().getName())
+                : buildingName;
+        String customerName = nullSafe(elevator.getManagerName());
         dto.setId(entity.getId());
         dto.setUuid(entity.getUuid());
-        dto.setElevatorId(entity.getElevator().getId());
-        dto.setElevatorName(entity.getElevator().getElevatorNumber());
-        dto.setBuildingName(entity.getElevator().getBuildingName());
-        dto.setCustomerName(entity.getElevator().getManagerName());
+        dto.setElevatorId(elevator.getId());
+        dto.setElevatorName(elevatorName);
+        dto.setBuildingName(buildingName);
+        dto.setFacilityId(elevator.getFacility() != null ? elevator.getFacility().getId() : null);
+        dto.setFacilityName(facilityName);
+        dto.setCustomerName(customerName);
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setHasQr(true);
-        String qrPayload = buildPublicQrPayload(entity.getElevator().getId());
+        String qrPayload = buildPublicQrPayload(elevator.getId());
         dto.setQrPngBase64(Base64.getEncoder().encodeToString(generateQrImageFromValue(qrPayload, 120)));
         return dto;
     }
 
     private QrCodeResponseDTO toDto(ElevatorQrCodeRepository.ElevatorQrListProjection projection) {
         QrCodeResponseDTO dto = new QrCodeResponseDTO();
+        String elevatorName = resolveElevatorName(projection.getElevatorName(), null, projection.getElevatorId());
+        String buildingName = nullSafe(projection.getBuildingName());
+        String facilityName = nullSafe(projection.getFacilityName());
+        if (facilityName.isEmpty()) {
+            facilityName = buildingName;
+        }
         dto.setId(projection.getQrId());
         dto.setUuid(projection.getUuid());
         dto.setElevatorId(projection.getElevatorId());
-        dto.setElevatorName(projection.getElevatorName());
-        dto.setBuildingName(projection.getBuildingName());
-        dto.setCustomerName(projection.getCustomerName());
+        dto.setElevatorName(elevatorName);
+        dto.setBuildingName(buildingName);
+        dto.setFacilityId(projection.getFacilityId());
+        dto.setFacilityName(facilityName);
+        dto.setCustomerName(nullSafe(projection.getCustomerName()));
         dto.setCreatedAt(projection.getCreatedAt());
         boolean hasQr = projection.getQrId() != null && projection.getQrValue() != null;
         dto.setHasQr(hasQr);
@@ -150,5 +193,19 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
 
     private String buildPublicQrPayload(Long elevatorId) {
         return elevatorQrService.generateQrUrl(elevatorId);
+    }
+
+    private String resolveElevatorName(String elevatorNumber, String identityNumber, Long elevatorId) {
+        if (elevatorNumber != null && !elevatorNumber.isBlank()) {
+            return elevatorNumber.trim();
+        }
+        if (identityNumber != null && !identityNumber.isBlank()) {
+            return identityNumber.trim();
+        }
+        return elevatorId != null ? "Elevator #" + elevatorId : "";
+    }
+
+    private String nullSafe(String value) {
+        return value == null ? "" : value;
     }
 }

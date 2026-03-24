@@ -193,14 +193,16 @@ public class ElevatorService {
 
     @Transactional(readOnly = true)
     public List<LookupDto> getLookup(Long facilityId, String query) {
-        if (facilityId == null) {
-            throw new RuntimeException("facilityId is required");
+        String normalizedQuery = normalizeNullable(query);
+        List<Elevator> sourceElevators;
+        if (facilityId != null) {
+            Facility facility = resolveFacility(facilityId);
+            sourceElevators = collectFacilityElevators(facility);
+        } else {
+            sourceElevators = elevatorRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
         }
 
-        Facility facility = resolveFacility(facilityId);
-
-        String normalizedQuery = normalizeNullable(query);
-        return collectFacilityElevators(facility).stream()
+        return sourceElevators.stream()
                 .filter(elevator -> matchLookupQuery(elevator, normalizedQuery))
                 .sorted(Comparator
                         .comparing((Elevator elevator) -> normalizeNullable(elevator.getElevatorNumber()),
@@ -452,7 +454,9 @@ public class ElevatorService {
         } else {
             name = "Elevator #" + elevator.getId();
         }
-        return new LookupDto(elevator.getId(), name);
+        Long facilityId = elevator.getFacility() != null ? elevator.getFacility().getId() : null;
+        String facilityName = elevator.getFacility() != null ? elevator.getFacility().getName() : elevator.getBuildingName();
+        return new LookupDto(elevator.getId(), name, facilityId, facilityName);
     }
 
     private boolean matchLookupQuery(Elevator elevator, String query) {

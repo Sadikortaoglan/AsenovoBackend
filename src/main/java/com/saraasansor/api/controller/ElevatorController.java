@@ -46,7 +46,7 @@ public class ElevatorController {
 
     @GetMapping("/lookup")
     public ResponseEntity<ApiResponse<List<LookupDto>>> getLookup(
-            @RequestParam Long facilityId,
+            @RequestParam(required = false) Long facilityId,
             @RequestParam(required = false) String query) {
         return ResponseEntity.ok(ApiResponse.success(elevatorService.getLookup(facilityId, query)));
     }
