@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/qr-codes", "/elevator-labels"})
+@RequestMapping("/qr-codes")
 public class ElevatorQrCodeController {
 
     private final ElevatorQrCodeService qrCodeService;
