@@ -11,6 +11,11 @@ BEGIN
 
     IF schema_name <> 'public' THEN
         EXECUTE format(
+                'ALTER TABLE %I.users DROP CONSTRAINT IF EXISTS users_role_check',
+                schema_name
+        );
+
+        EXECUTE format(
                 'UPDATE %I.users
                     SET role = UPPER(TRIM(role))
                   WHERE role IS NOT NULL',
@@ -28,11 +33,6 @@ BEGIN
                         ELSE role
                     END
                   WHERE role IS NOT NULL',
-                schema_name
-        );
-
-        EXECUTE format(
-                'ALTER TABLE %I.users DROP CONSTRAINT IF EXISTS users_role_check',
                 schema_name
         );
 
