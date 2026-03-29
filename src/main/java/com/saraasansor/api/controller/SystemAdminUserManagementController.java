@@ -68,11 +68,13 @@ public class SystemAdminUserManagementController {
     }
 
     @PostMapping("/tenants/{tenantId}/context-switch")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<TenantContextSwitchResponse>> switchTenantContext(@PathVariable Long tenantId) {
         return ResponseEntity.ok(ApiResponse.success("Tenant context selected", userManagementService.switchTenantContext(tenantId)));
     }
 
     @GetMapping("/tenants/{tenantId}/users")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<Page<ManagedUserResponse>>> getTenantUsers(
             @PathVariable Long tenantId,
             @RequestParam(required = false) String query,
@@ -91,6 +93,7 @@ public class SystemAdminUserManagementController {
     }
 
     @GetMapping("/tenants/{tenantId}/b2b-units/lookup")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<List<B2BUnitLookupDto>>> lookupTenantB2BUnits(
             @PathVariable Long tenantId,
             @RequestParam(required = false) String query) {
@@ -98,6 +101,7 @@ public class SystemAdminUserManagementController {
     }
 
     @GetMapping("/tenants/{tenantId}/users/{userId}")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<ManagedUserResponse>> getTenantUser(
             @PathVariable Long tenantId,
             @PathVariable Long userId) {
@@ -105,6 +109,7 @@ public class SystemAdminUserManagementController {
     }
 
     @PostMapping("/tenants/{tenantId}/users")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<ManagedUserResponse>> createTenantUser(
             @PathVariable Long tenantId,
             @Valid @RequestBody TenantUserCreateRequest request) {
@@ -112,6 +117,7 @@ public class SystemAdminUserManagementController {
     }
 
     @PutMapping("/tenants/{tenantId}/users/{userId}")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<ManagedUserResponse>> updateTenantUser(
             @PathVariable Long tenantId,
             @PathVariable Long userId,
@@ -120,6 +126,7 @@ public class SystemAdminUserManagementController {
     }
 
     @PostMapping("/tenants/{tenantId}/users/{userId}/disable")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<ManagedUserResponse>> disableTenantUser(
             @PathVariable Long tenantId,
             @PathVariable Long userId) {
@@ -127,6 +134,7 @@ public class SystemAdminUserManagementController {
     }
 
     @PostMapping("/tenants/{tenantId}/users/{userId}/enable")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<ManagedUserResponse>> enableTenantUser(
             @PathVariable Long tenantId,
             @PathVariable Long userId) {
@@ -134,6 +142,7 @@ public class SystemAdminUserManagementController {
     }
 
     @PostMapping("/tenants/{tenantId}/users/{userId}/reset-password")
+    @PreAuthorize("denyAll()")
     public ResponseEntity<ApiResponse<ManagedUserResponse>> resetTenantUserPassword(
             @PathVariable Long tenantId,
             @PathVariable Long userId,

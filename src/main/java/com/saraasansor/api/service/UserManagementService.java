@@ -5,6 +5,7 @@ import com.saraasansor.api.dto.B2BUnitLookupDto;
 import com.saraasansor.api.dto.PlatformUserCreateRequest;
 import com.saraasansor.api.dto.PlatformUserUpdateRequest;
 import com.saraasansor.api.dto.PlatformTenantUserResetPasswordRequest;
+import com.saraasansor.api.dto.SelfPasswordChangeRequest;
 import com.saraasansor.api.dto.TenantContextSwitchResponse;
 import com.saraasansor.api.dto.TenantUserCreateRequest;
 import com.saraasansor.api.dto.TenantUserUpdateRequest;
@@ -270,8 +271,7 @@ public class UserManagementService {
                                                                   Boolean enabledFilter,
                                                                   Pageable pageable) {
         AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
-        authorizationPolicyService.requireTenantAdmin(actor);
-        authorizationPolicyService.requireTenantScope(actor);
+        authorizationPolicyService.requireTenantScopedUserManager(actor);
 
         String normalizedQuery = normalizeNullable(query);
         String queryValue = normalizedQuery != null ? normalizedQuery : "";
@@ -288,8 +288,7 @@ public class UserManagementService {
     @Transactional(readOnly = true)
     public ManagedUserResponse getTenantUserForTenantAdmin(Long userId) {
         AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
-        authorizationPolicyService.requireTenantAdmin(actor);
-        authorizationPolicyService.requireTenantScope(actor);
+        authorizationPolicyService.requireTenantScopedUserManager(actor);
 
         User user = findManageableTenantUserById(userId);
         return ManagedUserResponse.fromEntity(user);
@@ -298,30 +297,56 @@ public class UserManagementService {
     @Transactional
     public ManagedUserResponse createTenantUserForTenantAdmin(TenantUserCreateRequest request) {
         AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
-        authorizationPolicyService.requireTenantAdmin(actor);
-        authorizationPolicyService.requireTenantScope(actor);
+        boolean allowTenantAdminRoleByPlatform = authorizationPolicyService.requireTenantScopedUserManager(actor);
 
         User.Role requestedCanonicalRole = authorizationPolicyService.normalizeRequestedRole(request.getRole());
-        authorizationPolicyService.assertTenantRoleForTenantAdmin(requestedCanonicalRole);
-        return createTenantUserInternal(request, requestedCanonicalRole, actor, actor.getTenantId(), "TENANT_USER_CREATED_BY_TENANT_ADMIN");
+        if (allowTenantAdminRoleByPlatform) {
+            authorizationPolicyService.assertTenantRoleForPlatform(requestedCanonicalRole);
+        } else {
+            authorizationPolicyService.assertTenantRoleForTenantAdmin(requestedCanonicalRole);
+        }
+        String auditAction = allowTenantAdminRoleByPlatform
+                ? "TENANT_USER_CREATED_BY_PLATFORM"
+                : "TENANT_USER_CREATED_BY_TENANT_ADMIN";
+        return createTenantUserInternal(request, requestedCanonicalRole, actor, actor.getTenantId(), auditAction);
     }
 
     @Transactional
     public ManagedUserResponse updateTenantUserForTenantAdmin(Long userId, TenantUserUpdateRequest request) {
         AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
-        authorizationPolicyService.requireTenantAdmin(actor);
-        authorizationPolicyService.requireTenantScope(actor);
+        boolean allowTenantAdminRoleByPlatform = authorizationPolicyService.requireTenantScopedUserManager(actor);
 
-        return updateTenantUserInternal(userId, request, actor, actor.getTenantId(), false);
+        return updateTenantUserInternal(userId, request, actor, actor.getTenantId(), allowTenantAdminRoleByPlatform);
     }
 
     @Transactional
     public ManagedUserResponse setTenantUserEnabledForTenantAdmin(Long userId, boolean enabled) {
         AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
-        authorizationPolicyService.requireTenantAdmin(actor);
+        boolean allowTenantAdminRoleByPlatform = authorizationPolicyService.requireTenantScopedUserManager(actor);
+
+        return setTenantUserEnabledInternal(userId, enabled, actor, actor.getTenantId(), allowTenantAdminRoleByPlatform);
+    }
+
+    @Transactional
+    public void changeOwnPasswordForTenantPlatformAdmin(SelfPasswordChangeRequest request) {
+        AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
+        authorizationPolicyService.requirePlatformAdmin(actor);
         authorizationPolicyService.requireTenantScope(actor);
 
-        return setTenantUserEnabledInternal(userId, enabled, actor, actor.getTenantId(), false);
+        String currentPassword = normalizeRequired(request != null ? request.resolveCurrentPassword() : null, "currentPassword");
+        String newPassword = normalizeRequired(request != null ? request.resolveNewPassword() : null, "newPassword");
+
+        User user = userRepository.findByUsername(actor.getUsername())
+                .orElseThrow(() -> new NotFoundException("User not found: " + actor.getUsername()));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setLocked(false);
+        User saved = userRepository.save(user);
+        auditLogger.log("TENANT_PLATFORM_ADMIN_SELF_PASSWORD_CHANGED", "USER", saved.getId(), metadata(actor, saved, actor.getTenantId()));
     }
 
     private ManagedUserResponse createTenantUserInternal(TenantUserCreateRequest request,

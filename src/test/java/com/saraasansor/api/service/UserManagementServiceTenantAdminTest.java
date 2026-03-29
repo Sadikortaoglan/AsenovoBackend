@@ -1,6 +1,7 @@
 package com.saraasansor.api.service;
 
 import com.saraasansor.api.dto.ManagedUserResponse;
+import com.saraasansor.api.dto.SelfPasswordChangeRequest;
 import com.saraasansor.api.dto.TenantUserCreateRequest;
 import com.saraasansor.api.dto.TenantUserUpdateRequest;
 import com.saraasansor.api.model.B2BUnit;
@@ -178,7 +179,7 @@ class UserManagementServiceTenantAdminTest {
 
         assertThatThrownBy(() -> userManagementService.createTenantUserForTenantAdmin(request))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("Only TENANT_ADMIN can perform this action");
+                .hasMessageContaining("Only TENANT_ADMIN or tenant-scoped PLATFORM_ADMIN can perform this action");
     }
 
     @Test
@@ -192,7 +193,7 @@ class UserManagementServiceTenantAdminTest {
 
         assertThatThrownBy(() -> userManagementService.createTenantUserForTenantAdmin(request))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessageContaining("Only TENANT_ADMIN can perform this action");
+                .hasMessageContaining("Only TENANT_ADMIN or tenant-scoped PLATFORM_ADMIN can perform this action");
     }
 
     @Test
@@ -374,6 +375,79 @@ class UserManagementServiceTenantAdminTest {
         assertThat(existing.getPasswordHash()).isEqualTo("OLD_HASH");
     }
 
+    @Test
+    void tenantScopedPlatformAdminCanCreateTenantAdminInsideOwnTenant() {
+        when(authenticatedUserContextService.requireContext()).thenReturn(tenantScopedPlatformAdminContext());
+        when(userRepository.existsByUsername("tenant.admin")).thenReturn(false);
+        when(passwordEncoder.encode("Password123")).thenReturn("ENCODED");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId(91L);
+            return user;
+        });
+
+        TenantUserCreateRequest request = new TenantUserCreateRequest();
+        request.setUsername("tenant.admin");
+        request.setPassword("Password123");
+        request.setRole(User.Role.TENANT_ADMIN);
+
+        ManagedUserResponse response = userManagementService.createTenantUserForTenantAdmin(request);
+
+        assertThat(response.getId()).isEqualTo(91L);
+        assertThat(response.getRole()).isEqualTo("TENANT_ADMIN");
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getRole()).isEqualTo(User.Role.STAFF_ADMIN);
+    }
+
+    @Test
+    void tenantScopedPlatformAdminCanChangeOwnPassword() {
+        when(authenticatedUserContextService.requireContext()).thenReturn(tenantScopedPlatformAdminContext());
+
+        User existing = new User();
+        existing.setId(101L);
+        existing.setUsername("platform.local");
+        existing.setRole(User.Role.SYSTEM_ADMIN);
+        existing.setPasswordHash("OLD_HASH");
+        existing.setActive(true);
+        existing.setEnabled(true);
+        existing.setLocked(true);
+        when(userRepository.findByUsername("platform.local")).thenReturn(Optional.of(existing));
+        when(passwordEncoder.matches("OldPass123", "OLD_HASH")).thenReturn(true);
+        when(passwordEncoder.encode("NewPass123")).thenReturn("NEW_HASH");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SelfPasswordChangeRequest request = new SelfPasswordChangeRequest();
+        request.setCurrentPassword("OldPass123");
+        request.setNewPassword("NewPass123");
+
+        userManagementService.changeOwnPasswordForTenantPlatformAdmin(request);
+
+        assertThat(existing.getPasswordHash()).isEqualTo("NEW_HASH");
+        assertThat(existing.getLocked()).isFalse();
+    }
+
+    @Test
+    void tenantScopedPlatformAdminChangeOwnPasswordShouldValidateCurrentPassword() {
+        when(authenticatedUserContextService.requireContext()).thenReturn(tenantScopedPlatformAdminContext());
+
+        User existing = new User();
+        existing.setId(102L);
+        existing.setUsername("platform.local");
+        existing.setRole(User.Role.SYSTEM_ADMIN);
+        existing.setPasswordHash("OLD_HASH");
+        when(userRepository.findByUsername("platform.local")).thenReturn(Optional.of(existing));
+        when(passwordEncoder.matches("WrongPass", "OLD_HASH")).thenReturn(false);
+
+        SelfPasswordChangeRequest request = new SelfPasswordChangeRequest();
+        request.setCurrentPassword("WrongPass");
+        request.setNewPassword("NewPass123");
+
+        assertThatThrownBy(() -> userManagementService.changeOwnPasswordForTenantPlatformAdmin(request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Current password is incorrect");
+    }
+
     private AuthenticatedUserContext tenantAdminContext() {
         AuthenticatedUserContext context = new AuthenticatedUserContext();
         context.setUserId(1L);
@@ -405,6 +479,17 @@ class UserManagementServiceTenantAdminTest {
         context.setTenantId(10L);
         context.setTenantSchema("tenant_10");
         context.setLinkedB2bUnitId(77L);
+        return context;
+    }
+
+    private AuthenticatedUserContext tenantScopedPlatformAdminContext() {
+        AuthenticatedUserContext context = new AuthenticatedUserContext();
+        context.setUserId(4L);
+        context.setUsername("platform.local");
+        context.setRole(User.Role.PLATFORM_ADMIN);
+        context.setAuthScopeType(AuthenticatedUserContext.AuthScopeType.TENANT);
+        context.setTenantId(10L);
+        context.setTenantSchema("tenant_10");
         return context;
     }
 }

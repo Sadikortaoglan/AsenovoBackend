@@ -102,6 +102,10 @@ public class TenantProvisioningService {
         tenantMigrationService.migrateSchema(schemaName);
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_MIGRATION_COMPLETED", "Tenant migration completed", actor);
 
+        tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_PLATFORM_ADMIN_BOOTSTRAP_STARTED", "Tenant platform admin bootstrap started", actor);
+        tenantSeedService.seedTenantLocalPlatformAdmin(schemaName);
+        tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_PLATFORM_ADMIN_BOOTSTRAP_COMPLETED", "Tenant platform admin bootstrap completed", actor);
+
         String initialAdminUsername = asString(payload.get("initialAdminUsername"));
         String initialAdminPassword = asString(payload.get("initialAdminPassword"));
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_SEED_STARTED", "Tenant seed started", actor);

@@ -42,10 +42,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
 
         boolean tenantRequest = TenantContext.hasTenant();
-        if (tenantRequest && canonicalRole.isPlatformAdmin()) {
-            throw new UsernameNotFoundException("Platform users cannot authenticate in tenant scope");
-        }
-
         if (!tenantRequest && !canonicalRole.isPlatformAdmin()) {
             throw new UsernameNotFoundException("Tenant users must authenticate from tenant scope");
         }

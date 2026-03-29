@@ -77,6 +77,7 @@ class TenantProvisioningServiceTest {
 
         verify(schemaManagementService).createSchemaIfNotExists("tenant_5");
         verify(tenantMigrationService).migrateSchema("tenant_5");
+        verify(tenantSeedService).seedTenantLocalPlatformAdmin("tenant_5");
         verify(tenantSeedService).seedInitialAdmin("tenant_5", "admin", "password");
         verify(tenantRegistryService).evictCacheForSubdomain("acme");
 

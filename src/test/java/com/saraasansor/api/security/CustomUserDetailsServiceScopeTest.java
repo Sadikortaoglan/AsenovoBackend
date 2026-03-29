@@ -26,7 +26,7 @@ class CustomUserDetailsServiceScopeTest {
     }
 
     @Test
-    void shouldRejectPlatformUserInTenantScope() {
+    void shouldAllowPlatformUserInTenantScopeWhenTenantLocalPlatformAdminExists() {
         UserRepository userRepository = mock(UserRepository.class);
         User user = new User();
         user.setUsername("platform_admin");
@@ -45,8 +45,10 @@ class CustomUserDetailsServiceScopeTest {
                 null, null, null, null, "tenant:acme", "BASIC"
         ));
 
-        assertThatThrownBy(() -> service.loadUserByUsername("platform_admin"))
-                .hasMessageContaining("Platform users cannot authenticate in tenant scope");
+        UserDetails details = service.loadUserByUsername("platform_admin");
+        assertThat(details.getUsername()).isEqualTo("platform_admin");
+        assertThat(details.getAuthorities().stream().map(a -> a.getAuthority()))
+                .contains("ROLE_PLATFORM_ADMIN");
     }
 
     @Test

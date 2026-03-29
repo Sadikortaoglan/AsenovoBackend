@@ -25,6 +25,22 @@ public class UserAuthorizationPolicyService {
         }
     }
 
+    public boolean requireTenantScopedUserManager(AuthenticatedUserContext actor) {
+        requireTenantScope(actor);
+        if (actor == null || actor.getRole() == null) {
+            throw new AccessDeniedException("User role cannot be resolved");
+        }
+
+        User.Role canonicalRole = actor.getRole().toCanonical();
+        if (canonicalRole.isPlatformAdmin()) {
+            return true;
+        }
+        if (canonicalRole.isTenantAdmin()) {
+            return false;
+        }
+        throw new AccessDeniedException("Only TENANT_ADMIN or tenant-scoped PLATFORM_ADMIN can perform this action");
+    }
+
     public User.Role normalizeRequestedRole(User.Role requestedRole) {
         if (requestedRole == null) {
             throw new RuntimeException("Role is required");

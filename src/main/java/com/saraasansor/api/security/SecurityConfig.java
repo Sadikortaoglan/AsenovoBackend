@@ -147,7 +147,7 @@ public class SecurityConfig {
                 // Platform control plane endpoints
                 .requestMatchers("/system-admin/**").hasRole(PLATFORM_ADMIN)
                 // Tenant-scoped user management endpoints
-                .requestMatchers("/tenant-admin/**").hasRole(TENANT_ADMIN)
+                .requestMatchers("/tenant-admin/**").hasAnyRole(TENANT_ADMIN, PLATFORM_ADMIN)
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - internal host only
                 .requestMatchers(swaggerRequestMatcher).permitAll()

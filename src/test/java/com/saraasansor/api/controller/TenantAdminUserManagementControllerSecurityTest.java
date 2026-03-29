@@ -11,6 +11,6 @@ class TenantAdminUserManagementControllerSecurityTest {
     void controllerShouldRequireTenantAdminRole() {
         PreAuthorize preAuthorize = TenantAdminUserManagementController.class.getAnnotation(PreAuthorize.class);
         assertThat(preAuthorize).isNotNull();
-        assertThat(preAuthorize.value()).isEqualTo("hasRole('TENANT_ADMIN')");
+        assertThat(preAuthorize.value()).isEqualTo("hasAnyRole('TENANT_ADMIN','PLATFORM_ADMIN')");
     }
 }

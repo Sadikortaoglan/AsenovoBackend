@@ -23,7 +23,7 @@ import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/tenant-admin")
-@PreAuthorize("hasRole('TENANT_ADMIN')")
+@PreAuthorize("hasAnyRole('TENANT_ADMIN','PLATFORM_ADMIN')")
 public class TenantAdminUserManagementController {
 
     private final UserManagementService userManagementService;
