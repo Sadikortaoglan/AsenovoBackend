@@ -7,6 +7,7 @@ HEALTH_URL="${2:-http://127.0.0.1:8080/api/health}"
 ENV_FILE="${ENV_FILE:-.env.prod}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-24}"
 HEALTH_SLEEP_SECONDS="${HEALTH_SLEEP_SECONDS:-5}"
+VERIFY_CONTROL_PLANE_TABLES="${VERIFY_CONTROL_PLANE_TABLES:-auto}"
 
 if [[ ! -d "$PROJECT_DIR" ]]; then
   echo "ERROR: project dir not found: $PROJECT_DIR" >&2
@@ -50,7 +51,7 @@ until curl -fsS "$HEALTH_URL" >/dev/null 2>&1; do
 done
 
 echo "[7/8] Verify Flyway/migration startup"
-if docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200 app | rg -i "migration failed|flyway exception|validate failed|error creating bean" >/dev/null; then
+if docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200 app | grep -Eqi "migration failed|flyway exception|validate failed|error creating bean|flywaymigrateexception|sql state|beancreationexception"; then
   echo "Detected migration/startup errors in app logs. Showing recent logs..." >&2
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200 app
   exit 1
@@ -58,5 +59,18 @@ fi
 
 echo "[8/8] Deployment healthy"
 curl -fsS "$HEALTH_URL"
+
+if [[ "$VERIFY_CONTROL_PLANE_TABLES" == "true" ]] || [[ "$VERIFY_CONTROL_PLANE_TABLES" == "auto" && -f "src/main/resources/db/migration/V51__backfill_tenant_provisioning_control_plane.sql" ]]; then
+  echo "[9/9] Verify tenant provisioning control-plane tables"
+  JOB_TABLE_STATUS="$(docker exec sara-asansor-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -tAc "SELECT to_regclass('public.tenant_provisioning_jobs');" | tr -d '[:space:]')"
+  AUDIT_TABLE_STATUS="$(docker exec sara-asansor-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -tAc "SELECT to_regclass('public.tenant_provisioning_audit_logs');" | tr -d '[:space:]')"
+  if [[ "$JOB_TABLE_STATUS" != *"tenant_provisioning_jobs" ]] || [[ "$AUDIT_TABLE_STATUS" != *"tenant_provisioning_audit_logs" ]]; then
+    echo "Tenant provisioning control-plane tables are missing after deploy." >&2
+    echo "tenant_provisioning_jobs=$JOB_TABLE_STATUS" >&2
+    echo "tenant_provisioning_audit_logs=$AUDIT_TABLE_STATUS" >&2
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200 app
+    exit 1
+  fi
+fi
 
 echo "Deploy completed successfully."

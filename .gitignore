@@ -47,3 +47,5 @@ uploads/
 
 .idea
 .DS_Store
+tmp/admin-exports/
+tmp/password-resets/
