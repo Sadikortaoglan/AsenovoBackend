@@ -50,8 +50,11 @@ public class SecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     private static final String APPLICATION_JSON = "application/json";
 
-    private final String SYSTEM_ADMIN = "SYSTEM_ADMIN";
-    private final String STAFF_ADMIN = "STAFF_ADMIN";
+    private final String PLATFORM_ADMIN = "PLATFORM_ADMIN";
+    private final String TENANT_ADMIN = "TENANT_ADMIN";
+    // Canonical aliases used across existing matcher blocks
+    private final String SYSTEM_ADMIN = "PLATFORM_ADMIN";
+    private final String STAFF_ADMIN = "TENANT_ADMIN";
     private final String STAFF_USER = "STAFF_USER";
     private final String CARI_USER = "CARI_USER";
 
@@ -69,6 +72,9 @@ public class SecurityConfig {
 
     @Autowired
     private RateLimitFilter rateLimitFilter;
+
+    @Autowired
+    private PlatformAdminTenantScopeFilter platformAdminTenantScopeFilter;
 
     @Autowired
     private PublicMarketingRateLimitFilter publicMarketingRateLimitFilter;
@@ -95,14 +101,11 @@ public class SecurityConfig {
     public RoleHierarchy roleHierarchy() {
         RoleHierarchyImpl hierarchy = new RoleHierarchyImpl();
         hierarchy.setHierarchy("""
+            ROLE_PLATFORM_ADMIN > ROLE_SYSTEM_ADMIN
+            ROLE_TENANT_ADMIN > ROLE_STAFF_ADMIN
             ROLE_SYSTEM_ADMIN > ROLE_STAFF_ADMIN
             ROLE_STAFF_ADMIN > ROLE_STAFF_USER
             ROLE_STAFF_USER > ROLE_CARI_USER
-            ROLE_SYSTEM_ADMIN > ROLE_TENANT_ADMIN
-            ROLE_STAFF_ADMIN > ROLE_TENANT_ADMIN
-            ROLE_SYSTEM_ADMIN > ROLE_TECHNICIAN
-            ROLE_STAFF_ADMIN > ROLE_TECHNICIAN
-            ROLE_STAFF_USER > ROLE_TECHNICIAN
             """);
         return hierarchy;
     }
@@ -141,11 +144,22 @@ public class SecurityConfig {
                         "/trial-request/*", "/api/trial-request/*"
                 ).permitAll()
                 .requestMatchers("/admin/revision-standards/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, "ADMIN")
+                // Platform control plane endpoints
+                .requestMatchers("/system-admin/**").hasRole(PLATFORM_ADMIN)
+                // Tenant-scoped user management endpoints
+                .requestMatchers("/tenant-admin/**").hasRole(TENANT_ADMIN)
                 .requestMatchers("/admin/**").hasRole("SUPER_ADMIN")
                 // Swagger/OpenAPI endpoints - internal host only
                 .requestMatchers(swaggerRequestMatcher).permitAll()
                 // Users endpoint - staff administration
                 .requestMatchers("/users/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN)
+                // Swagger/OpenAPI endpoints - permit all
+                // Note: context-path is /api, so swagger paths are relative to that
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-ui/index.html", "/swagger-ui.html/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/api-docs/**", "/swagger-config/**").permitAll()
+                .requestMatchers("/swagger-resources/**", "/webjars/**").permitAll()
+                // Legacy users endpoint is intentionally closed
+                .requestMatchers("/users/**").denyAll()
                 // B2BUnit detail endpoint (new detail page backbone)
                 .requestMatchers(HttpMethod.GET, "/b2b-units/*/detail").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 // B2BUnit scoped facility endpoints (detail elevator operations > facilities)
@@ -189,6 +203,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/b2bunits").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                .requestMatchers(HttpMethod.GET, "/b2b-units/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                .requestMatchers(HttpMethod.GET, "/b2bunits/me").hasRole(CARI_USER)
                 .requestMatchers(HttpMethod.GET, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
                 .requestMatchers(HttpMethod.POST, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.PUT, "/b2bunits/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
@@ -236,9 +252,10 @@ public class SecurityConfig {
             // class as the anchor causes startup failures because it has no registered order.
             .addFilterBefore(publicMarketingRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+            .addFilterAfter(rateLimitFilter, TenantResolverFilter.class) //Burası conflictte UsernamePasswordAuthenticationFilter'dı. Tenant yapısından dolayı TenantResolverFilter aldım ama sıkıntı çıkarsa bakılmalı
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(platformAdminTenantScopeFilter, JwtAuthenticationFilter.class);
+
         return http.build();
     }
     

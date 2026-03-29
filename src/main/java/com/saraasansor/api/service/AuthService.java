@@ -8,6 +8,8 @@ import com.saraasansor.api.model.User;
 import com.saraasansor.api.repository.RefreshTokenRepository;
 import com.saraasansor.api.repository.UserRepository;
 import com.saraasansor.api.security.JwtTokenProvider;
+import com.saraasansor.api.tenant.TenantContext;
+import com.saraasansor.api.tenant.data.TenantDescriptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -97,9 +99,10 @@ public class AuthService {
         response.setRefreshToken(refreshTokenValue); // Return raw token to client
         response.setUserId(user.getId());
         response.setUsername(user.getUsername());
-        response.setRole(user.getRole().name());
+        response.setRole(user.getCanonicalRole() != null ? user.getCanonicalRole().name() : null);
         response.setUserType(resolveUserTypeName(user));
         response.setB2bUnitId(user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
+        applyAuthScope(response);
         
         return response;
     }
@@ -141,9 +144,10 @@ public class AuthService {
         response.setRefreshToken(newRefreshTokenValue); // Return new refresh token
         response.setUserId(user.getId());
         response.setUsername(user.getUsername());
-        response.setRole(user.getRole().name());
+        response.setRole(user.getCanonicalRole() != null ? user.getCanonicalRole().name() : null);
         response.setUserType(resolveUserTypeName(user));
         response.setB2bUnitId(user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
+        applyAuthScope(response);
         
         return response;
     }
@@ -158,16 +162,23 @@ public class AuthService {
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         
+        User.Role requestedRole;
         try {
-            user.setRole(User.Role.valueOf(request.getRole().toUpperCase()));
+            requestedRole = User.Role.fromExternalName(request.getRole());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid role. Must be STAFF_ADMIN, STAFF_USER or CARI_USER.");
+            throw new RuntimeException("Invalid role. Must be TENANT_ADMIN, STAFF_USER or CARI_USER.");
         }
 
-        if (user.getRole() == User.Role.SYSTEM_ADMIN) {
-            throw new RuntimeException("SYSTEM_ADMIN cannot be created from public register endpoint.");
+        User.Role canonicalRole = requestedRole.toCanonical();
+        if (canonicalRole.isPlatformAdmin()) {
+            throw new RuntimeException("PLATFORM_ADMIN cannot be created from public register endpoint.");
         }
-        user.setUserType(user.getRole() == User.Role.CARI_USER ? User.UserType.CARI : User.UserType.STAFF);
+        if (canonicalRole == User.Role.TENANT_ADMIN) {
+            throw new RuntimeException("TENANT_ADMIN cannot be created from public register endpoint.");
+        }
+
+        user.setRole(canonicalRole.toPersistenceRole());
+        user.setUserType(canonicalRole == User.Role.CARI_USER ? User.UserType.CARI : User.UserType.STAFF);
         
         user.setActive(true);
         user.setEnabled(true);
@@ -191,9 +202,10 @@ public class AuthService {
         response.setRefreshToken(refreshTokenValue); // Return raw token to client
         response.setUserId(savedUser.getId());
         response.setUsername(savedUser.getUsername());
-        response.setRole(savedUser.getRole().name());
+        response.setRole(savedUser.getCanonicalRole() != null ? savedUser.getCanonicalRole().name() : null);
         response.setUserType(resolveUserTypeName(savedUser));
         response.setB2bUnitId(savedUser.getB2bUnit() != null ? savedUser.getB2bUnit().getId() : null);
+        applyAuthScope(response);
         
         return response;
     }
@@ -202,13 +214,27 @@ public class AuthService {
         if (user.getUserType() != null) {
             return user.getUserType().name();
         }
-        if (user.getRole() == User.Role.SYSTEM_ADMIN) {
+        if (user.getRole() != null && user.getRole().isPlatformAdmin()) {
             return User.UserType.SYSTEM_ADMIN.name();
         }
-        if (user.getRole() == User.Role.CARI_USER) {
+        if (user.getRole() != null && user.getRole().isCariUser()) {
             return User.UserType.CARI.name();
         }
         return User.UserType.STAFF.name();
+    }
+
+    private void applyAuthScope(LoginResponse response) {
+        TenantDescriptor tenant = TenantContext.getCurrentTenant();
+        if (tenant == null) {
+            response.setAuthScopeType("PLATFORM");
+            response.setTenantId(null);
+            response.setTenantSchema(null);
+            return;
+        }
+
+        response.setAuthScopeType("TENANT");
+        response.setTenantId(tenant.getId());
+        response.setTenantSchema(tenant.getSchemaName());
     }
     
     @Transactional
@@ -245,4 +271,3 @@ public class AuthService {
         SecurityContextHolder.clearContext();
     }
 }
-

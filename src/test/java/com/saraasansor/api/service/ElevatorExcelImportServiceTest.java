@@ -26,6 +26,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -117,11 +118,12 @@ class ElevatorExcelImportServiceTest {
             return elevator;
         });
 
-        MockMultipartFile file = buildExcel(List.of(new String[]{
-                "Asansör A", "Facility A", "Merkez", "ID-001", "İnsan", "Otomatik", "Elektrikli",
+        List<String[]> rowList = new ArrayList<>();
+        String[] rowValues = new String[]{"Asansör A", "Facility A", "Merkez", "ID-001", "İnsan", "Otomatik", "Elektrikli",
                 "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"
-        }));
+                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
+        rowList.add(rowValues);
+        MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
 
@@ -142,11 +144,12 @@ class ElevatorExcelImportServiceTest {
         when(facilityRepository.search(eq("Missing Facility"), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        MockMultipartFile file = buildExcel(List.of(new String[]{
-                "Asansör A", "Missing Facility", "Merkez", "ID-002", "İnsan", "Otomatik", "Elektrikli",
+        List<String[]> rowList = new ArrayList<>();
+        String[] rowValues = new String[]{"Asansör A", "Missing Facility", "Merkez", "ID-002", "İnsan", "Otomatik", "Elektrikli",
                 "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"
-        }));
+                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
+        rowList.add(rowValues);
+        MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
 
@@ -159,11 +162,13 @@ class ElevatorExcelImportServiceTest {
 
     @Test
     void importShouldFailRowWhenRequiredDataMissing() throws Exception {
-        MockMultipartFile file = buildExcel(List.of(new String[]{
-                "", "Facility A", "Merkez", "ID-003", "İnsan", "Otomatik", "Elektrikli",
+
+        List<String[]> rowList = new ArrayList<>();
+        String[] rowValues = new String[]{"", "Facility A", "Merkez", "ID-003", "İnsan", "Otomatik", "Elektrikli",
                 "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"
-        }));
+                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
+        rowList.add(rowValues);
+        MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
 
@@ -210,11 +215,12 @@ class ElevatorExcelImportServiceTest {
         when(facilityRepository.search(eq("Facility X"), eq(5L), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(foreignFacility)));
 
-        MockMultipartFile file = buildExcel(List.of(new String[]{
-                "Asansör A", "Facility X", "Merkez", "ID-006", "İnsan", "Otomatik", "Elektrikli",
+        List<String[]> rowList = new ArrayList<>();
+        String[] rowValues = new String[]{"Asansör A", "Facility X", "Merkez", "ID-006", "İnsan", "Otomatik", "Elektrikli",
                 "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"
-        }));
+                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
+        rowList.add(rowValues);
+        MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcelForB2BUnit(5L, file);
 
@@ -236,11 +242,12 @@ class ElevatorExcelImportServiceTest {
         cari.setB2bUnit(own);
         when(userRepository.findByUsername("cari-user")).thenReturn(Optional.of(cari));
 
-        MockMultipartFile file = buildExcel(List.of(new String[]{
-                "Asansör A", "Facility A", "Merkez", "ID-007", "İnsan", "Otomatik", "Elektrikli",
+        List<String[]> rowList = new ArrayList<>();
+        String[] rowValues = new String[]{"Asansör A", "Facility A", "Merkez", "ID-007", "İnsan", "Otomatik", "Elektrikli",
                 "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"
-        }));
+                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
+        rowList.add(rowValues);
+        MockMultipartFile file = buildExcel(rowList);
 
         assertThatThrownBy(() -> elevatorService.importFromExcel(file))
                 .isInstanceOf(AccessDeniedException.class)

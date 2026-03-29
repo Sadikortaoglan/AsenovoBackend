@@ -2,15 +2,18 @@ package com.saraasansor.api.tenant.filter;
 
 import com.saraasansor.api.tenant.TenantContext;
 import com.saraasansor.api.tenant.data.TenantDescriptor;
+import com.saraasansor.api.tenant.data.TenantResolutionResult;
 import com.saraasansor.api.tenant.service.TenantRegistryService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -35,15 +38,24 @@ public class TenantResolverFilter extends OncePerRequestFilter {
     private final TenantRegistryService tenantRegistryService;
     private final Environment environment;
 
+    @Autowired
     public TenantResolverFilter(TenantRegistryService tenantRegistryService, Environment environment) {
         this.tenantRegistryService = tenantRegistryService;
         this.environment = environment;
+    }
+
+    public TenantResolverFilter(TenantRegistryService tenantRegistryService) {
+        this(tenantRegistryService, new StandardEnvironment());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        if (isControlPlaneEndpoint(request.getRequestURI())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String host = resolveRequestHost(request);
 
@@ -51,23 +63,39 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             String subdomain = extractSubdomain(host);
 
             if (StringUtils.hasText(subdomain)) {
-                Optional<TenantDescriptor> tenantOpt = tenantRegistryService.findActiveBySubdomain(subdomain);
-
-                if (tenantOpt.isEmpty()) {
-                    // Unknown tenant for the given subdomain - fail fast
-                    response.setStatus(HttpStatus.NOT_FOUND.value());
-                    response.setContentType("application/json");
-                    response.getWriter().write("{\"error\":\"TENANT_NOT_FOUND\",\"message\":\"Unknown tenant for host: " + host + "\"}");
+                TenantResolutionResult resolution = tenantRegistryService.resolveBySubdomain(subdomain);
+                if (resolution == null) {
+                    Optional<TenantDescriptor> fallback = tenantRegistryService.findActiveBySubdomain(subdomain);
+                    if (fallback.isPresent()) {
+                        TenantContext.setCurrentTenant(fallback.get());
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                    writeError(response, HttpStatus.NOT_FOUND, "TENANT_NOT_FOUND", "Unknown tenant for host: " + host);
                     return;
                 }
 
-                TenantContext.setCurrentTenant(tenantOpt.get());
+                if (resolution.getStatus() != TenantResolutionResult.ResolutionStatus.RESOLVED
+                        || resolution.getTenantDescriptor() == null) {
+                    writeResolutionError(response, resolution, host);
+                    return;
+                }
+
+                TenantContext.setCurrentTenant(resolution.getTenantDescriptor());
             }
 
             filterChain.doFilter(request, response);
         } finally {
             TenantContext.clear();
         }
+    }
+
+    private boolean isControlPlaneEndpoint(String requestUri) {
+        if (!StringUtils.hasText(requestUri)) {
+            return false;
+        }
+        return requestUri.startsWith("/api/system-admin")
+                || requestUri.startsWith("/system-admin");
     }
 
     /**
@@ -165,5 +193,42 @@ public class TenantResolverFilter extends OncePerRequestFilter {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private void writeResolutionError(HttpServletResponse response,
+                                      TenantResolutionResult resolution,
+                                      String host) throws IOException {
+        if (resolution == null || resolution.getStatus() == null) {
+            writeError(response, HttpStatus.NOT_FOUND, "TENANT_NOT_FOUND", "Unknown tenant for host: " + host);
+            return;
+        }
+
+        switch (resolution.getStatus()) {
+            case TENANT_NOT_FOUND -> writeError(response, HttpStatus.NOT_FOUND, "TENANT_NOT_FOUND",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Unknown tenant for host: " + host);
+            case SUSPENDED -> writeError(response, HttpStatus.FORBIDDEN, "TENANT_SUSPENDED",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Tenant is suspended");
+            case EXPIRED -> writeError(response, HttpStatus.FORBIDDEN, "TENANT_EXPIRED",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Tenant license is expired");
+            case PENDING -> writeError(response, HttpStatus.FORBIDDEN, "TENANT_PENDING",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Tenant provisioning is pending");
+            case PROVISIONING_FAILED -> writeError(response, HttpStatus.FORBIDDEN, "TENANT_PROVISIONING_FAILED",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Tenant provisioning failed");
+            case DELETED -> writeError(response, HttpStatus.FORBIDDEN, "TENANT_DELETED",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Tenant is deleted");
+            case INACTIVE -> writeError(response, HttpStatus.FORBIDDEN, "TENANT_INACTIVE",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Tenant is inactive");
+            default -> writeError(response, HttpStatus.NOT_FOUND, "TENANT_NOT_FOUND",
+                    resolution.getMessage() != null ? resolution.getMessage() : "Unknown tenant for host: " + host);
+        }
+    }
+
+    private void writeError(HttpServletResponse response,
+                            HttpStatus status,
+                            String errorCode,
+                            String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"" + errorCode + "\",\"message\":\"" + message + "\"}");
     }
 }

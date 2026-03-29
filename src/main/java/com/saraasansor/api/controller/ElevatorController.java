@@ -52,7 +52,7 @@ public class ElevatorController {
     }
 
     @PostMapping(value = "/import-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','STAFF_ADMIN','STAFF_USER')")
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
     public ResponseEntity<ApiResponse<ElevatorImportResultResponse>> importExcel(
             @RequestParam("file") MultipartFile file) {
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
@@ -60,7 +60,7 @@ public class ElevatorController {
     }
 
     @GetMapping("/import-template")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','STAFF_ADMIN','STAFF_USER')")
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
     public ResponseEntity<byte[]> downloadImportTemplate() {
         byte[] content = elevatorService.generateImportTemplateExcel();
         return ResponseEntity.ok()

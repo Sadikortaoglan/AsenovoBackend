@@ -1,7 +1,9 @@
 spring:
   application:
     name: sara-asansor-api
-  
+  config:
+    import: optional:file:${user.dir}/.env[.properties],optional:file:.env[.properties]
+
   mvc:
     contentnegotiation:
       favor-path-extension: false
@@ -91,6 +93,9 @@ app:
       repair-before-migrate: true
       ignore-migration-patterns:
         - "*:ignored"
+    provisioning:
+      worker:
+        enabled: true
 
   jwt:
     secret: ${JWT_SECRET:local-dev-jwt-secret-change-this-local-dev-jwt-secret-change-this}
@@ -117,6 +122,13 @@ app:
   
   maintenance:
     min-duration-minutes: ${MAINTENANCE_MIN_DURATION_MINUTES:3}  # Minimum session duration in minutes
+
+  platform-admin:
+    bootstrap:
+      enabled: ${APP_PLATFORM_ADMIN_BOOTSTRAP_ENABLED:${PLATFORM_ADMIN_BOOTSTRAP_ENABLED:false}}
+      rotate-default-seed: ${APP_PLATFORM_ADMIN_BOOTSTRAP_ROTATE_DEFAULT_SEED:${PLATFORM_ADMIN_BOOTSTRAP_ROTATE_DEFAULT_SEED:true}}
+      username: ${APP_PLATFORM_ADMIN_USERNAME:${PLATFORM_ADMIN_USERNAME:}}
+      password: ${APP_PLATFORM_ADMIN_PASSWORD:${PLATFORM_ADMIN_PASSWORD:}}
 
 springdoc:
   api-docs:

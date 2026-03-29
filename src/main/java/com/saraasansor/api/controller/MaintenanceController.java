@@ -137,7 +137,7 @@ public class MaintenanceController {
             User currentUser = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
-            User.Role userRole = currentUser.getRole();
+            User.Role userRole = currentUser.getCanonicalRole();
             
             logger.debug("Creating maintenance - User: {}, Role: {}, Date: {}, LabelType: {}", 
                 currentUser.getUsername(), userRole, date, labelType);
@@ -178,7 +178,7 @@ public class MaintenanceController {
                 // Invalidate token after use (one-time use)
                 qrSessionService.invalidateToken(qrSessionToken);
                 
-            } else if (userRole == User.Role.SYSTEM_ADMIN || userRole == User.Role.STAFF_ADMIN) {
+            } else if (userRole != null && (userRole.isPlatformAdmin() || userRole.isTenantAdmin())) {
                 // TODO: Sadık production'da admin QR zorunlu yapmayı isteyebilir. Şimdilik bilinçli olarak açık bırakıldı.
                 // Admin roles: QR session token is optional
                 if (qrSessionToken != null && !qrSessionToken.trim().isEmpty()) {
