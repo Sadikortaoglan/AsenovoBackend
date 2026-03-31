@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 public interface ElevatorQrCodeService {
 
     Page<QrCodeResponseDTO> list(Pageable pageable, String search, Long companyId);
+    Page<QrCodeResponseDTO> list(Pageable pageable, String search, Long companyId, boolean onlyWithQr);
 
     QrCodeResponseDTO create(Long elevatorId, Long companyId);
 
