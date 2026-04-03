@@ -10,6 +10,9 @@ import com.saraasansor.api.dto.CashCollectionCreateRequest;
 import com.saraasansor.api.dto.CashPaymentCreateRequest;
 import com.saraasansor.api.dto.CheckCollectionCreateRequest;
 import com.saraasansor.api.dto.CheckPaymentCreateRequest;
+import com.saraasansor.api.dto.CollectionReceiptListItemResponse;
+import com.saraasansor.api.dto.CollectionReceiptPageResponse;
+import com.saraasansor.api.dto.CollectionReceiptPrintResponse;
 import com.saraasansor.api.dto.CreditCardCollectionCreateRequest;
 import com.saraasansor.api.dto.CreditCardPaymentCreateRequest;
 import com.saraasansor.api.dto.ManualCreditCreateRequest;
@@ -131,6 +134,63 @@ public class B2BUnitTransactionService {
         response.setTotalElements(pageResult.getTotalElements());
         response.setTotalPages(pageResult.getTotalPages());
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public CollectionReceiptPageResponse getCollectionReceipts(LocalDate startDate,
+                                                               LocalDate endDate,
+                                                               String search,
+                                                               Pageable pageable) {
+        LocalDate effectiveStartDate = startDate != null ? startDate : DEFAULT_START_DATE;
+        LocalDate effectiveEndDate = endDate != null ? endDate : DEFAULT_END_DATE;
+        if (effectiveStartDate.isAfter(effectiveEndDate)) {
+            throw new RuntimeException("startDate cannot be after endDate");
+        }
+
+        String normalizedSearch = normalizeNullable(search);
+        B2BUnitTransaction.TransactionType searchCollectionType = resolveCollectionSearchType(normalizedSearch);
+        Long scopedB2bUnitId = resolveScopedB2bUnitIdForCurrentUser();
+
+        PageRequest sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "transactionDate").and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+
+        Page<B2BUnitTransaction> pageResult = transactionRepository.searchCollectionReceipts(
+                COLLECTION_TYPES,
+                effectiveStartDate,
+                effectiveEndDate,
+                normalizedSearch,
+                searchCollectionType,
+                scopedB2bUnitId,
+                sortedPageable
+        );
+
+        CollectionReceiptPageResponse response = new CollectionReceiptPageResponse();
+        response.setContent(pageResult.map(CollectionReceiptListItemResponse::fromEntity).getContent());
+        response.setPage(pageResult.getNumber());
+        response.setSize(pageResult.getSize());
+        response.setTotalElements(pageResult.getTotalElements());
+        response.setTotalPages(pageResult.getTotalPages());
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public CollectionReceiptPrintResponse getCollectionReceiptPrint(Long id) {
+        B2BUnitTransaction transaction = transactionRepository.findWithDetailsById(id)
+                .orElseThrow(() -> new RuntimeException("Collection receipt not found"));
+
+        if (!COLLECTION_TYPES.contains(transaction.getTransactionType())) {
+            throw new RuntimeException("Collection receipt not found");
+        }
+
+        Long b2bUnitId = transaction.getB2bUnit() != null ? transaction.getB2bUnit().getId() : null;
+        if (b2bUnitId == null) {
+            throw new RuntimeException("Collection receipt not found");
+        }
+        enforceObjectAccess(b2bUnitId);
+        return CollectionReceiptPrintResponse.fromEntity(transaction);
     }
 
     public B2BUnitTransactionResponse createManualDebit(Long b2bUnitId, ManualDebitCreateRequest request) {
@@ -616,6 +676,14 @@ public class B2BUnitTransactionService {
         return null;
     }
 
+    private B2BUnitTransaction.TransactionType resolveCollectionSearchType(String search) {
+        B2BUnitTransaction.TransactionType resolvedType = resolveTransactionType(search);
+        if (resolvedType != null && COLLECTION_TYPES.contains(resolvedType)) {
+            return resolvedType;
+        }
+        return null;
+    }
+
     private void validateBaseAmountAndDate(LocalDate transactionDate, BigDecimal amount) {
         if (transactionDate == null) {
             throw new RuntimeException("transactionDate is required");
@@ -683,6 +751,21 @@ public class B2BUnitTransactionService {
                 throw new AccessDeniedException("CARI user can only access own B2B unit");
             }
         }
+    }
+
+    private Long resolveScopedB2bUnitIdForCurrentUser() {
+        User currentUser = getCurrentUser();
+        if (currentUser == null) {
+            return null;
+        }
+        if (currentUser.getRole() == User.Role.CARI_USER) {
+            Long b2bUnitId = currentUser.getB2bUnit() != null ? currentUser.getB2bUnit().getId() : null;
+            if (b2bUnitId == null) {
+                throw new AccessDeniedException("CARI user can only access own B2B unit");
+            }
+            return b2bUnitId;
+        }
+        return null;
     }
 
     private User getCurrentUser() {

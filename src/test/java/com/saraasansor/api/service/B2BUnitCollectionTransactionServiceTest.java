@@ -261,6 +261,21 @@ class B2BUnitCollectionTransactionServiceTest {
     }
 
     @Test
+    void shouldRejectInvalidCashboxIdForCollectionFlow() {
+        authenticateAsStaff("staff");
+        when(cashAccountRepository.findByIdAndActiveTrue(999L)).thenReturn(Optional.empty());
+
+        CashCollectionCreateRequest request = new CashCollectionCreateRequest();
+        request.setTransactionDate(LocalDate.of(2026, 3, 9));
+        request.setAmount(new BigDecimal("10"));
+        request.setCashAccountId(999L);
+
+        assertThatThrownBy(() -> service.createCashCollection(5L, request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Cash account not found");
+    }
+
+    @Test
     void shouldValidateDueDateAndSerialForCheckAndPromissory() {
         authenticateAsStaff("staff");
 

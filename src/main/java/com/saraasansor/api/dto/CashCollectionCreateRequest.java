@@ -1,5 +1,6 @@
 package com.saraasansor.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
@@ -18,6 +19,7 @@ public class CashCollectionCreateRequest {
     private BigDecimal amount;
 
     @NotNull(message = "cashAccountId is required")
+    @JsonAlias({"cashboxId"})
     private Long cashAccountId;
 
     private String description;
