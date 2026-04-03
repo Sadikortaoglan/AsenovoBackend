@@ -65,6 +65,24 @@ class QuickCollectionServiceTest {
     }
 
     @Test
+    void shouldUseBankIdAliasForBankCollection() {
+        QuickCollectionService quickCollectionService = new QuickCollectionService(transactionService);
+        QuickCollectionCreateRequest request = baseRequest(QuickCollectionCreateRequest.CollectionType.BANK);
+        request.setBankId(33L);
+
+        B2BUnitCollectionTransactionResponse expected = new B2BUnitCollectionTransactionResponse();
+        expected.setTransactionType(B2BUnitTransaction.TransactionType.BANK_COLLECTION);
+        when(transactionService.createBankCollection(eq(6L), any())).thenReturn(expected);
+
+        quickCollectionService.createCollection(request);
+
+        ArgumentCaptor<com.saraasansor.api.dto.BankCollectionCreateRequest> captor =
+                ArgumentCaptor.forClass(com.saraasansor.api.dto.BankCollectionCreateRequest.class);
+        verify(transactionService).createBankCollection(eq(6L), captor.capture());
+        assertThat(captor.getValue().getBankAccountId()).isEqualTo(33L);
+    }
+
+    @Test
     void shouldMapChequeFieldsForCheckCollection() {
         QuickCollectionService quickCollectionService = new QuickCollectionService(transactionService);
         QuickCollectionCreateRequest request = baseRequest(QuickCollectionCreateRequest.CollectionType.CHEQUE);

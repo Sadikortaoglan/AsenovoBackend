@@ -66,7 +66,7 @@ public class QuickCollectionService {
         target.setFacilityId(request.getFacilityId());
         target.setAmount(request.getAmount());
         target.setDescription(request.getDescription());
-        target.setBankAccountId(request.getCardBankId() != null ? request.getCardBankId() : request.getBankAccountId());
+        target.setBankAccountId(resolveCardBankId(request));
         return target;
     }
 
@@ -76,7 +76,7 @@ public class QuickCollectionService {
         target.setFacilityId(request.getFacilityId());
         target.setAmount(request.getAmount());
         target.setDescription(request.getDescription());
-        target.setBankAccountId(request.getBankAccountId());
+        target.setBankAccountId(resolveBankId(request));
         return target;
     }
 
@@ -116,5 +116,17 @@ public class QuickCollectionService {
 
     private Long resolveCashboxId(QuickCollectionCreateRequest request) {
         return request.getCashboxId() != null ? request.getCashboxId() : request.getCashAccountId();
+    }
+
+    private Long resolveBankId(QuickCollectionCreateRequest request) {
+        return request.getBankId() != null ? request.getBankId() : request.getBankAccountId();
+    }
+
+    private Long resolveCardBankId(QuickCollectionCreateRequest request) {
+        if (request.getCardBankId() != null) {
+            return request.getCardBankId();
+        }
+        Long bankId = resolveBankId(request);
+        return bankId;
     }
 }

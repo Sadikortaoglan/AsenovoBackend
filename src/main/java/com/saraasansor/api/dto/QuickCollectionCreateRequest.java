@@ -36,6 +36,7 @@ public class QuickCollectionCreateRequest {
 
     private Long cashboxId;
     private Long cashAccountId;
+    private Long bankId;
     private Long bankAccountId;
     private Long cardBankId;
     private LocalDate dueDate;
@@ -113,6 +114,14 @@ public class QuickCollectionCreateRequest {
 
     public void setBankAccountId(Long bankAccountId) {
         this.bankAccountId = bankAccountId;
+    }
+
+    public Long getBankId() {
+        return bankId;
+    }
+
+    public void setBankId(Long bankId) {
+        this.bankId = bankId;
     }
 
     public Long getCardBankId() {
