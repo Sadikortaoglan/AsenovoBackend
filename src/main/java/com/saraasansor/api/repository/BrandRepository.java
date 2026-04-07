@@ -15,9 +15,9 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
 
     java.util.Optional<Brand> findByIdAndActiveTrue(Long id);
 
-    boolean existsByNameIgnoreCase(String name);
+    boolean existsByNameIgnoreCaseAndActiveTrue(String name);
 
-    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+    boolean existsByNameIgnoreCaseAndIdNotAndActiveTrue(String name, Long id);
 
     @Query("SELECT b FROM Brand b WHERE " +
             "(:active IS NULL OR b.active = :active) AND " +

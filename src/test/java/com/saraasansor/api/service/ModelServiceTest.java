@@ -64,7 +64,7 @@ class ModelServiceTest {
 
         Brand brand = brand(3L, "Otis");
         when(brandRepository.findByIdAndActiveTrue(3L)).thenReturn(Optional.of(brand));
-        when(stockModelRepository.existsByBrandIdAndNameIgnoreCase(3L, "Gen2")).thenReturn(false);
+        when(stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndActiveTrue(3L, "Gen2")).thenReturn(false);
         when(stockModelRepository.save(any(StockModel.class))).thenAnswer(invocation -> {
             StockModel model = invocation.getArgument(0);
             model.setId(7L);
@@ -92,7 +92,7 @@ class ModelServiceTest {
         StockModel existing = model(2L, "Old", brand(4L, "Kone"), true);
         when(stockModelRepository.findById(2L)).thenReturn(Optional.of(existing));
         when(brandRepository.findByIdAndActiveTrue(5L)).thenReturn(Optional.of(brand(5L, "Schindler")));
-        when(stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndIdNot(5L, "MRL", 2L)).thenReturn(false);
+        when(stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndIdNotAndActiveTrue(5L, "MRL", 2L)).thenReturn(false);
         when(stockModelRepository.save(any(StockModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ModelResponse response = service.updateModel(2L, request);
@@ -158,7 +158,7 @@ class ModelServiceTest {
         request.setName("Gen2");
         request.setBrandId(3L);
         when(brandRepository.findByIdAndActiveTrue(3L)).thenReturn(Optional.of(brand(3L, "Otis")));
-        when(stockModelRepository.existsByBrandIdAndNameIgnoreCase(3L, "Gen2")).thenReturn(true);
+        when(stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndActiveTrue(3L, "Gen2")).thenReturn(true);
 
         assertThatThrownBy(() -> service.createModel(request))
                 .isInstanceOf(RuntimeException.class)

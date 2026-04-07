@@ -13,9 +13,9 @@ import java.util.List;
 @Repository
 public interface StockModelRepository extends JpaRepository<StockModel, Long> {
 
-    boolean existsByBrandIdAndNameIgnoreCase(Long brandId, String name);
+    boolean existsByBrandIdAndNameIgnoreCaseAndActiveTrue(Long brandId, String name);
 
-    boolean existsByBrandIdAndNameIgnoreCaseAndIdNot(Long brandId, String name, Long id);
+    boolean existsByBrandIdAndNameIgnoreCaseAndIdNotAndActiveTrue(Long brandId, String name, Long id);
 
     @Query("SELECT m FROM StockModel m JOIN m.brand b WHERE " +
             "(:active IS NULL OR m.active = :active) AND " +

@@ -56,7 +56,7 @@ class BrandServiceTest {
         request.setName(" Bosch ");
         request.setActive(true);
 
-        when(brandRepository.existsByNameIgnoreCase("Bosch")).thenReturn(false);
+        when(brandRepository.existsByNameIgnoreCaseAndActiveTrue("Bosch")).thenReturn(false);
         when(brandRepository.save(any(Brand.class))).thenAnswer(invocation -> {
             Brand brand = invocation.getArgument(0);
             brand.setId(5L);
@@ -81,7 +81,7 @@ class BrandServiceTest {
 
         Brand existing = brand(3L, "Old", true);
         when(brandRepository.findById(3L)).thenReturn(Optional.of(existing));
-        when(brandRepository.existsByNameIgnoreCaseAndIdNot("Otis", 3L)).thenReturn(false);
+        when(brandRepository.existsByNameIgnoreCaseAndIdNotAndActiveTrue("Otis", 3L)).thenReturn(false);
         when(brandRepository.save(any(Brand.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         BrandResponse response = service.updateBrand(3L, request);
@@ -131,7 +131,7 @@ class BrandServiceTest {
         BrandCreateRequest request = new BrandCreateRequest();
         request.setName("Otis");
 
-        when(brandRepository.existsByNameIgnoreCase("Otis")).thenReturn(true);
+        when(brandRepository.existsByNameIgnoreCaseAndActiveTrue("Otis")).thenReturn(true);
 
         assertThatThrownBy(() -> service.createBrand(request))
                 .isInstanceOf(RuntimeException.class)

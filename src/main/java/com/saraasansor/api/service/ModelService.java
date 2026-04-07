@@ -57,7 +57,7 @@ public class ModelService {
         String normalizedName = normalizeName(request.getName());
         Brand brand = findActiveBrand(request.getBrandId());
 
-        if (stockModelRepository.existsByBrandIdAndNameIgnoreCase(brand.getId(), normalizedName)) {
+        if (stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndActiveTrue(brand.getId(), normalizedName)) {
             throw new RuntimeException("Model name already exists for selected brand");
         }
 
@@ -78,7 +78,7 @@ public class ModelService {
                 .orElseThrow(() -> new RuntimeException("Model not found"));
         Brand brand = findActiveBrand(request.getBrandId());
 
-        if (stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndIdNot(brand.getId(), normalizedName, id)) {
+        if (stockModelRepository.existsByBrandIdAndNameIgnoreCaseAndIdNotAndActiveTrue(brand.getId(), normalizedName, id)) {
             throw new RuntimeException("Model name already exists for selected brand");
         }
 

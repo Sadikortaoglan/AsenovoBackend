@@ -11,14 +11,11 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "models", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_models_brand_name", columnNames = {"brand_id", "name"})
-})
+@Table(name = "models")
 public class StockModel {
 
     @Id

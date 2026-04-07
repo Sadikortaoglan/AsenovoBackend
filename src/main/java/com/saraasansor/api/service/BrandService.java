@@ -51,7 +51,7 @@ public class BrandService {
     public BrandResponse createBrand(BrandCreateRequest request) {
         validateCreateRequest(request);
         String normalizedName = normalizeName(request.getName());
-        if (brandRepository.existsByNameIgnoreCase(normalizedName)) {
+        if (brandRepository.existsByNameIgnoreCaseAndActiveTrue(normalizedName)) {
             throw new RuntimeException("Brand name already exists");
         }
 
@@ -71,7 +71,7 @@ public class BrandService {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Brand not found"));
 
-        if (brandRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
+        if (brandRepository.existsByNameIgnoreCaseAndIdNotAndActiveTrue(normalizedName, id)) {
             throw new RuntimeException("Brand name already exists");
         }
 

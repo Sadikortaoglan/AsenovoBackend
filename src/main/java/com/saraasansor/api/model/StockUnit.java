@@ -12,8 +12,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "brands")
-public class Brand {
+@Table(name = "stock_units")
+public class StockUnit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,6 +21,9 @@ public class Brand {
 
     @Column(nullable = false)
     private String name;
+
+    @Column(nullable = false)
+    private String abbreviation;
 
     @Column(nullable = false)
     private Boolean active = true;
@@ -69,6 +72,14 @@ public class Brand {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getAbbreviation() {
+        return abbreviation;
+    }
+
+    public void setAbbreviation(String abbreviation) {
+        this.abbreviation = abbreviation;
     }
 
     public Boolean getActive() {
