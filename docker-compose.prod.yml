@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: sara-asansor-postgres-prod
+    container_name: asenovo-postgres-prod
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -19,13 +19,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - sara-network
+      - asenovo-network
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sara-asansor-api-prod
+    container_name: asenovo-api-prod
     restart: unless-stopped
     depends_on:
       postgres:
@@ -53,10 +53,10 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - sara-network
+      - asenovo-network
 
 networks:
-  sara-network:
+  asenovo-network:
     driver: bridge
 
 volumes:
