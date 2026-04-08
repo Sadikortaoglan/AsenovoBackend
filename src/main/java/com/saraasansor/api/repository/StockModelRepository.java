@@ -13,6 +13,8 @@ import java.util.List;
 @Repository
 public interface StockModelRepository extends JpaRepository<StockModel, Long> {
 
+    java.util.Optional<StockModel> findByIdAndActiveTrue(Long id);
+
     boolean existsByBrandIdAndNameIgnoreCaseAndActiveTrue(Long brandId, String name);
 
     boolean existsByBrandIdAndNameIgnoreCaseAndIdNotAndActiveTrue(Long brandId, String name, Long id);

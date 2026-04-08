@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface VatRateRepository extends JpaRepository<VatRate, Long> {
@@ -17,6 +18,8 @@ public interface VatRateRepository extends JpaRepository<VatRate, Long> {
     boolean existsByRate(BigDecimal rate);
 
     boolean existsByRateAndIdNot(BigDecimal rate, Long id);
+
+    Optional<VatRate> findByIdAndActiveTrue(Long id);
 
     @Query("SELECT v FROM VatRate v WHERE " +
             "(:active IS NULL OR v.active = :active) AND (" +
