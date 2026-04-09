@@ -71,17 +71,17 @@ require_identifier() {
 }
 
 psql_base() {
-  psql -X -v ON_ERROR_STOP=1 -A -t -F '|' -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"
+  psql -q -X -v ON_ERROR_STOP=1 -A -t -F '|' -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"
 }
 
 psql_shared() {
-  psql -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"
+  psql -q -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" "$@"
 }
 
 psql_db() {
   local target_db="$1"
   shift
-  psql -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$target_db" "$@"
+  psql -q -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$target_db" "$@"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -181,7 +181,7 @@ if [[ "$APPLY" != "true" ]]; then
   exit 0
 fi
 
-psql_shared -q -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" >/dev/null
+psql_shared -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" >/dev/null
 
 platform_username_sql="$(sql_literal "$PLATFORM_USERNAME")"
 platform_password_sql="$(sql_literal "$PLATFORM_PASSWORD")"
@@ -191,6 +191,10 @@ staff_username_sql="$(sql_literal "$STAFF_USERNAME")"
 staff_password_sql="$(sql_literal "$STAFF_PASSWORD")"
 cari_username_sql="$(sql_literal "$CARI_USERNAME")"
 cari_password_sql="$(sql_literal "$CARI_PASSWORD")"
+
+if [[ -n "$PUBLIC_TRUNCATE_TABLES" ]]; then
+  psql_shared -c "TRUNCATE TABLE ${PUBLIC_TRUNCATE_TABLES}, public.users RESTART IDENTITY CASCADE;"
+fi
 
 PLATFORM_USER_ID="$(psql_base -c "
   INSERT INTO public.users (username, password_hash, role, user_type, active, enabled, locked, created_at, updated_at)
@@ -209,7 +213,7 @@ PLATFORM_USER_ID="${PLATFORM_USER_ID//[[:space:]]/}"
 
 PLATFORM_USERS_EXISTS="$(psql_base -c "SELECT to_regclass('public.platform_users')")"
 if [[ "$PLATFORM_USERS_EXISTS" == "public.platform_users" ]]; then
-  psql_shared -q <<SQL
+  psql_shared <<SQL
 INSERT INTO public.platform_users (username, password_hash, enabled, locked, role, created_at, updated_at, last_login_at)
 SELECT username, password_hash, COALESCE(enabled, true), COALESCE(locked, false), 'ROLE_PLATFORM_ADMIN',
        COALESCE(created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, last_login_at
@@ -227,11 +231,7 @@ DELETE FROM public.platform_users WHERE username <> '${platform_username_sql}';
 SQL
 fi
 
-if [[ -n "$PUBLIC_TRUNCATE_TABLES" ]]; then
-  psql_shared -q -c "TRUNCATE TABLE ${PUBLIC_TRUNCATE_TABLES} RESTART IDENTITY CASCADE;"
-fi
-
-psql_shared -q <<SQL
+psql_shared <<SQL
 DELETE FROM public.refresh_tokens WHERE user_id <> ${PLATFORM_USER_ID};
 DELETE FROM public.users WHERE id <> ${PLATFORM_USER_ID};
 SQL
@@ -247,7 +247,7 @@ if [[ -z "$SARA_B2B_UNIT_ID" ]]; then
   SARA_B2B_UNIT_ID="${SARA_B2B_UNIT_ID//[[:space:]]/}"
 fi
 
-psql_shared -q <<SQL
+psql_shared <<SQL
 UPDATE ${SARA_SCHEMA_NAME}.users
 SET b2b_unit_id = NULL
 WHERE COALESCE(b2b_unit_id, 0) = ${SARA_B2B_UNIT_ID}
@@ -302,7 +302,7 @@ SARA_TENANT_ADMIN_ID="${SARA_TENANT_ADMIN_ID//[[:space:]]/}"
 SARA_STAFF_ID="${SARA_STAFF_ID//[[:space:]]/}"
 SARA_CARI_ID="${SARA_CARI_ID//[[:space:]]/}"
 
-psql_shared -q <<SQL
+psql_shared <<SQL
 DELETE FROM ${SARA_SCHEMA_NAME}.refresh_tokens
 WHERE user_id IN (
   SELECT id FROM ${SARA_SCHEMA_NAME}.users
@@ -378,12 +378,12 @@ if [[ -n "$TENANTS_TO_DELETE_RAW" ]]; then
 
     if [[ "$tenancy_mode" == "SHARED_SCHEMA" && -n "$schema_name" && "$schema_name" != "public" ]]; then
       require_identifier "$schema_name" "schema_name"
-      psql_shared -q -c "DROP SCHEMA IF EXISTS \"${schema_name}\" CASCADE;"
+      psql_shared -c "DROP SCHEMA IF EXISTS \"${schema_name}\" CASCADE;"
     fi
 
     if [[ "$tenancy_mode" == "DEDICATED_DB" && -n "$db_name" ]]; then
       require_identifier "$db_name" "db_name"
-      psql_db postgres -q <<SQL
+      psql_db postgres <<SQL
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname = '${db_name}'
@@ -393,7 +393,7 @@ DROP DATABASE IF EXISTS "${db_name}";
 SQL
     fi
 
-    psql_shared -q <<SQL
+    psql_shared <<SQL
 DELETE FROM public.subscriptions WHERE tenant_id = ${tenant_id};
 DELETE FROM public.tenant_feature_overrides WHERE tenant_id = ${tenant_id};
 DELETE FROM public.tenants WHERE id = ${tenant_id};
