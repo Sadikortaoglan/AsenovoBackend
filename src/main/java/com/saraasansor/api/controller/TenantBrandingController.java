@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,6 +35,7 @@ public class TenantBrandingController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TenantBrandingResponseDTO>> updateBranding(
             @Valid @RequestBody TenantBrandingUpdateRequestDTO requestDTO) {
         TenantBrandingResponseDTO response = tenantBrandingService.updateBranding(requestDTO);
@@ -41,6 +43,7 @@ public class TenantBrandingController {
     }
 
     @PostMapping(value = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('TENANT_ADMIN','PLATFORM_ADMIN')")
     public ResponseEntity<ApiResponse<TenantBrandingResponseDTO>> updateLogo(
             @RequestPart("file") MultipartFile file) {
         TenantBrandingResponseDTO response = tenantBrandingService.updateLogo(file);

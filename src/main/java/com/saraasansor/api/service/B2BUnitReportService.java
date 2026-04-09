@@ -239,6 +239,9 @@ public class B2BUnitReportService {
     }
 
     private String resolveCompanyName(TenantBrandingResponseDTO branding) {
+        if (branding != null && StringUtils.hasText(branding.getCompanyName())) {
+            return branding.getCompanyName().trim();
+        }
         if (branding != null && StringUtils.hasText(branding.getName())) {
             return branding.getName().trim();
         }

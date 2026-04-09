@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public class TenantBrandingResponseDTO {
 
     private Long id;
+    private String companyName;
     private String name;
     private String logoUrl;
     private String primaryColor;
@@ -17,6 +18,14 @@ public class TenantBrandingResponseDTO {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
     }
 
     public String getName() {

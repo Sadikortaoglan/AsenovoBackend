@@ -25,6 +25,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
     @Query("SELECT t FROM Tenant t JOIN FETCH t.plan WHERE t.id = :id")
     Optional<Tenant> findByIdWithPlan(@Param("id") Long id);
 
+    Optional<Tenant> findFirstByOrderByIdAsc();
+
     @Query("""
             SELECT t FROM Tenant t
             WHERE

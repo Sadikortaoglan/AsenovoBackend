@@ -131,6 +131,8 @@ public class SecurityConfig {
                 .requestMatchers("/health").permitAll()
                 // Error endpoint - permit all (needed for exception handling)
                 .requestMatchers("/error").permitAll()
+                // Public tenant branding assets (tenant-scoped by controller checks)
+                .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**", "/login", "/refresh", "/register", "/logout", "/api/login", "/api/refresh", "/api/register", "/api/logout").permitAll()
                 // Marketing website public form endpoints

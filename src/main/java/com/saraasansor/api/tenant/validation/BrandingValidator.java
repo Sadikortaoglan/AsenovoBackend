@@ -14,8 +14,12 @@ public class BrandingValidator {
     private static final String WHITE = "#FFFFFF";
 
     public void validateColorsForUpdate(String primaryColor, String secondaryColor) {
-        validateColor("primaryColor", primaryColor);
-        validateColor("secondaryColor", secondaryColor);
+        if (primaryColor != null) {
+            validateColor("primaryColor", primaryColor);
+        }
+        if (secondaryColor != null) {
+            validateColor("secondaryColor", secondaryColor);
+        }
     }
 
     private void validateColor(String fieldName, String color) {
