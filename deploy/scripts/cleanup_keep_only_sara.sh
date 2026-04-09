@@ -9,6 +9,7 @@ Usage:
     --db-port <port> \
     --db-name <db_name> \
     --db-user <db_user> \
+    [--keep-tenant <subdomain>] \
     [--apply] \
     [--platform-username <username>] \
     [--platform-password <password>] \
@@ -21,7 +22,8 @@ Usage:
     [--output <csv_path>]
 
 Description:
-  Keeps only the `sara` tenant data plus public control-plane data.
+  Keeps only the selected tenant data plus public control-plane data.
+  Default kept tenant is `sara`.
   Deletes all other tenant rows and drops their shared schemas / dedicated databases.
   Preserves imported public revision standard data:
     - public.revision_standards
@@ -44,6 +46,7 @@ DB_NAME=""
 DB_USER=""
 APPLY="false"
 OUTPUT_PATH=""
+KEEP_TENANT="sara"
 
 PLATFORM_USERNAME="platformadmin"
 PLATFORM_PASSWORD="Platform123!"
@@ -87,6 +90,7 @@ while [[ $# -gt 0 ]]; do
     --db-port) DB_PORT="$2"; shift 2 ;;
     --db-name) DB_NAME="$2"; shift 2 ;;
     --db-user) DB_USER="$2"; shift 2 ;;
+    --keep-tenant) KEEP_TENANT="$2"; shift 2 ;;
     --apply) APPLY="true"; shift ;;
     --platform-username) PLATFORM_USERNAME="$2"; shift 2 ;;
     --platform-password) PLATFORM_PASSWORD="$2"; shift 2 ;;
@@ -118,9 +122,12 @@ if [[ -z "$OUTPUT_PATH" ]]; then
   OUTPUT_PATH="tmp/admin-exports/keep-only-sara-credentials-$(date +%Y%m%d-%H%M%S).csv"
 fi
 
-SARA_ROW="$(psql_base -c "SELECT id, tenancy_mode, COALESCE(schema_name, ''), COALESCE(db_name, ''), COALESCE(status::text, '') FROM public.tenants WHERE subdomain = 'sara' LIMIT 1")"
+KEEP_TENANT_SQL="$(sql_literal "$KEEP_TENANT")"
+SARA_ROW="$(psql_base -c "SELECT id, tenancy_mode, COALESCE(schema_name, ''), COALESCE(db_name, ''), COALESCE(status::text, '') FROM public.tenants WHERE subdomain = '${KEEP_TENANT_SQL}' LIMIT 1")"
 if [[ -z "$SARA_ROW" ]]; then
-  echo "ERROR: sara tenant not found." >&2
+  echo "ERROR: keep tenant not found: ${KEEP_TENANT}" >&2
+  echo "Available tenants:" >&2
+  psql_shared -c "SELECT id, subdomain, tenancy_mode, COALESCE(schema_name, '') AS schema_name, COALESCE(db_name, '') AS db_name, COALESCE(status::text, '') AS status FROM public.tenants ORDER BY id;" >&2
   exit 1
 fi
 
@@ -131,7 +138,7 @@ if [[ "$SARA_TENANCY_MODE" != "SHARED_SCHEMA" ]]; then
 fi
 require_identifier "$SARA_SCHEMA_NAME" "sara schema_name"
 
-TENANTS_TO_DELETE_RAW="$(psql_base -c "SELECT id, subdomain, tenancy_mode, COALESCE(schema_name, ''), COALESCE(db_name, '') FROM public.tenants WHERE subdomain <> 'sara' ORDER BY id")"
+TENANTS_TO_DELETE_RAW="$(psql_base -c "SELECT id, subdomain, tenancy_mode, COALESCE(schema_name, ''), COALESCE(db_name, '') FROM public.tenants WHERE subdomain <> '${KEEP_TENANT_SQL}' ORDER BY id")"
 PUBLIC_KEEP_TABLES="'flyway_schema_history','plans','tenants','subscriptions','features','tenant_feature_overrides','tenant_provisioning_jobs','tenant_provisioning_audit_logs','platform_users','revision_standards','revision_standard_sets','users'"
 PUBLIC_TRUNCATE_TABLES="$(psql_base -c "SELECT COALESCE(string_agg(format('%I.%I', schemaname, tablename), ', ' ORDER BY tablename), '') FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN (${PUBLIC_KEEP_TABLES})")"
 PUBLIC_USER_COUNT="$(psql_base -c "SELECT COUNT(*) FROM public.users")"
@@ -139,7 +146,7 @@ SARA_USER_COUNT="$(psql_base -c "SELECT COUNT(*) FROM ${SARA_SCHEMA_NAME}.users"
 SARA_B2B_COUNT="$(psql_base -c "SELECT COUNT(*) FROM ${SARA_SCHEMA_NAME}.b2b_units WHERE active = true")"
 
 echo "Mode: $([[ "$APPLY" == "true" ]] && echo APPLY || echo DRY-RUN)"
-echo "Keep tenant: sara (${SARA_SCHEMA_NAME})"
+echo "Keep tenant: ${KEEP_TENANT} (${SARA_SCHEMA_NAME})"
 echo "Public users currently: ${PUBLIC_USER_COUNT}"
 echo "Sara users currently: ${SARA_USER_COUNT}"
 echo "Sara active B2B units: ${SARA_B2B_COUNT}"
@@ -163,9 +170,9 @@ fi
 echo
 echo "Target kept credentials:"
 echo "  - public PLATFORM_ADMIN: ${PLATFORM_USERNAME}"
-echo "  - sara TENANT_ADMIN: ${TENANT_ADMIN_USERNAME}"
-echo "  - sara STAFF_USER: ${STAFF_USERNAME}"
-echo "  - sara CARI_USER: ${CARI_USERNAME}"
+echo "  - ${KEEP_TENANT} TENANT_ADMIN: ${TENANT_ADMIN_USERNAME}"
+echo "  - ${KEEP_TENANT} STAFF_USER: ${STAFF_USERNAME}"
+echo "  - ${KEEP_TENANT} CARI_USER: ${CARI_USERNAME}"
 echo "Sensitive credential output will be written to: ${OUTPUT_PATH}"
 
 if [[ "$APPLY" != "true" ]]; then
@@ -396,9 +403,9 @@ fi
 
 printf "scope,username,password\n" > "$OUTPUT_PATH"
 printf '"public","%s","%s"\n' "$PLATFORM_USERNAME" "$PLATFORM_PASSWORD" >> "$OUTPUT_PATH"
-printf '"sara","%s","%s"\n' "$TENANT_ADMIN_USERNAME" "$TENANT_ADMIN_PASSWORD" >> "$OUTPUT_PATH"
-printf '"sara","%s","%s"\n' "$STAFF_USERNAME" "$STAFF_PASSWORD" >> "$OUTPUT_PATH"
-printf '"sara","%s","%s"\n' "$CARI_USERNAME" "$CARI_PASSWORD" >> "$OUTPUT_PATH"
+printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$TENANT_ADMIN_USERNAME" "$TENANT_ADMIN_PASSWORD" >> "$OUTPUT_PATH"
+printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$STAFF_USERNAME" "$STAFF_PASSWORD" >> "$OUTPUT_PATH"
+printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$CARI_USERNAME" "$CARI_PASSWORD" >> "$OUTPUT_PATH"
 
 echo
 echo "Cleanup completed."
