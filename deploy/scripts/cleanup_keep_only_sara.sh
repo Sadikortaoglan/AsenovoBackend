@@ -37,6 +37,8 @@ Description:
 Safety:
   - Dry-run by default. Nothing is deleted unless --apply is provided.
   - Physical uploaded files are NOT pruned from disk by this script.
+  - If the kept tenant maps to `public` (for example `default`), public schema data and
+    users are preserved as-is; only the other tenant rows/schemas/databases are deleted.
 USAGE
 }
 
@@ -137,6 +139,10 @@ if [[ "$SARA_TENANCY_MODE" != "SHARED_SCHEMA" ]]; then
   exit 1
 fi
 require_identifier "$SARA_SCHEMA_NAME" "sara schema_name"
+KEEP_TENANT_IS_PUBLIC="false"
+if [[ "$SARA_SCHEMA_NAME" == "public" ]]; then
+  KEEP_TENANT_IS_PUBLIC="true"
+fi
 
 TENANTS_TO_DELETE_RAW="$(psql_base -c "SELECT id, subdomain, tenancy_mode, COALESCE(schema_name, ''), COALESCE(db_name, '') FROM public.tenants WHERE subdomain <> '${KEEP_TENANT_SQL}' ORDER BY id")"
 PUBLIC_KEEP_TABLES="'flyway_schema_history','plans','tenants','subscriptions','features','tenant_feature_overrides','tenant_provisioning_jobs','tenant_provisioning_audit_logs','platform_users','revision_standards','revision_standard_sets','users'"
@@ -162,17 +168,23 @@ else
 fi
 echo
 echo "Public business tables to purge (control-plane + imported revision standards preserved):"
-if [[ -n "$PUBLIC_TRUNCATE_TABLES" ]]; then
+if [[ "$KEEP_TENANT_IS_PUBLIC" == "true" ]]; then
+  echo "  - none (kept tenant uses public schema; preserving public data as-is)"
+elif [[ -n "$PUBLIC_TRUNCATE_TABLES" ]]; then
   printf '  - %s\n' "${PUBLIC_TRUNCATE_TABLES//, /$'\n  - '}"
 else
   echo "  - none"
 fi
 echo
 echo "Target kept credentials:"
-echo "  - public PLATFORM_ADMIN: ${PLATFORM_USERNAME}"
-echo "  - ${KEEP_TENANT} TENANT_ADMIN: ${TENANT_ADMIN_USERNAME}"
-echo "  - ${KEEP_TENANT} STAFF_USER: ${STAFF_USERNAME}"
-echo "  - ${KEEP_TENANT} CARI_USER: ${CARI_USERNAME}"
+if [[ "$KEEP_TENANT_IS_PUBLIC" == "true" ]]; then
+  echo "  - existing public/default users preserved as-is"
+else
+  echo "  - public PLATFORM_ADMIN: ${PLATFORM_USERNAME}"
+  echo "  - ${KEEP_TENANT} TENANT_ADMIN: ${TENANT_ADMIN_USERNAME}"
+  echo "  - ${KEEP_TENANT} STAFF_USER: ${STAFF_USERNAME}"
+  echo "  - ${KEEP_TENANT} CARI_USER: ${CARI_USERNAME}"
+fi
 echo "Sensitive credential output will be written to: ${OUTPUT_PATH}"
 
 if [[ "$APPLY" != "true" ]]; then
@@ -192,28 +204,29 @@ staff_password_sql="$(sql_literal "$STAFF_PASSWORD")"
 cari_username_sql="$(sql_literal "$CARI_USERNAME")"
 cari_password_sql="$(sql_literal "$CARI_PASSWORD")"
 
-if [[ -n "$PUBLIC_TRUNCATE_TABLES" ]]; then
-  psql_shared -c "TRUNCATE TABLE ${PUBLIC_TRUNCATE_TABLES}, public.users RESTART IDENTITY CASCADE;"
-fi
+if [[ "$KEEP_TENANT_IS_PUBLIC" != "true" ]]; then
+  if [[ -n "$PUBLIC_TRUNCATE_TABLES" ]]; then
+    psql_shared -c "TRUNCATE TABLE ${PUBLIC_TRUNCATE_TABLES}, public.users RESTART IDENTITY CASCADE;"
+  fi
 
-PLATFORM_USER_ID="$(psql_base -c "
-  INSERT INTO public.users (username, password_hash, role, user_type, active, enabled, locked, created_at, updated_at)
-  VALUES ('${platform_username_sql}', crypt('${platform_password_sql}', gen_salt('bf', 10)), 'SYSTEM_ADMIN', 'SYSTEM_ADMIN', true, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-  ON CONFLICT (username) DO UPDATE
-  SET password_hash = crypt('${platform_password_sql}', gen_salt('bf', 10)),
-      role = 'SYSTEM_ADMIN',
-      user_type = 'SYSTEM_ADMIN',
-      active = true,
-      enabled = true,
-      locked = false,
-      updated_at = CURRENT_TIMESTAMP
-  RETURNING id
-")"
-PLATFORM_USER_ID="${PLATFORM_USER_ID//[[:space:]]/}"
+  PLATFORM_USER_ID="$(psql_base -c "
+    INSERT INTO public.users (username, password_hash, role, user_type, active, enabled, locked, created_at, updated_at)
+    VALUES ('${platform_username_sql}', crypt('${platform_password_sql}', gen_salt('bf', 10)), 'SYSTEM_ADMIN', 'SYSTEM_ADMIN', true, true, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT (username) DO UPDATE
+    SET password_hash = crypt('${platform_password_sql}', gen_salt('bf', 10)),
+        role = 'SYSTEM_ADMIN',
+        user_type = 'SYSTEM_ADMIN',
+        active = true,
+        enabled = true,
+        locked = false,
+        updated_at = CURRENT_TIMESTAMP
+    RETURNING id
+  ")"
+  PLATFORM_USER_ID="${PLATFORM_USER_ID//[[:space:]]/}"
 
-PLATFORM_USERS_EXISTS="$(psql_base -c "SELECT to_regclass('public.platform_users')")"
-if [[ "$PLATFORM_USERS_EXISTS" == "public.platform_users" ]]; then
-  psql_shared <<SQL
+  PLATFORM_USERS_EXISTS="$(psql_base -c "SELECT to_regclass('public.platform_users')")"
+  if [[ "$PLATFORM_USERS_EXISTS" == "public.platform_users" ]]; then
+    psql_shared <<SQL
 INSERT INTO public.platform_users (username, password_hash, enabled, locked, role, created_at, updated_at, last_login_at)
 SELECT username, password_hash, COALESCE(enabled, true), COALESCE(locked, false), 'ROLE_PLATFORM_ADMIN',
        COALESCE(created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP, last_login_at
@@ -229,25 +242,25 @@ ON CONFLICT (username) DO UPDATE SET
 
 DELETE FROM public.platform_users WHERE username <> '${platform_username_sql}';
 SQL
-fi
+  fi
 
-psql_shared <<SQL
+  psql_shared <<SQL
 DELETE FROM public.refresh_tokens WHERE user_id <> ${PLATFORM_USER_ID};
 DELETE FROM public.users WHERE id <> ${PLATFORM_USER_ID};
 SQL
 
-SARA_B2B_UNIT_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.b2b_units WHERE active = true ORDER BY id LIMIT 1")"
-SARA_B2B_UNIT_ID="${SARA_B2B_UNIT_ID//[[:space:]]/}"
-if [[ -z "$SARA_B2B_UNIT_ID" ]]; then
-  SARA_B2B_UNIT_ID="$(psql_base -c "
-    INSERT INTO ${SARA_SCHEMA_NAME}.b2b_units (name, currency, risk_limit, active, created_at, updated_at)
-    VALUES ('SARA Cari Hesabi', 'TRY', 0, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    RETURNING id
-  ")"
+  SARA_B2B_UNIT_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.b2b_units WHERE active = true ORDER BY id LIMIT 1")"
   SARA_B2B_UNIT_ID="${SARA_B2B_UNIT_ID//[[:space:]]/}"
-fi
+  if [[ -z "$SARA_B2B_UNIT_ID" ]]; then
+    SARA_B2B_UNIT_ID="$(psql_base -c "
+      INSERT INTO ${SARA_SCHEMA_NAME}.b2b_units (name, currency, risk_limit, active, created_at, updated_at)
+      VALUES ('SARA Cari Hesabi', 'TRY', 0, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id
+    ")"
+    SARA_B2B_UNIT_ID="${SARA_B2B_UNIT_ID//[[:space:]]/}"
+  fi
 
-psql_shared <<SQL
+  psql_shared <<SQL
 UPDATE ${SARA_SCHEMA_NAME}.users
 SET b2b_unit_id = NULL
 WHERE COALESCE(b2b_unit_id, 0) = ${SARA_B2B_UNIT_ID}
@@ -295,14 +308,14 @@ SET portal_username = '${cari_username_sql}',
 WHERE id = ${SARA_B2B_UNIT_ID};
 SQL
 
-SARA_TENANT_ADMIN_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.users WHERE username = '${tenant_admin_username_sql}' LIMIT 1")"
-SARA_STAFF_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.users WHERE username = '${staff_username_sql}' LIMIT 1")"
-SARA_CARI_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.users WHERE username = '${cari_username_sql}' LIMIT 1")"
-SARA_TENANT_ADMIN_ID="${SARA_TENANT_ADMIN_ID//[[:space:]]/}"
-SARA_STAFF_ID="${SARA_STAFF_ID//[[:space:]]/}"
-SARA_CARI_ID="${SARA_CARI_ID//[[:space:]]/}"
+  SARA_TENANT_ADMIN_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.users WHERE username = '${tenant_admin_username_sql}' LIMIT 1")"
+  SARA_STAFF_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.users WHERE username = '${staff_username_sql}' LIMIT 1")"
+  SARA_CARI_ID="$(psql_base -c "SELECT id FROM ${SARA_SCHEMA_NAME}.users WHERE username = '${cari_username_sql}' LIMIT 1")"
+  SARA_TENANT_ADMIN_ID="${SARA_TENANT_ADMIN_ID//[[:space:]]/}"
+  SARA_STAFF_ID="${SARA_STAFF_ID//[[:space:]]/}"
+  SARA_CARI_ID="${SARA_CARI_ID//[[:space:]]/}"
 
-psql_shared <<SQL
+  psql_shared <<SQL
 DELETE FROM ${SARA_SCHEMA_NAME}.refresh_tokens
 WHERE user_id IN (
   SELECT id FROM ${SARA_SCHEMA_NAME}.users
@@ -371,6 +384,7 @@ WHERE user_id IS NOT NULL
 DELETE FROM ${SARA_SCHEMA_NAME}.users
 WHERE username NOT IN ('${tenant_admin_username_sql}', '${staff_username_sql}', '${cari_username_sql}');
 SQL
+fi
 
 if [[ -n "$TENANTS_TO_DELETE_RAW" ]]; then
   while IFS='|' read -r tenant_id subdomain tenancy_mode schema_name db_name; do
@@ -402,10 +416,14 @@ SQL
 fi
 
 printf "scope,username,password\n" > "$OUTPUT_PATH"
-printf '"public","%s","%s"\n' "$PLATFORM_USERNAME" "$PLATFORM_PASSWORD" >> "$OUTPUT_PATH"
-printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$TENANT_ADMIN_USERNAME" "$TENANT_ADMIN_PASSWORD" >> "$OUTPUT_PATH"
-printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$STAFF_USERNAME" "$STAFF_PASSWORD" >> "$OUTPUT_PATH"
-printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$CARI_USERNAME" "$CARI_PASSWORD" >> "$OUTPUT_PATH"
+if [[ "$KEEP_TENANT_IS_PUBLIC" == "true" ]]; then
+  printf '"%s","%s","%s"\n' "$KEEP_TENANT" "UNCHANGED" "UNCHANGED" >> "$OUTPUT_PATH"
+else
+  printf '"public","%s","%s"\n' "$PLATFORM_USERNAME" "$PLATFORM_PASSWORD" >> "$OUTPUT_PATH"
+  printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$TENANT_ADMIN_USERNAME" "$TENANT_ADMIN_PASSWORD" >> "$OUTPUT_PATH"
+  printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$STAFF_USERNAME" "$STAFF_PASSWORD" >> "$OUTPUT_PATH"
+  printf '"%s","%s","%s"\n' "$KEEP_TENANT" "$CARI_USERNAME" "$CARI_PASSWORD" >> "$OUTPUT_PATH"
+fi
 
 echo
 echo "Cleanup completed."
