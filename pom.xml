@@ -13,11 +13,11 @@
     </parent>
 
     <groupId>com.saraasansor</groupId>
-    <artifactId>sara-asansor-api</artifactId>
+    <artifactId>asenovo-api</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <description>Sara Asansör Backend API - Spring Boot REST API</description>
+    <description>Asenovo Backend API - Spring Boot REST API</description>
 
     <properties>
         <java.version>17</java.version>

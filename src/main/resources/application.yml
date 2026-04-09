@@ -1,6 +1,6 @@
 spring:
   application:
-    name: sara-asansor-api
+    name: asenovo-api
   config:
     import: optional:file:${user.dir}/.env[.properties],optional:file:.env[.properties]
 

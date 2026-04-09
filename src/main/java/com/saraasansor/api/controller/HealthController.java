@@ -18,8 +18,7 @@ public class HealthController {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
         response.put("timestamp", LocalDateTime.now());
-        response.put("service", "sara-asansor-api");
+        response.put("service", "asenovo-api");
         return ResponseEntity.ok(response);
     }
 }
-
