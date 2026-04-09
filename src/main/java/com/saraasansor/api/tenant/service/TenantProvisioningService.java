@@ -26,6 +26,7 @@ public class TenantProvisioningService {
     private final SchemaManagementService schemaManagementService;
     private final TenantMigrationService tenantMigrationService;
     private final TenantSeedService tenantSeedService;
+    private final TenantProvisioningDataCleanupService tenantProvisioningDataCleanupService;
     private final TenantRegistryService tenantRegistryService;
     private final ObjectMapper objectMapper;
 
@@ -35,6 +36,7 @@ public class TenantProvisioningService {
                                      SchemaManagementService schemaManagementService,
                                      TenantMigrationService tenantMigrationService,
                                      TenantSeedService tenantSeedService,
+                                     TenantProvisioningDataCleanupService tenantProvisioningDataCleanupService,
                                      TenantRegistryService tenantRegistryService,
                                      ObjectMapper objectMapper) {
         this.tenantRepository = tenantRepository;
@@ -43,6 +45,7 @@ public class TenantProvisioningService {
         this.schemaManagementService = schemaManagementService;
         this.tenantMigrationService = tenantMigrationService;
         this.tenantSeedService = tenantSeedService;
+        this.tenantProvisioningDataCleanupService = tenantProvisioningDataCleanupService;
         this.tenantRegistryService = tenantRegistryService;
         this.objectMapper = objectMapper;
     }
@@ -101,6 +104,24 @@ public class TenantProvisioningService {
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_MIGRATION_STARTED", "Tenant migration started", actor);
         tenantMigrationService.migrateSchema(schemaName);
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_MIGRATION_COMPLETED", "Tenant migration completed", actor);
+
+        if (tenantProvisioningDataCleanupService.shouldCleanupProvisionedTenantData()) {
+            tenantProvisioningJobService.writeAudit(
+                    tenant,
+                    job,
+                    "TENANT_POST_MIGRATION_CLEANUP_STARTED",
+                    "Tenant post-migration cleanup started",
+                    actor
+            );
+            tenantProvisioningDataCleanupService.cleanupProvisionedSchema(schemaName);
+            tenantProvisioningJobService.writeAudit(
+                    tenant,
+                    job,
+                    "TENANT_POST_MIGRATION_CLEANUP_COMPLETED",
+                    "Tenant post-migration cleanup completed",
+                    actor
+            );
+        }
 
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_PLATFORM_ADMIN_BOOTSTRAP_STARTED", "Tenant platform admin bootstrap started", actor);
         tenantSeedService.seedTenantLocalPlatformAdmin(schemaName);
