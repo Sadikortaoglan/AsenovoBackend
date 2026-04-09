@@ -44,6 +44,9 @@ uploads/
 *.db
 
 .env
+.env.local
+deploy/production/.env.prod
+pg_hba.conf
 
 .idea
 .DS_Store
