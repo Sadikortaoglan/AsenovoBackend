@@ -31,6 +31,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
+set -a
+. "$ENV_FILE"
+set +a
+
 echo "[1/8] Pull latest code"
 git pull
 
