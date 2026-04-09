@@ -31,9 +31,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-set -a
-. "$ENV_FILE"
-set +a
+get_env_value() {
+  local key="$1"
+  awk -F= -v key="$key" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$ENV_FILE"
+}
 
 echo "[1/8] Pull latest code"
 git pull
@@ -75,8 +76,10 @@ curl -fsS "$HEALTH_URL"
 
 if [[ "$VERIFY_CONTROL_PLANE_TABLES" == "true" ]] || [[ "$VERIFY_CONTROL_PLANE_TABLES" == "auto" && -f "src/main/resources/db/migration/V51__backfill_tenant_provisioning_control_plane.sql" ]]; then
   echo "[9/9] Verify tenant provisioning control-plane tables"
-  JOB_TABLE_STATUS="$(docker exec asenovo-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -tAc "SELECT to_regclass('public.tenant_provisioning_jobs');" | tr -d '[:space:]')"
-  AUDIT_TABLE_STATUS="$(docker exec asenovo-postgres-prod psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -tAc "SELECT to_regclass('public.tenant_provisioning_audit_logs');" | tr -d '[:space:]')"
+  POSTGRES_USER_VALUE="$(get_env_value POSTGRES_USER)"
+  POSTGRES_DB_VALUE="$(get_env_value POSTGRES_DB)"
+  JOB_TABLE_STATUS="$(docker exec asenovo-postgres-prod psql -U "${POSTGRES_USER_VALUE}" -d "${POSTGRES_DB_VALUE}" -tAc "SELECT to_regclass('public.tenant_provisioning_jobs');" | tr -d '[:space:]')"
+  AUDIT_TABLE_STATUS="$(docker exec asenovo-postgres-prod psql -U "${POSTGRES_USER_VALUE}" -d "${POSTGRES_DB_VALUE}" -tAc "SELECT to_regclass('public.tenant_provisioning_audit_logs');" | tr -d '[:space:]')"
   if [[ "$JOB_TABLE_STATUS" != *"tenant_provisioning_jobs" ]] || [[ "$AUDIT_TABLE_STATUS" != *"tenant_provisioning_audit_logs" ]]; then
     echo "Tenant provisioning control-plane tables are missing after deploy." >&2
     echo "tenant_provisioning_jobs=$JOB_TABLE_STATUS" >&2
