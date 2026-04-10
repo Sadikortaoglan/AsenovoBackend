@@ -229,6 +229,11 @@ public class SecurityConfig {
                 // Invoice lookup endpoints
                 .requestMatchers(HttpMethod.GET, "/warehouses/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/elevators/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                // Elevator contract endpoints
+                .requestMatchers(HttpMethod.GET, "/elevator-contracts/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER, CARI_USER)
+                .requestMatchers(HttpMethod.POST, "/elevator-contracts/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.PUT, "/elevator-contracts/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
+                .requestMatchers(HttpMethod.DELETE, "/elevator-contracts/**").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 // Collection lookup endpoints
                 .requestMatchers(HttpMethod.GET, "/cash-accounts/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
                 .requestMatchers(HttpMethod.GET, "/bank-accounts/lookup").hasAnyRole(SYSTEM_ADMIN, STAFF_ADMIN, STAFF_USER)
