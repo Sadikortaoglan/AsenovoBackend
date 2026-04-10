@@ -1,6 +1,8 @@
 package com.saraasansor.api.security;
 
 import com.saraasansor.api.model.User;
+import com.saraasansor.api.tenant.TenantContext;
+import com.saraasansor.api.tenant.data.TenantDescriptor;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -21,6 +23,9 @@ public class JwtTokenProvider {
     private static final String ROLE = "role";
     private static final String USER_TYPE = "userType";
     private static final String B2BUNIT_ID = "b2bUnitId";
+    private static final String AUTH_SCOPE_TYPE = "authScopeType";
+    private static final String TENANT_ID = "tenantId";
+    private static final String TENANT_SCHEMA = "tenantSchema";
     @Value("${app.jwt.secret}")
     private String secret;
     
@@ -45,9 +50,21 @@ public class JwtTokenProvider {
     public String generateAccessToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(USER_ID, user.getId());
-        claims.put(ROLE, user.getRole().name());
+        claims.put(ROLE, user.getCanonicalRole() != null ? user.getCanonicalRole().name() : null);
         claims.put(USER_TYPE, user.getUserType() != null ? user.getUserType().name() : null);
         claims.put(B2BUNIT_ID, user.getB2bUnit() != null ? user.getB2bUnit().getId() : null);
+
+        TenantDescriptor tenant = TenantContext.getCurrentTenant();
+        if (tenant != null) {
+            claims.put(AUTH_SCOPE_TYPE, "TENANT");
+            claims.put(TENANT_ID, tenant.getId());
+            claims.put(TENANT_SCHEMA, tenant.getSchemaName());
+        } else {
+            claims.put(AUTH_SCOPE_TYPE, "PLATFORM");
+            claims.put(TENANT_ID, null);
+            claims.put(TENANT_SCHEMA, null);
+        }
+
         return createToken(claims, user.getUsername(), accessTokenExpiration);
     }
     
@@ -88,6 +105,27 @@ public class JwtTokenProvider {
 
     public String getUserTypeFromToken(String token) {
         return getClaimFromToken(token, claims -> (String) claims.get(USER_TYPE));
+    }
+
+    public String getAuthScopeTypeFromToken(String token) {
+        return getClaimFromToken(token, claims -> (String) claims.get(AUTH_SCOPE_TYPE));
+    }
+
+    public Long getTenantIdFromToken(String token) {
+        return getClaimFromToken(token, claims -> {
+            Object tenantId = claims.get(TENANT_ID);
+            if (tenantId == null) {
+                return null;
+            }
+            if (tenantId instanceof Integer) {
+                return ((Integer) tenantId).longValue();
+            }
+            return (Long) tenantId;
+        });
+    }
+
+    public String getTenantSchemaFromToken(String token) {
+        return getClaimFromToken(token, claims -> (String) claims.get(TENANT_SCHEMA));
     }
     
     public Date getExpirationDateFromToken(String token) {

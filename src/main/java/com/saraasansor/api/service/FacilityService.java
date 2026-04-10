@@ -236,7 +236,7 @@ public class FacilityService {
                     .toList();
         }
 
-        if (isSystemAdmin(currentUser)) {
+        if (isSystemAdmin(currentUser) || isTenantAdmin(currentUser)) {
             return facilityRepository.search(
                             normalizeNullable(query),
                             null,
@@ -1140,15 +1140,24 @@ public class FacilityService {
         if (currentUser == null) {
             return false;
         }
-        return currentUser.getRole() != User.Role.CARI_USER;
+        User.Role canonicalRole = currentUser.getCanonicalRole();
+        return canonicalRole != User.Role.CARI_USER;
     }
 
     private boolean isCariUser(User currentUser) {
-        return currentUser != null && currentUser.getRole() == User.Role.CARI_USER;
+        return currentUser != null && currentUser.getCanonicalRole() == User.Role.CARI_USER;
     }
 
     private boolean isSystemAdmin(User currentUser) {
-        return currentUser != null && currentUser.getRole() == User.Role.SYSTEM_ADMIN;
+        return currentUser != null
+                && currentUser.getCanonicalRole() != null
+                && currentUser.getCanonicalRole().isPlatformAdmin();
+    }
+
+    private boolean isTenantAdmin(User currentUser) {
+        return currentUser != null
+                && currentUser.getCanonicalRole() != null
+                && currentUser.getCanonicalRole().isTenantAdmin();
     }
 
     private Long getCariB2bUnitId(User currentUser) {

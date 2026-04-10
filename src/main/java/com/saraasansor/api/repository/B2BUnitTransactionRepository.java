@@ -29,6 +29,33 @@ public interface B2BUnitTransactionRepository extends JpaRepository<B2BUnitTrans
     @EntityGraph(attributePaths = {"b2bUnit", "facility"})
     java.util.Optional<B2BUnitTransaction> findByIdAndB2bUnitId(Long id, Long b2bUnitId);
 
+    @EntityGraph(attributePaths = {"b2bUnit", "facility"})
+    @Query("SELECT t FROM B2BUnitTransaction t " +
+            "LEFT JOIN t.b2bUnit b " +
+            "LEFT JOIN t.facility f " +
+            "WHERE t.transactionType IN :collectionTypes " +
+            "AND t.transactionDate BETWEEN :startDate AND :endDate " +
+            "AND (:b2bUnitId IS NULL OR b.id = :b2bUnitId) " +
+            "AND (" +
+            ":search IS NULL OR :search = '' OR " +
+            "LOWER(COALESCE(t.description, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(COALESCE(b.name, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(COALESCE(f.name, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "(:searchCollectionType IS NOT NULL AND t.transactionType = :searchCollectionType)" +
+            ")")
+    Page<B2BUnitTransaction> searchCollectionReceipts(
+            @Param("collectionTypes") java.util.Set<B2BUnitTransaction.TransactionType> collectionTypes,
+            @Param("startDate") java.time.LocalDate startDate,
+            @Param("endDate") java.time.LocalDate endDate,
+            @Param("search") String search,
+            @Param("searchCollectionType") B2BUnitTransaction.TransactionType searchCollectionType,
+            @Param("b2bUnitId") Long b2bUnitId,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = {"b2bUnit", "facility"})
+    @Query("SELECT t FROM B2BUnitTransaction t WHERE t.id = :id")
+    java.util.Optional<B2BUnitTransaction> findWithDetailsById(@Param("id") Long id);
+
     java.util.List<B2BUnitTransaction> findByB2bUnitIdAndTransactionDateBetweenOrderByTransactionDateAscIdAsc(Long b2bUnitId,
                                                                                                                java.time.LocalDate startDate,
                                                                                                                java.time.LocalDate endDate);

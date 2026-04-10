@@ -24,4 +24,9 @@ public class CurrencyController {
     public ResponseEntity<ApiResponse<List<CurrencyOptionDto>>> getCurrencies() {
         return ResponseEntity.ok(ApiResponse.success(currencyService.getCurrencies()));
     }
+
+    @GetMapping("/lookup")
+    public ResponseEntity<ApiResponse<List<CurrencyOptionDto>>> getCurrencyLookup() {
+        return ResponseEntity.ok(ApiResponse.success(currencyService.getCurrencies()));
+    }
 }

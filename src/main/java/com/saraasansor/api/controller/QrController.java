@@ -258,9 +258,9 @@ public class QrController {
             com.saraasansor.api.model.User currentUser = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
-            // Only admin roles allowed
-            if (currentUser.getRole() != com.saraasansor.api.model.User.Role.SYSTEM_ADMIN &&
-                currentUser.getRole() != com.saraasansor.api.model.User.Role.STAFF_ADMIN) {
+            // Only canonical admin roles allowed (legacy values are normalized via toCanonical())
+            com.saraasansor.api.model.User.Role canonicalRole = currentUser.getCanonicalRole();
+            if (canonicalRole == null || (!canonicalRole.isPlatformAdmin() && !canonicalRole.isTenantAdmin())) {
                 return ResponseEntity.status(403)
                     .body(ApiResponse.error("Remote start is only allowed for admin roles"));
             }
@@ -288,7 +288,7 @@ public class QrController {
             com.saraasansor.api.service.QrSessionService.QrSessionTokenResponse tokenResponse = 
                 qrSessionService.createSessionToken(
                     currentUser.getId(),
-                    currentUser.getRole(),
+                    canonicalRole,
                     elevatorId,
                     true, // Remote start
                     ipAddress

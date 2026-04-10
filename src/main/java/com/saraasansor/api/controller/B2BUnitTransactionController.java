@@ -1,6 +1,7 @@
 package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
+import com.saraasansor.api.dto.CollectionReceiptPageResponse;
 import com.saraasansor.api.dto.B2BUnitTransactionPageResponse;
 import com.saraasansor.api.dto.B2BUnitTransactionResponse;
 import com.saraasansor.api.dto.ManualCreditCreateRequest;
@@ -10,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,6 +43,24 @@ public class B2BUnitTransactionController {
 
         B2BUnitTransactionPageResponse response = transactionService.getTransactions(
                 id,
+                startDate,
+                endDate,
+                search,
+                PageRequest.of(page, size)
+        );
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/transactions")
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER','CARI_USER')")
+    public ResponseEntity<ApiResponse<CollectionReceiptPageResponse>> getCollectionReceiptsCompatibility(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+
+        CollectionReceiptPageResponse response = transactionService.getCollectionReceipts(
                 startDate,
                 endDate,
                 search,

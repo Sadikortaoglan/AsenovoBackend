@@ -12,10 +12,15 @@ public class QrCodeResponseDTO {
     private String buildingName;
     private Long facilityId;
     private String facilityName;
+    private Long b2bUnitId;
+    private String b2bUnitName;
     private String customerName;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private boolean hasQr;
     private String qrPngBase64;
+    private String qrImageUrl;
+    private String qrPrintUrl;
 
     public Long getId() {
         return id;
@@ -81,12 +86,36 @@ public class QrCodeResponseDTO {
         this.customerName = customerName;
     }
 
+    public Long getB2bUnitId() {
+        return b2bUnitId;
+    }
+
+    public void setB2bUnitId(Long b2bUnitId) {
+        this.b2bUnitId = b2bUnitId;
+    }
+
+    public String getB2bUnitName() {
+        return b2bUnitName;
+    }
+
+    public void setB2bUnitName(String b2bUnitName) {
+        this.b2bUnitName = b2bUnitName;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public boolean isHasQr() {
@@ -103,5 +132,21 @@ public class QrCodeResponseDTO {
 
     public void setQrPngBase64(String qrPngBase64) {
         this.qrPngBase64 = qrPngBase64;
+    }
+
+    public String getQrImageUrl() {
+        return qrImageUrl;
+    }
+
+    public void setQrImageUrl(String qrImageUrl) {
+        this.qrImageUrl = qrImageUrl;
+    }
+
+    public String getQrPrintUrl() {
+        return qrPrintUrl;
+    }
+
+    public void setQrPrintUrl(String qrPrintUrl) {
+        this.qrPrintUrl = qrPrintUrl;
     }
 }

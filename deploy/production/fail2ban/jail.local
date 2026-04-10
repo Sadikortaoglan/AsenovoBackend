@@ -1,0 +1,25 @@
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+backend = systemd
+
+[sshd]
+enabled = true
+port = ssh
+logpath = %(sshd_log)s
+maxretry = 5
+
+[nginx-http-auth]
+enabled = true
+port = http,https
+logpath = /var/lib/docker/volumes/asenovo_nginx_logs/_data/error.log
+
+[asenovo-nginx-4xx]
+enabled = true
+port = http,https
+filter = asenovo-nginx-4xx
+logpath = /var/lib/docker/volumes/asenovo_nginx_logs/_data/access.log
+maxretry = 80
+findtime = 10m
+bantime = 30m

@@ -2,8 +2,12 @@ package com.saraasansor.api.tenant.service.impl;
 
 import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.exception.ValidationException;
+import com.saraasansor.api.security.AuthenticatedUserContext;
+import com.saraasansor.api.security.AuthenticatedUserContextService;
+import com.saraasansor.api.security.UserAuthorizationPolicyService;
 import com.saraasansor.api.service.FileStorageService;
 import com.saraasansor.api.tenant.TenantContext;
+import com.saraasansor.api.tenant.data.TenantDescriptor;
 import com.saraasansor.api.tenant.dto.TenantBrandingResponseDTO;
 import com.saraasansor.api.tenant.dto.TenantBrandingUpdateRequestDTO;
 import com.saraasansor.api.tenant.model.Tenant;
@@ -37,19 +41,25 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
     private final TenantRepository tenantRepository;
     private final BrandingValidator brandingValidator;
     private final FileStorageService fileStorageService;
+    private final AuthenticatedUserContextService authenticatedUserContextService;
+    private final UserAuthorizationPolicyService userAuthorizationPolicyService;
 
     public TenantBrandingServiceImpl(TenantRepository tenantRepository,
                                      BrandingValidator brandingValidator,
-                                     FileStorageService fileStorageService) {
+                                     FileStorageService fileStorageService,
+                                     AuthenticatedUserContextService authenticatedUserContextService,
+                                     UserAuthorizationPolicyService userAuthorizationPolicyService) {
         this.tenantRepository = tenantRepository;
         this.brandingValidator = brandingValidator;
         this.fileStorageService = fileStorageService;
+        this.authenticatedUserContextService = authenticatedUserContextService;
+        this.userAuthorizationPolicyService = userAuthorizationPolicyService;
     }
 
     @Override
     @Transactional(readOnly = true, noRollbackFor = RuntimeException.class)
     public TenantBrandingResponseDTO getCurrentTenantBranding() {
-        Tenant tenant = findTenant(resolveAuthenticatedTenantId());
+        Tenant tenant = findTenant();
         return toResponse(tenant);
     }
 
@@ -60,12 +70,28 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
             throw new ValidationException("Request body is required");
         }
 
-        Long tenantId = resolveAuthenticatedTenantId();
-        brandingValidator.validateColorsForUpdate(requestDTO.getPrimaryColor(), requestDTO.getSecondaryColor());
+        requireBrandingEditPermission();
+        String companyName = normalizeOptional(requestDTO.getCompanyName(), "companyName");
+        String primaryColor = normalizeOptional(requestDTO.getPrimaryColor(), "primaryColor");
+        String secondaryColor = normalizeOptional(requestDTO.getSecondaryColor(), "secondaryColor");
 
-        Tenant tenant = findTenant(tenantId);
-        tenant.setPrimaryColor(requestDTO.getPrimaryColor());
-        tenant.setSecondaryColor(requestDTO.getSecondaryColor());
+        if (companyName == null && primaryColor == null && secondaryColor == null) {
+            throw new ValidationException("At least one field must be provided for update");
+        }
+
+        brandingValidator.validateColorsForUpdate(primaryColor, secondaryColor);
+
+        Tenant tenant = findTenant();
+        if (companyName != null) {
+            tenant.setCompanyName(companyName);
+            tenant.setName(companyName);
+        }
+        if (primaryColor != null) {
+            tenant.setPrimaryColor(primaryColor);
+        }
+        if (secondaryColor != null) {
+            tenant.setSecondaryColor(secondaryColor);
+        }
         tenant.setBrandingUpdatedAt(LocalDateTime.now());
         tenant.setUpdatedAt(LocalDateTime.now());
 
@@ -75,10 +101,11 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
     @Override
     @Transactional
     public TenantBrandingResponseDTO updateLogo(MultipartFile file) {
+        requireBrandingEditPermission();
         Long tenantId = resolveAuthenticatedTenantId();
         validateLogoFile(file);
 
-        Tenant tenant = findTenant(tenantId);
+        Tenant tenant = findTenant();
 
         try {
             String fileName = UUID.randomUUID() + resolveExtension(file);
@@ -110,9 +137,29 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
         return tenantId;
     }
 
-    private Tenant findTenant(Long tenantId) {
-        return tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new NotFoundException("Tenant not found: " + tenantId));
+    private Tenant findTenant() {
+        TenantDescriptor currentTenant = TenantContext.getCurrentTenant();
+        if (currentTenant == null) {
+            throw new RuntimeException("Tenant context is missing");
+        }
+
+        if (currentTenant.getSubdomain() != null && !currentTenant.getSubdomain().isBlank()) {
+            return tenantRepository.findBySubdomain(currentTenant.getSubdomain())
+                    .orElseGet(() -> findTenantByIdOrFallback(currentTenant.getId()));
+        }
+
+        return findTenantByIdOrFallback(currentTenant.getId());
+    }
+
+    private Tenant findTenantByIdOrFallback(Long tenantId) {
+        if (tenantId != null) {
+            return tenantRepository.findById(tenantId)
+                    .orElseGet(() -> tenantRepository.findFirstByOrderByIdAsc()
+                            .orElseThrow(() -> new NotFoundException("Tenant not found: " + tenantId)));
+        }
+
+        return tenantRepository.findFirstByOrderByIdAsc()
+                .orElseThrow(() -> new NotFoundException("Tenant not found"));
     }
 
     private void validateLogoFile(MultipartFile file) {
@@ -141,10 +188,28 @@ public class TenantBrandingServiceImpl implements TenantBrandingService {
         return ".jpg";
     }
 
+    private String normalizeOptional(String value, String fieldName) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            throw new ValidationException(fieldName + " cannot be empty");
+        }
+        return normalized;
+    }
+
+    private void requireBrandingEditPermission() {
+        AuthenticatedUserContext actor = authenticatedUserContextService.requireContext();
+        userAuthorizationPolicyService.requireTenantScopedUserManager(actor);
+    }
+
     private TenantBrandingResponseDTO toResponse(Tenant tenant) {
         TenantBrandingResponseDTO response = new TenantBrandingResponseDTO();
+        String companyName = tenant.getCompanyName();
         response.setId(tenant.getId());
-        response.setName(tenant.getName());
+        response.setCompanyName(companyName);
+        response.setName(companyName);
         response.setLogoUrl(tenant.getLogoUrl());
         response.setPrimaryColor(tenant.getPrimaryColor());
         response.setSecondaryColor(tenant.getSecondaryColor());

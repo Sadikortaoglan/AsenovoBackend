@@ -19,8 +19,11 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
         String getBuildingName();
         Long getFacilityId();
         String getFacilityName();
+        Long getB2bUnitId();
+        String getB2bUnitName();
         String getCustomerName();
         java.time.LocalDateTime getCreatedAt();
+        java.time.LocalDateTime getUpdatedAt();
         String getQrValue();
     }
 
@@ -36,11 +39,15 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
                e.buildingName AS buildingName,
                f.id AS facilityId,
                COALESCE(f.name, e.buildingName) AS facilityName,
+               b.id AS b2bUnitId,
+               b.name AS b2bUnitName,
                e.managerName AS customerName,
                q.createdAt AS createdAt,
+               q.updatedAt AS updatedAt,
                q.qrValue AS qrValue
         FROM Elevator e
         LEFT JOIN e.facility f
+        LEFT JOIN f.b2bUnit b
         LEFT JOIN ElevatorQrCode q ON q.elevator = e AND q.companyId = :companyId
         WHERE (
               q.id IS NULL OR q.id = (
@@ -53,21 +60,34 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
               :search IS NULL OR :search = '' OR
               LOWER(e.buildingName) LIKE LOWER(CONCAT('%', :search, '%')) OR
               LOWER(e.elevatorNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR
-              LOWER(e.identityNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+              LOWER(e.identityNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR
+              LOWER(COALESCE(f.name, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR
+              LOWER(COALESCE(b.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
           )
+          AND (:onlyWithQr = false OR q.id IS NOT NULL)
         """,
         countQuery = """
         SELECT COUNT(e.id)
         FROM Elevator e
+        LEFT JOIN e.facility f
+        LEFT JOIN f.b2bUnit b
         WHERE (
               :search IS NULL OR :search = '' OR
               LOWER(e.buildingName) LIKE LOWER(CONCAT('%', :search, '%')) OR
               LOWER(e.elevatorNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR
-              LOWER(e.identityNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+              LOWER(e.identityNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR
+              LOWER(COALESCE(f.name, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR
+              LOWER(COALESCE(b.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
           )
+          AND (:onlyWithQr = false OR EXISTS (
+                SELECT 1
+                FROM ElevatorQrCode qx
+                WHERE qx.elevator = e AND qx.companyId = :companyId
+          ))
     """)
     Page<ElevatorQrListProjection> findAllBySearchAndCompanyId(@Param("search") String search,
                                                                 @Param("companyId") Long companyId,
+                                                                @Param("onlyWithQr") boolean onlyWithQr,
                                                                 Pageable pageable);
 
     java.util.Optional<ElevatorQrCode> findTopByElevatorIdAndCompanyIdOrderByCreatedAtDesc(Long elevatorId, Long companyId);

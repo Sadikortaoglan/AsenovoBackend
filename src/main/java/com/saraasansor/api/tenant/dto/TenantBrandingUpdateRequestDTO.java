@@ -2,8 +2,17 @@ package com.saraasansor.api.tenant.dto;
 
 public class TenantBrandingUpdateRequestDTO {
 
+    private String companyName;
     private String primaryColor;
     private String secondaryColor;
+
+    public String getCompanyName() {
+        return companyName;
+    }
+
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
 
     public String getPrimaryColor() {
         return primaryColor;

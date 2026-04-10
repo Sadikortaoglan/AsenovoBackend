@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/qr-codes", "/elevator-labels"})
+@RequestMapping({"/qr-codes", "/elevator-labels", "/elevator-qrcodes"})
 public class ElevatorQrCodeController {
 
     private final ElevatorQrCodeService qrCodeService;
@@ -48,13 +48,19 @@ public class ElevatorQrCodeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(required = false) Boolean onlyWithQr,
+            HttpServletRequest request,
             @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
         try {
             Long companyId = resolveAuthenticatedCompanyId();
             Sort sortOrder = parseSort(sort);
             Pageable pageable = PageRequest.of(page, size, sortOrder);
-            Page<QrCodeResponseDTO> qrCodes = qrCodeService.list(pageable, search, companyId);
-            String etag = buildEtag(qrCodes, search, page, size, sort, companyId);
+            boolean endpointForElevatorQrcodes = request != null
+                    && request.getRequestURI() != null
+                    && request.getRequestURI().contains("/elevator-qrcodes");
+            boolean effectiveOnlyWithQr = onlyWithQr != null ? onlyWithQr : endpointForElevatorQrcodes;
+            Page<QrCodeResponseDTO> qrCodes = qrCodeService.list(pageable, search, companyId, effectiveOnlyWithQr);
+            String etag = buildEtag(qrCodes, search, page, size, sort, companyId, effectiveOnlyWithQr);
 
             if (etag.equals(ifNoneMatch)) {
                 return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
@@ -368,13 +374,14 @@ public class ElevatorQrCodeController {
         return 1L;
     }
 
-    private String buildEtag(Page<QrCodeResponseDTO> qrCodes, String search, int page, int size, String sort, Long companyId) {
+    private String buildEtag(Page<QrCodeResponseDTO> qrCodes, String search, int page, int size, String sort, Long companyId, boolean onlyWithQr) {
         StringBuilder builder = new StringBuilder();
         builder.append("company=").append(companyId)
                 .append("|search=").append(search == null ? "" : search)
                 .append("|page=").append(page)
                 .append("|size=").append(size)
                 .append("|sort=").append(sort)
+                .append("|onlyWithQr=").append(onlyWithQr)
                 .append("|total=").append(qrCodes.getTotalElements());
 
         qrCodes.getContent().forEach(item -> builder.append("|")
