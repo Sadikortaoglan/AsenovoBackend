@@ -1,71 +1,79 @@
 package com.saraasansor.api.controller;
 
 import com.saraasansor.api.dto.ApiResponse;
-import com.saraasansor.api.model.Part;
+import com.saraasansor.api.dto.LookupDto;
+import com.saraasansor.api.dto.PartCreateRequest;
+import com.saraasansor.api.dto.PartPageResponse;
+import com.saraasansor.api.dto.PartResponse;
+import com.saraasansor.api.dto.PartUpdateRequest;
 import com.saraasansor.api.service.PartService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/parts")
 public class PartController {
-    
-    @Autowired
-    private PartService partService;
-    
+
+    private final PartService partService;
+
+    public PartController(PartService partService) {
+        this.partService = partService;
+    }
+
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Part>>> getAllParts() {
-        List<Part> parts = partService.getAllParts();
-        return ResponseEntity.ok(ApiResponse.success(parts));
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<PartPageResponse>> getParts(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "true") Boolean active,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                partService.getParts(query, active, PageRequest.of(page, size))
+        ));
     }
-    
+
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Part>> getPartById(@PathVariable Long id) {
-        try {
-            Part part = partService.getPartById(id);
-            return ResponseEntity.ok(ApiResponse.success(part));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<PartResponse>> getPartById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(partService.getPartById(id)));
     }
-    
+
     @PostMapping
-    public ResponseEntity<ApiResponse<Part>> createPart(@Valid @RequestBody Part part) {
-        try {
-            Part created = partService.createPart(part);
-            return ResponseEntity.ok(ApiResponse.success("Part successfully added", created));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<PartResponse>> createPart(@Valid @RequestBody PartCreateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Part created successfully", partService.createPart(request)));
     }
-    
+
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Part>> updatePart(
-            @PathVariable Long id, @Valid @RequestBody Part part) {
-        try {
-            Part updated = partService.updatePart(id, part);
-            return ResponseEntity.ok(ApiResponse.success("Part successfully updated", updated));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<PartResponse>> updatePart(@PathVariable Long id,
+                                                                @Valid @RequestBody PartUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Part updated successfully", partService.updatePart(id, request)));
     }
-    
+
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
     public ResponseEntity<ApiResponse<Void>> deletePart(@PathVariable Long id) {
-        try {
-            partService.deletePart(id);
-            return ResponseEntity.ok(ApiResponse.success("Part successfully deleted", null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
+        partService.deletePart(id);
+        return ResponseEntity.ok(ApiResponse.success("Part deactivated successfully", null));
+    }
+
+    @GetMapping("/lookup")
+    @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
+    public ResponseEntity<ApiResponse<List<LookupDto>>> getLookup(@RequestParam(required = false) String query) {
+        return ResponseEntity.ok(ApiResponse.success(partService.getLookup(query)));
     }
 }
-

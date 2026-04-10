@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StockGroupRepository extends JpaRepository<StockGroup, Long> {
 
+    java.util.Optional<StockGroup> findByIdAndActiveTrue(Long id);
+
     boolean existsByNameIgnoreCaseAndActiveTrue(String name);
 
     boolean existsByNameIgnoreCaseAndIdNotAndActiveTrue(String name, Long id);
