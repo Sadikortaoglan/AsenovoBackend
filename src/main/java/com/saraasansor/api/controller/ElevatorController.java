@@ -7,6 +7,8 @@ import com.saraasansor.api.dto.ElevatorStatusDto;
 import com.saraasansor.api.dto.LookupDto;
 import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.service.ElevatorService;
+import com.saraasansor.api.tenant.TenantContext;
+import com.saraasansor.api.tenant.data.TenantDescriptor;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,6 +144,14 @@ public class ElevatorController {
     public ResponseEntity<?> getElevatorQr(@PathVariable Long id) {
         logger.debug("Generating QR image for elevator ID: {}", id);
         try {
+            TenantDescriptor tenant = TenantContext.getCurrentTenant();
+            if (tenant == null || tenant.getId() == null) {
+                logger.warn("QR image request rejected due to missing tenant context. elevatorId={}", id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .header("Content-Type", "application/json")
+                        .body(ApiResponse.error("Tenant context is required"));
+            }
+
             if (elevatorQrService == null) {
                 logger.error("elevatorQrService is NULL");
                 return ResponseEntity.status(500)

@@ -162,6 +162,16 @@ class ElevatorQrCodeServiceImplTest {
             }
 
             @Override
+            public Long getB2bUnitId() {
+                return 1001L;
+            }
+
+            @Override
+            public String getB2bUnitName() {
+                return "Cari A";
+            }
+
+            @Override
             public String getCustomerName() {
                 return "Customer A";
             }
@@ -172,12 +182,17 @@ class ElevatorQrCodeServiceImplTest {
             }
 
             @Override
+            public LocalDateTime getUpdatedAt() {
+                return LocalDateTime.of(2026, 3, 24, 12, 30);
+            }
+
+            @Override
             public String getQrValue() {
                 return "QR-700";
             }
         };
 
-        when(qrCodeRepository.findAllBySearchAndCompanyId(eq("E-10"), eq(5L), any(PageRequest.class)))
+        when(qrCodeRepository.findAllBySearchAndCompanyId(eq("E-10"), eq(5L), eq(false), any(PageRequest.class)))
                 .thenReturn(new PageImpl<>(List.of(projection)));
         when(elevatorQrService.generateQrUrl(10L)).thenReturn("https://qr/e/10");
 
@@ -189,6 +204,10 @@ class ElevatorQrCodeServiceImplTest {
         assertThat(item.getElevatorName()).isEqualTo("E-10");
         assertThat(item.getFacilityId()).isEqualTo(101L);
         assertThat(item.getFacilityName()).isEqualTo("Facility A");
+        assertThat(item.getB2bUnitId()).isEqualTo(1001L);
+        assertThat(item.getB2bUnitName()).isEqualTo("Cari A");
+        assertThat(item.getQrImageUrl()).isEqualTo("/api/elevators/10/qr");
+        assertThat(item.getQrPrintUrl()).isEqualTo("/api/elevator-qrcodes/700/print");
     }
 
     @Test

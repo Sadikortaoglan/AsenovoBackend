@@ -133,6 +133,8 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Public tenant branding assets (tenant-scoped by controller checks)
                 .requestMatchers(HttpMethod.GET, "/files/**").permitAll()
+                // Public elevator QR image rendering for print/new-tab flows (tenant-scoped by controller checks)
+                .requestMatchers(HttpMethod.GET, "/elevators/*/qr").permitAll()
                 // Auth endpoints - permit all (no JWT required)
                 .requestMatchers("/auth/**", "/api/auth/**", "/login", "/refresh", "/register", "/logout", "/api/login", "/api/refresh", "/api/register", "/api/logout").permitAll()
                 // Marketing website public form endpoints

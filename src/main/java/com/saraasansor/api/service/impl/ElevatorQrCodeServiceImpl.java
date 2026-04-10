@@ -49,7 +49,13 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
     @Override
     @Transactional(readOnly = true)
     public Page<QrCodeResponseDTO> list(Pageable pageable, String search, Long companyId) {
-        return qrCodeRepository.findAllBySearchAndCompanyId(search, companyId, pageable).map(this::toDto);
+        return list(pageable, search, companyId, false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<QrCodeResponseDTO> list(Pageable pageable, String search, Long companyId, boolean onlyWithQr) {
+        return qrCodeRepository.findAllBySearchAndCompanyId(search, companyId, onlyWithQr, pageable).map(this::toDto);
     }
 
     @Override
@@ -155,9 +161,18 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
         dto.setBuildingName(buildingName);
         dto.setFacilityId(elevator.getFacility() != null ? elevator.getFacility().getId() : null);
         dto.setFacilityName(facilityName);
+        dto.setB2bUnitId(elevator.getFacility() != null && elevator.getFacility().getB2bUnit() != null
+                ? elevator.getFacility().getB2bUnit().getId()
+                : null);
+        dto.setB2bUnitName(elevator.getFacility() != null && elevator.getFacility().getB2bUnit() != null
+                ? nullSafe(elevator.getFacility().getB2bUnit().getName())
+                : "");
         dto.setCustomerName(customerName);
         dto.setCreatedAt(entity.getCreatedAt());
+        dto.setUpdatedAt(entity.getUpdatedAt());
         dto.setHasQr(true);
+        dto.setQrImageUrl("/api/elevators/" + elevator.getId() + "/qr");
+        dto.setQrPrintUrl("/api/elevator-qrcodes/" + entity.getId() + "/print");
         String qrPayload = buildPublicQrPayload(elevator.getId());
         dto.setQrPngBase64(Base64.getEncoder().encodeToString(generateQrImageFromValue(qrPayload, 120)));
         return dto;
@@ -178,14 +193,21 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
         dto.setBuildingName(buildingName);
         dto.setFacilityId(projection.getFacilityId());
         dto.setFacilityName(facilityName);
+        dto.setB2bUnitId(projection.getB2bUnitId());
+        dto.setB2bUnitName(nullSafe(projection.getB2bUnitName()));
         dto.setCustomerName(nullSafe(projection.getCustomerName()));
         dto.setCreatedAt(projection.getCreatedAt());
+        dto.setUpdatedAt(projection.getUpdatedAt());
         boolean hasQr = projection.getQrId() != null && projection.getQrValue() != null;
         dto.setHasQr(hasQr);
         if (hasQr) {
             String qrPayload = buildPublicQrPayload(projection.getElevatorId());
+            dto.setQrImageUrl("/api/elevators/" + projection.getElevatorId() + "/qr");
+            dto.setQrPrintUrl("/api/elevator-qrcodes/" + projection.getQrId() + "/print");
             dto.setQrPngBase64(Base64.getEncoder().encodeToString(generateQrImageFromValue(qrPayload, 120)));
         } else {
+            dto.setQrImageUrl(null);
+            dto.setQrPrintUrl(null);
             dto.setQrPngBase64(null);
         }
         return dto;

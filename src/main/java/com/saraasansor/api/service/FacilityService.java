@@ -236,7 +236,7 @@ public class FacilityService {
                     .toList();
         }
 
-        if (isSystemAdmin(currentUser)) {
+        if (isSystemAdmin(currentUser) || isTenantAdmin(currentUser)) {
             return facilityRepository.search(
                             normalizeNullable(query),
                             null,
@@ -1152,6 +1152,12 @@ public class FacilityService {
         return currentUser != null
                 && currentUser.getCanonicalRole() != null
                 && currentUser.getCanonicalRole().isPlatformAdmin();
+    }
+
+    private boolean isTenantAdmin(User currentUser) {
+        return currentUser != null
+                && currentUser.getCanonicalRole() != null
+                && currentUser.getCanonicalRole().isTenantAdmin();
     }
 
     private Long getCariB2bUnitId(User currentUser) {
