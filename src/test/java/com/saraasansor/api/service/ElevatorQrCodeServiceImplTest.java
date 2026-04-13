@@ -7,6 +7,7 @@ import com.saraasansor.api.exception.QrCodeNotFoundException;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.ElevatorQrCode;
 import com.saraasansor.api.model.Facility;
+import com.saraasansor.api.service.FileStorageService;
 import com.saraasansor.api.repository.ElevatorQrCodeRepository;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.service.impl.ElevatorQrCodeServiceImpl;
@@ -42,6 +43,9 @@ class ElevatorQrCodeServiceImplTest {
 
     @Mock
     private ElevatorQrService elevatorQrService;
+
+    @Mock
+    private FileStorageService fileStorageService;
 
     @InjectMocks
     private ElevatorQrCodeServiceImpl elevatorQrCodeService;
@@ -189,6 +193,46 @@ class ElevatorQrCodeServiceImplTest {
             @Override
             public String getQrValue() {
                 return "QR-700";
+            }
+
+            @Override
+            public com.saraasansor.api.model.LabelType getLabelType() {
+                return null;
+            }
+
+            @Override
+            public java.time.LocalDate getStartDate() {
+                return null;
+            }
+
+            @Override
+            public java.time.LocalDate getEndDate() {
+                return null;
+            }
+
+            @Override
+            public String getDescription() {
+                return null;
+            }
+
+            @Override
+            public String getAttachmentStorageKey() {
+                return null;
+            }
+
+            @Override
+            public String getAttachmentOriginalFileName() {
+                return null;
+            }
+
+            @Override
+            public String getAttachmentContentType() {
+                return null;
+            }
+
+            @Override
+            public Long getAttachmentSize() {
+                return null;
             }
         };
 

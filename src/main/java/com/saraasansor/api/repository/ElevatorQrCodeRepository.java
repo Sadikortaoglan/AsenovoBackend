@@ -25,6 +25,14 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
         java.time.LocalDateTime getCreatedAt();
         java.time.LocalDateTime getUpdatedAt();
         String getQrValue();
+        com.saraasansor.api.model.LabelType getLabelType();
+        java.time.LocalDate getStartDate();
+        java.time.LocalDate getEndDate();
+        String getDescription();
+        String getAttachmentStorageKey();
+        String getAttachmentOriginalFileName();
+        String getAttachmentContentType();
+        Long getAttachmentSize();
     }
 
     boolean existsByQrValue(String qrValue);
@@ -44,7 +52,15 @@ public interface ElevatorQrCodeRepository extends JpaRepository<ElevatorQrCode, 
                e.managerName AS customerName,
                q.createdAt AS createdAt,
                q.updatedAt AS updatedAt,
-               q.qrValue AS qrValue
+               q.qrValue AS qrValue,
+               q.labelType AS labelType,
+               q.startDate AS startDate,
+               q.endDate AS endDate,
+               q.description AS description,
+               q.attachmentStorageKey AS attachmentStorageKey,
+               q.attachmentOriginalFileName AS attachmentOriginalFileName,
+               q.attachmentContentType AS attachmentContentType,
+               q.attachmentSize AS attachmentSize
         FROM Elevator e
         LEFT JOIN e.facility f
         LEFT JOIN f.b2bUnit b

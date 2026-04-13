@@ -1,5 +1,8 @@
 package com.saraasansor.api.dto;
 
+import com.saraasansor.api.model.LabelType;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -17,6 +20,15 @@ public class QrCodeResponseDTO {
     private String customerName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LabelType labelType;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private String description;
+    private Boolean attachmentExists;
+    private String attachmentOriginalFileName;
+    private String attachmentContentType;
+    private Long attachmentSize;
+    private String attachmentUrl;
     private boolean hasQr;
     private String qrPngBase64;
     private String qrImageUrl;
@@ -116,6 +128,78 @@ public class QrCodeResponseDTO {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LabelType getLabelType() {
+        return labelType;
+    }
+
+    public void setLabelType(LabelType labelType) {
+        this.labelType = labelType;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Boolean getAttachmentExists() {
+        return attachmentExists;
+    }
+
+    public void setAttachmentExists(Boolean attachmentExists) {
+        this.attachmentExists = attachmentExists;
+    }
+
+    public String getAttachmentOriginalFileName() {
+        return attachmentOriginalFileName;
+    }
+
+    public void setAttachmentOriginalFileName(String attachmentOriginalFileName) {
+        this.attachmentOriginalFileName = attachmentOriginalFileName;
+    }
+
+    public String getAttachmentContentType() {
+        return attachmentContentType;
+    }
+
+    public void setAttachmentContentType(String attachmentContentType) {
+        this.attachmentContentType = attachmentContentType;
+    }
+
+    public Long getAttachmentSize() {
+        return attachmentSize;
+    }
+
+    public void setAttachmentSize(Long attachmentSize) {
+        this.attachmentSize = attachmentSize;
+    }
+
+    public String getAttachmentUrl() {
+        return attachmentUrl;
+    }
+
+    public void setAttachmentUrl(String attachmentUrl) {
+        this.attachmentUrl = attachmentUrl;
     }
 
     public boolean isHasQr() {
