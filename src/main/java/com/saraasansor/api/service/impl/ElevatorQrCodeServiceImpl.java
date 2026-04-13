@@ -11,20 +11,28 @@ import com.saraasansor.api.dto.ElevatorLabelCreateRequest;
 import com.saraasansor.api.dto.ElevatorLabelUpdateRequest;
 import com.saraasansor.api.dto.QrCodeResponseDTO;
 import com.saraasansor.api.exception.QrCodeNotFoundException;
+import com.saraasansor.api.exception.ValidationException;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.ElevatorQrCode;
+import com.saraasansor.api.model.LabelType;
 import com.saraasansor.api.repository.ElevatorQrCodeRepository;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.service.ElevatorQrService;
 import com.saraasansor.api.service.ElevatorQrCodeService;
+import com.saraasansor.api.service.FileStorageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,16 +42,21 @@ import java.util.UUID;
 @Transactional
 public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
 
+    private static final long MAX_ATTACHMENT_SIZE_BYTES = 10L * 1024L * 1024L;
+
     private final ElevatorQrCodeRepository qrCodeRepository;
     private final ElevatorRepository elevatorRepository;
     private final ElevatorQrService elevatorQrService;
+    private final FileStorageService fileStorageService;
 
     public ElevatorQrCodeServiceImpl(ElevatorQrCodeRepository qrCodeRepository,
                                      ElevatorRepository elevatorRepository,
-                                     ElevatorQrService elevatorQrService) {
+                                     ElevatorQrService elevatorQrService,
+                                     FileStorageService fileStorageService) {
         this.qrCodeRepository = qrCodeRepository;
         this.elevatorRepository = elevatorRepository;
         this.elevatorQrService = elevatorQrService;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -67,23 +80,48 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
 
     @Override
     public QrCodeResponseDTO create(ElevatorLabelCreateRequest request, Long companyId) {
-        Elevator elevator = resolveElevator(request != null ? request.getElevatorId() : null);
+        return create(request, null, companyId);
+    }
+
+    @Override
+    public QrCodeResponseDTO create(ElevatorLabelCreateRequest request, MultipartFile file, Long companyId) {
+        ElevatorLabelCreateRequest normalized = normalizeCreateRequest(request);
+        Elevator elevator = resolveElevator(normalized.getElevatorId());
+        LabelFields labelFields = resolveLabelFieldsForCreate(elevator, normalized);
 
         ElevatorQrCode qrCode = new ElevatorQrCode();
         qrCode.setUuid(UUID.randomUUID());
         qrCode.setElevator(elevator);
         qrCode.setQrValue(generateUniqueQrValue());
         qrCode.setCompanyId(companyId);
+        applyLabelFields(qrCode, labelFields, normalized.getDescription());
 
-        return toDto(qrCodeRepository.save(qrCode));
+        ElevatorQrCode saved = qrCodeRepository.save(qrCode);
+        if (file != null && !file.isEmpty()) {
+            saved = storeAttachment(saved, file);
+        }
+        return toDto(saved);
     }
 
     @Override
     public QrCodeResponseDTO update(Long id, ElevatorLabelUpdateRequest request, Long companyId) {
+        return update(id, request, null, companyId);
+    }
+
+    @Override
+    public QrCodeResponseDTO update(Long id, ElevatorLabelUpdateRequest request, MultipartFile file, Long companyId) {
         ElevatorQrCode qrCode = findByIdAndCompanyId(id, companyId);
-        Elevator elevator = resolveElevator(request != null ? request.getElevatorId() : null);
+        ElevatorLabelUpdateRequest normalized = normalizeUpdateRequest(request);
+        Elevator elevator = resolveElevator(normalized.getElevatorId());
+        LabelFields labelFields = resolveLabelFieldsForUpdate(qrCode, elevator, normalized);
         qrCode.setElevator(elevator);
-        return toDto(qrCodeRepository.save(qrCode));
+        applyLabelFields(qrCode, labelFields, normalized.getDescription());
+
+        ElevatorQrCode saved = qrCodeRepository.save(qrCode);
+        if (file != null && !file.isEmpty()) {
+            saved = storeAttachment(saved, file);
+        }
+        return toDto(saved);
     }
 
     @Override
@@ -104,6 +142,27 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
         ElevatorQrCode qrCode = findByIdAndCompanyId(id, companyId);
         String qrPayload = buildPublicQrPayload(qrCode.getElevator().getId());
         return generateQrImageFromValue(qrPayload, 300);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LabelFileDownload getLabelFile(Long id, Long companyId) {
+        ElevatorQrCode qrCode = findByIdAndCompanyId(id, companyId);
+        if (!StringUtils.hasText(qrCode.getAttachmentStorageKey())) {
+            throw new QrCodeNotFoundException("Label file not found: " + id);
+        }
+
+        Path filePath = fileStorageService.resolveStoredPath(qrCode.getAttachmentStorageKey());
+        if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+            throw new QrCodeNotFoundException("Label file not found: " + id);
+        }
+
+        String fileName = StringUtils.hasText(qrCode.getAttachmentOriginalFileName())
+                ? qrCode.getAttachmentOriginalFileName()
+                : (filePath.getFileName() != null ? filePath.getFileName().toString() : ("elevator-label-" + id));
+
+        String contentType = resolveContentType(filePath, qrCode.getAttachmentContentType());
+        return new LabelFileDownload(filePath, fileName, contentType);
     }
 
     private byte[] generateQrImageFromValue(String qrValue, int size) {
@@ -139,7 +198,7 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
 
     private Elevator resolveElevator(Long elevatorId) {
         if (elevatorId == null) {
-            throw new RuntimeException("elevatorId is required");
+            throw new ValidationException("elevatorId is required");
         }
         return elevatorRepository.findById(elevatorId)
                 .orElseThrow(() -> new QrCodeNotFoundException("Elevator not found: " + elevatorId));
@@ -170,6 +229,18 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
         dto.setCustomerName(customerName);
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setLabelType(entity.getLabelType());
+        dto.setStartDate(entity.getStartDate());
+        dto.setEndDate(entity.getEndDate());
+        dto.setDescription(entity.getDescription());
+        dto.setAttachmentOriginalFileName(entity.getAttachmentOriginalFileName());
+        dto.setAttachmentContentType(entity.getAttachmentContentType());
+        dto.setAttachmentSize(entity.getAttachmentSize());
+        boolean attachmentExists = StringUtils.hasText(entity.getAttachmentStorageKey());
+        dto.setAttachmentExists(attachmentExists);
+        dto.setAttachmentUrl(attachmentExists
+                ? fileStorageService.getFileUrl(entity.getAttachmentStorageKey())
+                : null);
         dto.setHasQr(true);
         dto.setQrImageUrl("/api/elevators/" + elevator.getId() + "/qr");
         dto.setQrPrintUrl("/api/elevator-qrcodes/" + entity.getId() + "/print");
@@ -198,6 +269,18 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
         dto.setCustomerName(nullSafe(projection.getCustomerName()));
         dto.setCreatedAt(projection.getCreatedAt());
         dto.setUpdatedAt(projection.getUpdatedAt());
+        dto.setLabelType(projection.getLabelType());
+        dto.setStartDate(projection.getStartDate());
+        dto.setEndDate(projection.getEndDate());
+        dto.setDescription(projection.getDescription());
+        dto.setAttachmentOriginalFileName(projection.getAttachmentOriginalFileName());
+        dto.setAttachmentContentType(projection.getAttachmentContentType());
+        dto.setAttachmentSize(projection.getAttachmentSize());
+        boolean attachmentExists = StringUtils.hasText(projection.getAttachmentStorageKey());
+        dto.setAttachmentExists(attachmentExists);
+        dto.setAttachmentUrl(attachmentExists
+                ? fileStorageService.getFileUrl(projection.getAttachmentStorageKey())
+                : null);
         boolean hasQr = projection.getQrId() != null && projection.getQrValue() != null;
         dto.setHasQr(hasQr);
         if (hasQr) {
@@ -229,5 +312,123 @@ public class ElevatorQrCodeServiceImpl implements ElevatorQrCodeService {
 
     private String nullSafe(String value) {
         return value == null ? "" : value;
+    }
+
+    private ElevatorLabelCreateRequest normalizeCreateRequest(ElevatorLabelCreateRequest request) {
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.getElevatorId() == null) {
+            throw new ValidationException("elevatorId is required");
+        }
+        request.setDescription(trimToNull(request.getDescription()));
+        return request;
+    }
+
+    private ElevatorLabelUpdateRequest normalizeUpdateRequest(ElevatorLabelUpdateRequest request) {
+        if (request == null) {
+            throw new ValidationException("Request body is required");
+        }
+        if (request.getElevatorId() == null) {
+            throw new ValidationException("elevatorId is required");
+        }
+        request.setDescription(trimToNull(request.getDescription()));
+        return request;
+    }
+
+    private LabelFields resolveLabelFieldsForCreate(Elevator elevator, ElevatorLabelCreateRequest request) {
+        LabelFields fields = new LabelFields();
+        fields.labelType = request.getLabelType() != null ? request.getLabelType() : elevator.getLabelType();
+        fields.startDate = request.getStartDate() != null ? request.getStartDate() : elevator.getLabelDate();
+        fields.endDate = request.getEndDate() != null ? request.getEndDate() : elevator.getExpiryDate();
+        validateLabelFields(fields);
+        return fields;
+    }
+
+    private LabelFields resolveLabelFieldsForUpdate(ElevatorQrCode entity, Elevator elevator, ElevatorLabelUpdateRequest request) {
+        LabelFields fields = new LabelFields();
+        fields.labelType = request.getLabelType() != null
+                ? request.getLabelType()
+                : (entity.getLabelType() != null ? entity.getLabelType() : elevator.getLabelType());
+        fields.startDate = request.getStartDate() != null
+                ? request.getStartDate()
+                : (entity.getStartDate() != null ? entity.getStartDate() : elevator.getLabelDate());
+        fields.endDate = request.getEndDate() != null
+                ? request.getEndDate()
+                : (entity.getEndDate() != null ? entity.getEndDate() : elevator.getExpiryDate());
+        validateLabelFields(fields);
+        return fields;
+    }
+
+    private void validateLabelFields(LabelFields fields) {
+        if (fields.labelType == null) {
+            throw new ValidationException("labelType is required");
+        }
+        if (fields.startDate == null) {
+            throw new ValidationException("startDate is required");
+        }
+        if (fields.endDate == null) {
+            throw new ValidationException("endDate is required");
+        }
+        if (fields.endDate.isBefore(fields.startDate)) {
+            throw new ValidationException("endDate cannot be before startDate");
+        }
+    }
+
+    private void applyLabelFields(ElevatorQrCode qrCode, LabelFields fields, String description) {
+        qrCode.setLabelType(fields.labelType);
+        qrCode.setStartDate(fields.startDate);
+        qrCode.setEndDate(fields.endDate);
+        qrCode.setDescription(description);
+    }
+
+    private ElevatorQrCode storeAttachment(ElevatorQrCode qrCode, MultipartFile file) {
+        validateAttachment(file);
+        try {
+            String storageKey = fileStorageService.saveFile(file, "ELEVATOR_LABEL", qrCode.getId());
+            qrCode.setAttachmentStorageKey(storageKey);
+            qrCode.setAttachmentOriginalFileName(trimToNull(file.getOriginalFilename()));
+            qrCode.setAttachmentContentType(trimToNull(file.getContentType()));
+            qrCode.setAttachmentSize(file.getSize());
+            return qrCodeRepository.save(qrCode);
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to save label file: " + ex.getMessage(), ex);
+        }
+    }
+
+    private void validateAttachment(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new ValidationException("file is required");
+        }
+        if (file.getSize() > MAX_ATTACHMENT_SIZE_BYTES) {
+            throw new ValidationException("file size must be less than or equal to 10MB");
+        }
+    }
+
+    private String resolveContentType(Path filePath, String storedContentType) {
+        if (StringUtils.hasText(storedContentType)) {
+            return storedContentType;
+        }
+        try {
+            String detected = Files.probeContentType(filePath);
+            if (StringUtils.hasText(detected)) {
+                return detected;
+            }
+        } catch (Exception ignored) {
+        }
+        return "application/octet-stream";
+    }
+
+    private String trimToNull(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static final class LabelFields {
+        private LabelType labelType;
+        private LocalDate startDate;
+        private LocalDate endDate;
     }
 }
