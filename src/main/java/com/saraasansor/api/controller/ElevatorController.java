@@ -53,7 +53,7 @@ public class ElevatorController {
         return ResponseEntity.ok(ApiResponse.success(elevatorService.getLookup(facilityId, query)));
     }
 
-    @PostMapping(value = "/import-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = {"/import-excel", "/import"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
     public ResponseEntity<ApiResponse<ElevatorImportResultResponse>> importExcel(
             @RequestParam("file") MultipartFile file) {
@@ -61,7 +61,7 @@ public class ElevatorController {
         return ResponseEntity.ok(ApiResponse.success("Elevator import completed", result));
     }
 
-    @GetMapping("/import-template")
+    @GetMapping({"/import-template", "/sample-excel"})
     @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','TENANT_ADMIN','STAFF_USER')")
     public ResponseEntity<byte[]> downloadImportTemplate() {
         byte[] content = elevatorService.generateImportTemplateExcel();

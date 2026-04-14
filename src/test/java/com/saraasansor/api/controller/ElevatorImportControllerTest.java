@@ -39,6 +39,11 @@ class ElevatorImportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"elevator-import-template.xlsx\""))
                 .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+
+        mockMvc.perform(get("/elevators/sample-excel"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"elevator-import-template.xlsx\""))
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
     }
 
     @Test
@@ -78,6 +83,15 @@ class ElevatorImportControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.totalRows").value(1))
                 .andExpect(jsonPath("$.data.successCount").value(1))
+                .andExpect(jsonPath("$.data.failedCount").value(0))
+                .andExpect(jsonPath("$.data.items[0].status").value("SUCCESS"));
+
+        mockMvc.perform(multipart("/elevators/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalRows").value(1))
+                .andExpect(jsonPath("$.data.successCount").value(1))
+                .andExpect(jsonPath("$.data.failedCount").value(0))
                 .andExpect(jsonPath("$.data.items[0].status").value("SUCCESS"));
     }
 

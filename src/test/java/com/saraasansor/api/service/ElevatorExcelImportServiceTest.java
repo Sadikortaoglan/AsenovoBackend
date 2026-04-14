@@ -9,6 +9,9 @@ import com.saraasansor.api.repository.B2BUnitRepository;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.FacilityRepository;
 import com.saraasansor.api.repository.UserRepository;
+import com.saraasansor.api.tenant.TenantContext;
+import com.saraasansor.api.tenant.data.TenantDescriptor;
+import com.saraasansor.api.tenant.model.Tenant;
 import com.saraasansor.api.util.AuditLogger;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.AfterEach;
@@ -18,8 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -35,8 +36,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,27 +43,30 @@ import static org.mockito.Mockito.when;
 class ElevatorExcelImportServiceTest {
 
     private static final String[] HEADERS = {
-            "ASANSÖR ADI",
-            "TESİS ADI",
-            "BÖLGE",
-            "ASANSÖR KİMLİK NUMARASI",
-            "ASANSÖR TÜRÜ/CİNSİ",
-            "KAPI TİPİ",
-            "TAHRİK TÜRÜ",
-            "MARKA",
-            "YAPIM YILI",
-            "DURAK SAYISI",
-            "KAPASİTE KİŞİ/KG",
-            "HIZ M/S",
-            "GARANTİ",
-            "GARANTİ BİTİŞ TARİHİ",
-            "AÇIKLAMA",
-            "BAKIM TÜRÜ",
-            "BAKIM PERSONELİ AD",
-            "BAKIM PERSONELİ SOYAD",
-            "ARIZA PERSONELİ AD",
-            "ARIZA PERSONELİ SOYAD",
-            "ADRES"
+            "facilityId",
+            "identityNumber",
+            "elevatorNumber",
+            "address",
+            "floorCount",
+            "capacity",
+            "speed",
+            "technicalNotes",
+            "driveType",
+            "machineBrand",
+            "doorType",
+            "installationYear",
+            "serialNumber",
+            "controlSystem",
+            "rope",
+            "modernization",
+            "inspectionDate",
+            "labelDate",
+            "labelType",
+            "expiryDate",
+            "managerName",
+            "managerTcIdentityNo",
+            "managerPhone",
+            "managerEmail"
     };
 
     @Mock
@@ -98,18 +100,31 @@ class ElevatorExcelImportServiceTest {
         staff.setUsername("staff-admin");
         staff.setRole(User.Role.STAFF_ADMIN);
         when(userRepository.findByUsername("staff-admin")).thenReturn(Optional.of(staff));
+
+        TenantContext.setCurrentTenant(new TenantDescriptor(
+                1L,
+                "Test Tenant",
+                "test",
+                Tenant.TenancyMode.SHARED_SCHEMA,
+                "tenant_test",
+                null,
+                null,
+                null,
+                null,
+                "test",
+                "STANDARD"
+        ));
     }
 
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        TenantContext.clear();
     }
 
     @Test
     void importShouldSucceedForValidRow() throws Exception {
         Facility facility = facility(11L, "Facility A", 5L);
-        when(facilityRepository.search(eq("Facility A"), isNull(), isNull(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(facility)));
         when(facilityRepository.findByIdAndActiveTrue(11L)).thenReturn(Optional.of(facility));
         when(elevatorRepository.existsByIdentityNumber("ID-001")).thenReturn(false);
         when(elevatorRepository.save(any(Elevator.class))).thenAnswer(invocation -> {
@@ -119,10 +134,7 @@ class ElevatorExcelImportServiceTest {
         });
 
         List<String[]> rowList = new ArrayList<>();
-        String[] rowValues = new String[]{"Asansör A", "Facility A", "Merkez", "ID-001", "İnsan", "Otomatik", "Elektrikli",
-                "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
-        rowList.add(rowValues);
+        rowList.add(validRow("11", "ID-001", "Asansor A"));
         MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
@@ -141,14 +153,8 @@ class ElevatorExcelImportServiceTest {
 
     @Test
     void importShouldFailRowWhenFacilityNotFound() throws Exception {
-        when(facilityRepository.search(eq("Missing Facility"), isNull(), isNull(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
-
         List<String[]> rowList = new ArrayList<>();
-        String[] rowValues = new String[]{"Asansör A", "Missing Facility", "Merkez", "ID-002", "İnsan", "Otomatik", "Elektrikli",
-                "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
-        rowList.add(rowValues);
+        rowList.add(validRow("999", "ID-002", "Asansor A"));
         MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
@@ -157,17 +163,14 @@ class ElevatorExcelImportServiceTest {
         assertThat(result.getSuccessCount()).isEqualTo(0);
         assertThat(result.getFailureCount()).isEqualTo(1);
         assertThat(result.getItems().get(0).getStatus()).isEqualTo("FAILED");
-        assertThat(result.getItems().get(0).getMessage()).contains("Facility not found");
+        assertThat(result.getItems().get(0).getMessage()).contains("facilityId");
     }
 
     @Test
     void importShouldFailRowWhenRequiredDataMissing() throws Exception {
 
         List<String[]> rowList = new ArrayList<>();
-        String[] rowValues = new String[]{"", "Facility A", "Merkez", "ID-003", "İnsan", "Otomatik", "Elektrikli",
-                "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
-        rowList.add(rowValues);
+        rowList.add(validRow("11", "", "Asansor A"));
         MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
@@ -175,27 +178,19 @@ class ElevatorExcelImportServiceTest {
         assertThat(result.getTotalRows()).isEqualTo(1);
         assertThat(result.getSuccessCount()).isEqualTo(0);
         assertThat(result.getFailureCount()).isEqualTo(1);
-        assertThat(result.getItems().get(0).getMessage()).contains("ASANSÖR ADI is required");
+        assertThat(result.getItems().get(0).getMessage()).contains("identityNumber is required");
     }
 
     @Test
     void importShouldSupportPartialSuccess() throws Exception {
         Facility facility = facility(11L, "Facility A", 5L);
-        when(facilityRepository.search(eq("Facility A"), isNull(), isNull(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(facility)));
-        when(facilityRepository.search(eq("Missing Facility"), isNull(), isNull(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
         when(facilityRepository.findByIdAndActiveTrue(11L)).thenReturn(Optional.of(facility));
         when(elevatorRepository.existsByIdentityNumber(anyString())).thenReturn(false);
         when(elevatorRepository.save(any(Elevator.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         MockMultipartFile file = buildExcel(List.of(
-                new String[]{"Asansör A", "Facility A", "Merkez", "ID-004", "İnsan", "Otomatik", "Elektrikli",
-                        "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                        "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"},
-                new String[]{"Asansör B", "Missing Facility", "Merkez", "ID-005", "İnsan", "Otomatik", "Elektrikli",
-                        "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                        "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres B"}
+                validRow("11", "ID-004", "Asansor A"),
+                validRow("999", "ID-005", "Asansor B")
         ));
 
         ElevatorImportResultResponse result = elevatorService.importFromExcel(file);
@@ -212,14 +207,10 @@ class ElevatorExcelImportServiceTest {
         when(b2bUnitRepository.findByIdAndActiveTrue(5L)).thenReturn(Optional.of(selectedB2B));
 
         Facility foreignFacility = facility(99L, "Facility X", 9L);
-        when(facilityRepository.search(eq("Facility X"), eq(5L), isNull(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(foreignFacility)));
+        when(facilityRepository.findByIdAndActiveTrue(99L)).thenReturn(Optional.of(foreignFacility));
 
         List<String[]> rowList = new ArrayList<>();
-        String[] rowValues = new String[]{"Asansör A", "Facility X", "Merkez", "ID-006", "İnsan", "Otomatik", "Elektrikli",
-                "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
-        rowList.add(rowValues);
+        rowList.add(validRow("99", "ID-006", "Asansor A"));
         MockMultipartFile file = buildExcel(rowList);
 
         ElevatorImportResultResponse result = elevatorService.importFromExcelForB2BUnit(5L, file);
@@ -243,10 +234,7 @@ class ElevatorExcelImportServiceTest {
         when(userRepository.findByUsername("cari-user")).thenReturn(Optional.of(cari));
 
         List<String[]> rowList = new ArrayList<>();
-        String[] rowValues = new String[]{"Asansör A", "Facility A", "Merkez", "ID-007", "İnsan", "Otomatik", "Elektrikli",
-                "MarkaX", "2020", "10", "8", "1.6", "Var", "2028-01-01",
-                "Açıklama", "Aylık", "Ali", "Yılmaz", "Mehmet", "Kaya", "Adres A"};
-        rowList.add(rowValues);
+        rowList.add(validRow("11", "ID-007", "Asansor A"));
         MockMultipartFile file = buildExcel(rowList);
 
         assertThatThrownBy(() -> elevatorService.importFromExcel(file))
@@ -291,6 +279,35 @@ class ElevatorExcelImportServiceTest {
                     outputStream.toByteArray()
             );
         }
+    }
+
+    private String[] validRow(String facilityId, String identityNumber, String elevatorNumber) {
+        return new String[]{
+                facilityId,               // facilityId
+                identityNumber,           // identityNumber
+                elevatorNumber,           // elevatorNumber
+                "Adres A",                // address
+                "10",                     // floorCount
+                "8",                      // capacity
+                "1.6",                    // speed
+                "Not",                    // technicalNotes
+                "TRACTION",               // driveType
+                "MarkaX",                 // machineBrand
+                "AUTOMATIC",              // doorType
+                "2020",                   // installationYear
+                "SN-001",                 // serialNumber
+                "VVVF",                   // controlSystem
+                "12mm",                   // rope
+                "Yok",                    // modernization
+                "2026-01-15",             // inspectionDate
+                "2026-01-15",             // labelDate
+                "GREEN",                  // labelType
+                "2027-01-15",             // expiryDate
+                "Ali Yilmaz",             // managerName
+                "12345678901",            // managerTcIdentityNo
+                "05551234567",            // managerPhone
+                "ali@example.com"         // managerEmail
+        };
     }
 
     private void authenticateAs(String username) {

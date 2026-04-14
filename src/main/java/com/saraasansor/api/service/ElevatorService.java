@@ -76,51 +76,68 @@ import java.util.stream.Collectors;
 @Transactional
 public class ElevatorService {
 
-    private static final String HEADER_ELEVATOR_NAME = "ASANSÖR ADI";
-    private static final String HEADER_FACILITY_NAME = "TESİS ADI";
-    private static final String HEADER_REGION = "BÖLGE";
-    private static final String HEADER_IDENTITY_NUMBER = "ASANSÖR KİMLİK NUMARASI";
-    private static final String HEADER_ELEVATOR_TYPE = "ASANSÖR TÜRÜ/CİNSİ";
-    private static final String HEADER_DOOR_TYPE = "KAPI TİPİ";
-    private static final String HEADER_DRIVE_TYPE = "TAHRİK TÜRÜ";
-    private static final String HEADER_BRAND = "MARKA";
-    private static final String HEADER_CONSTRUCTION_YEAR = "YAPIM YILI";
-    private static final String HEADER_STOP_COUNT = "DURAK SAYISI";
-    private static final String HEADER_CAPACITY = "KAPASİTE KİŞİ/KG";
-    private static final String HEADER_SPEED = "HIZ M/S";
-    private static final String HEADER_WARRANTY = "GARANTİ";
-    private static final String HEADER_WARRANTY_END_DATE = "GARANTİ BİTİŞ TARİHİ";
-    private static final String HEADER_DESCRIPTION = "AÇIKLAMA";
-    private static final String HEADER_MAINTENANCE_TYPE = "BAKIM TÜRÜ";
-    private static final String HEADER_MAINTENANCE_STAFF_NAME = "BAKIM PERSONELİ AD";
-    private static final String HEADER_MAINTENANCE_STAFF_SURNAME = "BAKIM PERSONELİ SOYAD";
-    private static final String HEADER_FAILURE_STAFF_NAME = "ARIZA PERSONELİ AD";
-    private static final String HEADER_FAILURE_STAFF_SURNAME = "ARIZA PERSONELİ SOYAD";
-    private static final String HEADER_ADDRESS = "ADRES";
+    private static final String HEADER_FACILITY_ID = "facilityId";
+    private static final String HEADER_IDENTITY_NUMBER = "identityNumber";
+    private static final String HEADER_ELEVATOR_NUMBER = "elevatorNumber";
+    private static final String HEADER_ADDRESS = "address";
+    private static final String HEADER_FLOOR_COUNT = "floorCount";
+    private static final String HEADER_CAPACITY = "capacity";
+    private static final String HEADER_SPEED = "speed";
+    private static final String HEADER_TECHNICAL_NOTES = "technicalNotes";
+    private static final String HEADER_DRIVE_TYPE = "driveType";
+    private static final String HEADER_MACHINE_BRAND = "machineBrand";
+    private static final String HEADER_DOOR_TYPE = "doorType";
+    private static final String HEADER_INSTALLATION_YEAR = "installationYear";
+    private static final String HEADER_SERIAL_NUMBER = "serialNumber";
+    private static final String HEADER_CONTROL_SYSTEM = "controlSystem";
+    private static final String HEADER_ROPE = "rope";
+    private static final String HEADER_MODERNIZATION = "modernization";
+    private static final String HEADER_INSPECTION_DATE = "inspectionDate";
+    private static final String HEADER_LABEL_DATE = "labelDate";
+    private static final String HEADER_LABEL_TYPE = "labelType";
+    private static final String HEADER_EXPIRY_DATE = "expiryDate";
+    private static final String HEADER_MANAGER_NAME = "managerName";
+    private static final String HEADER_MANAGER_TC_IDENTITY_NO = "managerTcIdentityNo";
+    private static final String HEADER_MANAGER_PHONE = "managerPhone";
+    private static final String HEADER_MANAGER_EMAIL = "managerEmail";
+
+    private static final String TR_HEADER_FACILITY_ID = "Tesis/Bina ID";
+    private static final String TR_HEADER_IDENTITY_NUMBER = "Kimlik No";
+    private static final String TR_HEADER_ELEVATOR_NUMBER = "Asansör No";
+    private static final String TR_HEADER_ADDRESS = "Adres";
+    private static final String TR_HEADER_FLOOR_COUNT = "Kat Sayısı";
+    private static final String TR_HEADER_CAPACITY = "Kapasite";
+    private static final String TR_HEADER_SPEED = "Hız";
+    private static final String TR_HEADER_TECHNICAL_NOTES = "Teknik Notlar";
+    private static final String TR_HEADER_DRIVE_TYPE = "Sürüş Tipi";
+    private static final String TR_HEADER_MACHINE_BRAND = "Makine Markası";
+    private static final String TR_HEADER_DOOR_TYPE = "Kapı Tipi";
+    private static final String TR_HEADER_INSTALLATION_YEAR = "Kurulum Yılı";
+    private static final String TR_HEADER_SERIAL_NUMBER = "Seri No";
+    private static final String TR_HEADER_CONTROL_SYSTEM = "Kontrol Sistemi";
+    private static final String TR_HEADER_ROPE = "Halat";
+    private static final String TR_HEADER_MODERNIZATION = "Yenileştirme";
+    private static final String TR_HEADER_INSPECTION_DATE = "Muayene Tarihi";
+    private static final String TR_HEADER_LABEL_DATE = "Etiket Tarihi";
+    private static final String TR_HEADER_LABEL_TYPE = "Etiket Tipi";
+    private static final String TR_HEADER_EXPIRY_DATE = "Son Kullanma Tarihi";
+    private static final String TR_HEADER_MANAGER_NAME = "Yönetici Adı";
+    private static final String TR_HEADER_MANAGER_TC_IDENTITY_NO = "Yönetici Kimlik No";
+    private static final String TR_HEADER_MANAGER_PHONE = "Yönetici Telefon";
+    private static final String TR_HEADER_MANAGER_EMAIL = "Yönetici E-posta";
 
     private static final List<String> REQUIRED_IMPORT_HEADERS = List.of(
-            HEADER_ELEVATOR_NAME,
-            HEADER_FACILITY_NAME,
-            HEADER_REGION,
+            HEADER_FACILITY_ID,
             HEADER_IDENTITY_NUMBER,
-            HEADER_ELEVATOR_TYPE,
-            HEADER_DOOR_TYPE,
-            HEADER_DRIVE_TYPE,
-            HEADER_BRAND,
-            HEADER_CONSTRUCTION_YEAR,
-            HEADER_STOP_COUNT,
-            HEADER_CAPACITY,
-            HEADER_SPEED,
-            HEADER_WARRANTY,
-            HEADER_WARRANTY_END_DATE,
-            HEADER_DESCRIPTION,
-            HEADER_MAINTENANCE_TYPE,
-            HEADER_MAINTENANCE_STAFF_NAME,
-            HEADER_MAINTENANCE_STAFF_SURNAME,
-            HEADER_FAILURE_STAFF_NAME,
-            HEADER_FAILURE_STAFF_SURNAME,
-            HEADER_ADDRESS
+            HEADER_LABEL_DATE,
+            HEADER_LABEL_TYPE,
+            HEADER_EXPIRY_DATE,
+            HEADER_MANAGER_NAME,
+            HEADER_MANAGER_TC_IDENTITY_NO,
+            HEADER_MANAGER_PHONE
     );
+
+    private static final Map<String, String> IMPORT_HEADER_ALIASES = createImportHeaderAliases();
 
     private static final List<DateTimeFormatter> IMPORT_DATE_FORMATTERS = List.of(
             DateTimeFormatter.ISO_LOCAL_DATE,
@@ -215,51 +232,100 @@ public class ElevatorService {
 
     public ElevatorImportResultResponse importFromExcel(MultipartFile file) {
         enforceNonCariWrite();
+        ensureTenantContextForImport();
         return importFromExcelInternal(file, null);
     }
 
     public ElevatorImportResultResponse importFromExcelForB2BUnit(Long b2bUnitId, MultipartFile file) {
         enforceNonCariWrite();
+        ensureTenantContextForImport();
         enforceReadableB2BUnitScopeAccess(b2bUnitId);
         return importFromExcelInternal(file, b2bUnitId);
     }
 
     public byte[] generateImportTemplateExcel() {
+        ensureTenantContextForImport();
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("ElevatorImportTemplate");
             Row headerRow = sheet.createRow(0);
-            for (int i = 0; i < REQUIRED_IMPORT_HEADERS.size(); i++) {
-                headerRow.createCell(i).setCellValue(REQUIRED_IMPORT_HEADERS.get(i));
+            List<String> headers = templateHeaders();
+            for (int i = 0; i < headers.size(); i++) {
+                headerRow.createCell(i).setCellValue(headers.get(i));
             }
 
-            Row sampleRow = sheet.createRow(1);
-            sampleRow.createCell(0).setCellValue("Asansör 1");
-            sampleRow.createCell(1).setCellValue("Örnek Tesis");
-            sampleRow.createCell(2).setCellValue("Merkez");
-            sampleRow.createCell(3).setCellValue("ID-0001");
-            sampleRow.createCell(4).setCellValue("İnsan Asansörü");
-            sampleRow.createCell(5).setCellValue("Otomatik");
-            sampleRow.createCell(6).setCellValue("Elektrikli");
-            sampleRow.createCell(7).setCellValue("MarkaX");
-            sampleRow.createCell(8).setCellValue("2020");
-            sampleRow.createCell(9).setCellValue("10");
-            sampleRow.createCell(10).setCellValue("8");
-            sampleRow.createCell(11).setCellValue("1.6");
-            sampleRow.createCell(12).setCellValue("Var");
-            sampleRow.createCell(13).setCellValue("2027-12-31");
-            sampleRow.createCell(14).setCellValue("Örnek açıklama");
-            sampleRow.createCell(15).setCellValue("Aylık");
-            sampleRow.createCell(16).setCellValue("Ahmet");
-            sampleRow.createCell(17).setCellValue("Yılmaz");
-            sampleRow.createCell(18).setCellValue("Mehmet");
-            sampleRow.createCell(19).setCellValue("Kaya");
-            sampleRow.createCell(20).setCellValue("Örnek adres");
+            // Row 2
+            Row sampleRow1 = sheet.createRow(1);
+            writeTemplateRow(sampleRow1, List.of(
+                    "1", "ELV-0001", "A-01", "Merkez Mh. 10. Sokak No:1",
+                    "10", "8", "1.6", "Aylik bakim plani",
+                    "TRACTION", "AsansorMarka", "AUTOMATIC", "2020",
+                    "SN-0001", "VVVF", "12mm", "Yok",
+                    "2026-01-15", "2026-01-15", "GREEN", "2027-01-15",
+                    "Ahmet Yilmaz", "12345678901", "05551234567", "ahmet@example.com"
+            ));
+
+            // Row 3
+            Row sampleRow2 = sheet.createRow(2);
+            writeTemplateRow(sampleRow2, List.of(
+                    "2", "ELV-0002", "B-02", "Ataturk Cd. No:20",
+                    "12", "10", "1.0", "Yedek parca notu",
+                    "HYDRAULIC", "BaskaMarka", "MANUAL", "2018",
+                    "SN-0002", "PLC", "10mm", "Var",
+                    "2026-02-01", "2026-02-01", "YELLOW", "2027-02-01",
+                    "Mehmet Kaya", "10987654321", "05321234567", "mehmet@example.com"
+            ));
+
+            for (int i = 0; i < headers.size(); i++) {
+                sheet.autoSizeColumn(i);
+            }
 
             workbook.write(outputStream);
             return outputStream.toByteArray();
         } catch (IOException ex) {
             throw new RuntimeException("Failed to generate elevator import template", ex);
+        }
+    }
+
+    private List<String> templateHeaders() {
+        return List.of(
+                TR_HEADER_FACILITY_ID,
+                TR_HEADER_IDENTITY_NUMBER,
+                TR_HEADER_ELEVATOR_NUMBER,
+                TR_HEADER_ADDRESS,
+                TR_HEADER_FLOOR_COUNT,
+                TR_HEADER_CAPACITY,
+                TR_HEADER_SPEED,
+                TR_HEADER_TECHNICAL_NOTES,
+                TR_HEADER_DRIVE_TYPE,
+                TR_HEADER_MACHINE_BRAND,
+                TR_HEADER_DOOR_TYPE,
+                TR_HEADER_INSTALLATION_YEAR,
+                TR_HEADER_SERIAL_NUMBER,
+                TR_HEADER_CONTROL_SYSTEM,
+                TR_HEADER_ROPE,
+                TR_HEADER_MODERNIZATION,
+                TR_HEADER_INSPECTION_DATE,
+                TR_HEADER_LABEL_DATE,
+                TR_HEADER_LABEL_TYPE,
+                TR_HEADER_EXPIRY_DATE,
+                TR_HEADER_MANAGER_NAME,
+                TR_HEADER_MANAGER_TC_IDENTITY_NO,
+                TR_HEADER_MANAGER_PHONE,
+                TR_HEADER_MANAGER_EMAIL
+        );
+    }
+
+    private void writeTemplateRow(Row row, List<String> values) {
+        for (int i = 0; i < values.size(); i++) {
+            row.createCell(i).setCellValue(values.get(i));
+        }
+    }
+
+    private void ensureTenantContextForImport() {
+        TenantDescriptor tenant = TenantContext.getCurrentTenant();
+        if (tenant == null || tenant.getId() == null) {
+            throw new RuntimeException("Tenant context is required");
         }
     }
 
@@ -300,8 +366,11 @@ public class ElevatorService {
                 int excelRowNumber = rowIndex + 1;
                 result.setTotalRows(result.getTotalRows() + 1);
 
-                String elevatorName = readCellValue(row, headerMap, HEADER_ELEVATOR_NAME, formatter);
-                String facilityName = readCellValue(row, headerMap, HEADER_FACILITY_NAME, formatter);
+                String elevatorName = firstNonBlank(
+                        readCellValue(row, headerMap, HEADER_ELEVATOR_NUMBER, formatter),
+                        readCellValue(row, headerMap, HEADER_IDENTITY_NUMBER, formatter)
+                );
+                String facilityName = readCellValue(row, headerMap, HEADER_FACILITY_ID, formatter);
 
                 try {
                     ElevatorDto dto = mapImportRowToElevatorDto(row, headerMap, formatter, scopedB2bUnitId);
@@ -316,10 +385,12 @@ public class ElevatorService {
                     ));
                 } catch (Exception ex) {
                     result.setFailureCount(result.getFailureCount() + 1);
+                    String reason = resolveImportFailureMessage(ex);
+                    result.addErrorDetail(excelRowNumber, reason);
                     result.addItem(new ElevatorImportResultItemResponse(
                             excelRowNumber,
                             ElevatorImportResultItemResponse.Status.FAILED.name(),
-                            resolveImportFailureMessage(ex),
+                            reason,
                             elevatorName,
                             facilityName
                     ));
@@ -1017,109 +1088,52 @@ public class ElevatorService {
                                                   Map<String, Integer> headerMap,
                                                   DataFormatter formatter,
                                                   Long scopedB2bUnitId) {
-        String elevatorName = requireImportValue(readCellValue(row, headerMap, HEADER_ELEVATOR_NAME, formatter), HEADER_ELEVATOR_NAME);
-        String facilityName = requireImportValue(readCellValue(row, headerMap, HEADER_FACILITY_NAME, formatter), HEADER_FACILITY_NAME);
-        String identityNumber = requireImportValue(readCellValue(row, headerMap, HEADER_IDENTITY_NUMBER, formatter), HEADER_IDENTITY_NUMBER);
-
-        Facility facility = resolveFacilityForImport(facilityName, scopedB2bUnitId);
-
-        Integer constructionYear = parseIntegerValue(readCellValue(row, headerMap, HEADER_CONSTRUCTION_YEAR, formatter), HEADER_CONSTRUCTION_YEAR);
-        Integer stopCount = parseIntegerValue(readCellValue(row, headerMap, HEADER_STOP_COUNT, formatter), HEADER_STOP_COUNT);
-        Integer capacity = parseIntegerValue(readCellValue(row, headerMap, HEADER_CAPACITY, formatter), HEADER_CAPACITY);
-        Double speed = parseDoubleValue(readCellValue(row, headerMap, HEADER_SPEED, formatter), HEADER_SPEED);
-        LocalDate warrantyEndDate = parseDateValue(row, headerMap, HEADER_WARRANTY_END_DATE, formatter);
-
-        if (stopCount != null && stopCount < 0) {
-            throw new RuntimeException("DURAK SAYISI must be zero or positive");
-        }
-        if (capacity != null && capacity < 0) {
-            throw new RuntimeException("KAPASİTE KİŞİ/KG must be zero or positive");
-        }
-        if (speed != null && speed < 0) {
-            throw new RuntimeException("HIZ M/S must be zero or positive");
-        }
-        if (constructionYear != null && constructionYear < 0) {
-            throw new RuntimeException("YAPIM YILI must be zero or positive");
-        }
-
-        String region = readCellValue(row, headerMap, HEADER_REGION, formatter);
-        String elevatorType = readCellValue(row, headerMap, HEADER_ELEVATOR_TYPE, formatter);
-        String warrantyStatus = readCellValue(row, headerMap, HEADER_WARRANTY, formatter);
-        String maintenanceType = readCellValue(row, headerMap, HEADER_MAINTENANCE_TYPE, formatter);
-        String maintenanceStaff = joinNameParts(
-                readCellValue(row, headerMap, HEADER_MAINTENANCE_STAFF_NAME, formatter),
-                readCellValue(row, headerMap, HEADER_MAINTENANCE_STAFF_SURNAME, formatter)
+        Long facilityId = parseLongValue(
+                requireImportValue(readCellValue(row, headerMap, HEADER_FACILITY_ID, formatter), HEADER_FACILITY_ID),
+                HEADER_FACILITY_ID
         );
-        String failureStaff = joinNameParts(
-                readCellValue(row, headerMap, HEADER_FAILURE_STAFF_NAME, formatter),
-                readCellValue(row, headerMap, HEADER_FAILURE_STAFF_SURNAME, formatter)
-        );
+        Facility facility = resolveFacilityForImport(facilityId, scopedB2bUnitId);
 
         ElevatorDto dto = new ElevatorDto();
         dto.setFacilityId(facility.getId());
-        dto.setIdentityNumber(identityNumber);
-        dto.setElevatorNumber(elevatorName);
-        dto.setBuildingName(facility.getName());
-        dto.setAddress(firstNonBlank(
-                readCellValue(row, headerMap, HEADER_ADDRESS, formatter),
-                facility.getAddressText()
-        ));
-        dto.setDoorType(readCellValue(row, headerMap, HEADER_DOOR_TYPE, formatter));
+        dto.setIdentityNumber(requireImportValue(
+                readCellValue(row, headerMap, HEADER_IDENTITY_NUMBER, formatter),
+                HEADER_IDENTITY_NUMBER));
+        dto.setElevatorNumber(readCellValue(row, headerMap, HEADER_ELEVATOR_NUMBER, formatter));
+        dto.setAddress(readCellValue(row, headerMap, HEADER_ADDRESS, formatter));
+        dto.setFloorCount(parseIntegerValue(readCellValue(row, headerMap, HEADER_FLOOR_COUNT, formatter), HEADER_FLOOR_COUNT));
+        dto.setCapacity(parseIntegerValue(readCellValue(row, headerMap, HEADER_CAPACITY, formatter), HEADER_CAPACITY));
+        dto.setSpeed(parseDoubleValue(readCellValue(row, headerMap, HEADER_SPEED, formatter), HEADER_SPEED));
+        dto.setTechnicalNotes(readCellValue(row, headerMap, HEADER_TECHNICAL_NOTES, formatter));
         dto.setDriveType(readCellValue(row, headerMap, HEADER_DRIVE_TYPE, formatter));
-        dto.setMachineBrand(readCellValue(row, headerMap, HEADER_BRAND, formatter));
-        dto.setInstallationYear(constructionYear);
-        dto.setFloorCount(stopCount);
-        dto.setCapacity(capacity);
-        dto.setSpeed(speed);
-        dto.setControlSystem(elevatorType);
-        dto.setTechnicalNotes(buildImportTechnicalNotes(
-                readCellValue(row, headerMap, HEADER_DESCRIPTION, formatter),
-                region,
-                warrantyStatus,
-                maintenanceType,
-                maintenanceStaff,
-                failureStaff
-        ));
-
-        LocalDate labelDate = LocalDate.now();
-        dto.setInspectionDate(labelDate);
-        dto.setLabelDate(labelDate);
-        dto.setLabelType("BLUE");
-
-        LocalDate expiryDate = warrantyEndDate;
-        if (expiryDate == null || !expiryDate.isAfter(labelDate)) {
-            expiryDate = labelDate.plusYears(1);
-        }
-        dto.setExpiryDate(expiryDate);
-
-        dto.setManagerName(StringUtils.hasText(maintenanceStaff) ? maintenanceStaff : "Excel Import");
-        dto.setManagerTcIdentityNo("00000000000");
-        dto.setManagerPhone("0000000000");
-        dto.setManagerEmail(null);
+        dto.setMachineBrand(readCellValue(row, headerMap, HEADER_MACHINE_BRAND, formatter));
+        dto.setDoorType(readCellValue(row, headerMap, HEADER_DOOR_TYPE, formatter));
+        dto.setInstallationYear(parseIntegerValue(
+                readCellValue(row, headerMap, HEADER_INSTALLATION_YEAR, formatter), HEADER_INSTALLATION_YEAR));
+        dto.setSerialNumber(readCellValue(row, headerMap, HEADER_SERIAL_NUMBER, formatter));
+        dto.setControlSystem(readCellValue(row, headerMap, HEADER_CONTROL_SYSTEM, formatter));
+        dto.setRope(readCellValue(row, headerMap, HEADER_ROPE, formatter));
+        dto.setModernization(readCellValue(row, headerMap, HEADER_MODERNIZATION, formatter));
+        dto.setInspectionDate(parseDateValue(row, headerMap, HEADER_INSPECTION_DATE, formatter));
+        dto.setLabelDate(parseDateValueRequired(row, headerMap, HEADER_LABEL_DATE, formatter));
+        dto.setLabelType(requireValidLabelType(requireImportValue(
+                readCellValue(row, headerMap, HEADER_LABEL_TYPE, formatter), HEADER_LABEL_TYPE)));
+        dto.setExpiryDate(parseDateValueRequired(row, headerMap, HEADER_EXPIRY_DATE, formatter));
+        dto.setManagerName(requireImportValue(
+                readCellValue(row, headerMap, HEADER_MANAGER_NAME, formatter), HEADER_MANAGER_NAME));
+        dto.setManagerTcIdentityNo(requireImportValue(
+                readCellValue(row, headerMap, HEADER_MANAGER_TC_IDENTITY_NO, formatter), HEADER_MANAGER_TC_IDENTITY_NO));
+        dto.setManagerPhone(requireImportValue(
+                readCellValue(row, headerMap, HEADER_MANAGER_PHONE, formatter), HEADER_MANAGER_PHONE));
+        dto.setManagerEmail(readCellValue(row, headerMap, HEADER_MANAGER_EMAIL, formatter));
+        validateImportNumericRanges(dto);
         return dto;
     }
 
-    private Facility resolveFacilityForImport(String facilityName, Long scopedB2bUnitId) {
-        Page<Facility> candidatesPage = facilityRepository.search(
-                normalizeNullable(facilityName),
-                scopedB2bUnitId,
-                null,
-                PageRequest.of(0, 500, Sort.by(Sort.Direction.ASC, "name"))
-        );
+    private Facility resolveFacilityForImport(Long facilityId, Long scopedB2bUnitId) {
+        Facility facility = facilityRepository.findByIdAndActiveTrue(facilityId)
+                .orElseThrow(() -> new RuntimeException("Facility not found for facilityId: " + facilityId));
 
-        String normalizedFacilityName = normalizeKey(facilityName);
-        List<Facility> matches = candidatesPage.getContent().stream()
-                .filter(facility -> normalizeKey(facility.getName()).equals(normalizedFacilityName))
-                .toList();
-
-        if (matches.isEmpty()) {
-            throw new RuntimeException("Facility not found for TESİS ADI: " + facilityName);
-        }
-        if (matches.size() > 1) {
-            throw new RuntimeException("Multiple facilities found for TESİS ADI: " + facilityName);
-        }
-
-        Facility facility = matches.get(0);
         Long facilityB2bUnitId = facility.getB2bUnit() != null ? facility.getB2bUnit().getId() : null;
         if (scopedB2bUnitId != null && (facilityB2bUnitId == null || !facilityB2bUnitId.equals(scopedB2bUnitId))) {
             throw new RuntimeException("Facility does not belong to selected B2B unit");
@@ -1135,12 +1149,79 @@ public class ElevatorService {
         }
         for (int i = 0; i < lastCell; i++) {
             Cell cell = headerRow.getCell(i);
-            String header = normalizeNullable(formatter.formatCellValue(cell));
-            if (StringUtils.hasText(header)) {
-                headerMap.put(header, i);
+            String rawHeader = normalizeNullable(formatter.formatCellValue(cell));
+            String canonicalHeader = resolveCanonicalImportHeader(rawHeader);
+            if (StringUtils.hasText(canonicalHeader) && !headerMap.containsKey(canonicalHeader)) {
+                headerMap.put(canonicalHeader, i);
             }
         }
         return headerMap;
+    }
+
+    private static Map<String, String> createImportHeaderAliases() {
+        Map<String, String> aliases = new HashMap<>();
+
+        registerHeaderAlias(aliases, HEADER_FACILITY_ID, HEADER_FACILITY_ID, TR_HEADER_FACILITY_ID, "facility id", "tesis id", "bina id");
+        registerHeaderAlias(aliases, HEADER_IDENTITY_NUMBER, HEADER_IDENTITY_NUMBER, TR_HEADER_IDENTITY_NUMBER, "kimlik no", "asansor kimlik numarasi", "asansor kimlik no");
+        registerHeaderAlias(aliases, HEADER_ELEVATOR_NUMBER, HEADER_ELEVATOR_NUMBER, TR_HEADER_ELEVATOR_NUMBER, "asansor no");
+        registerHeaderAlias(aliases, HEADER_ADDRESS, HEADER_ADDRESS, TR_HEADER_ADDRESS);
+        registerHeaderAlias(aliases, HEADER_FLOOR_COUNT, HEADER_FLOOR_COUNT, TR_HEADER_FLOOR_COUNT, "kat");
+        registerHeaderAlias(aliases, HEADER_CAPACITY, HEADER_CAPACITY, TR_HEADER_CAPACITY);
+        registerHeaderAlias(aliases, HEADER_SPEED, HEADER_SPEED, TR_HEADER_SPEED, "hiz ms", "hiz(m/s)");
+        registerHeaderAlias(aliases, HEADER_TECHNICAL_NOTES, HEADER_TECHNICAL_NOTES, TR_HEADER_TECHNICAL_NOTES, "teknik not");
+        registerHeaderAlias(aliases, HEADER_DRIVE_TYPE, HEADER_DRIVE_TYPE, TR_HEADER_DRIVE_TYPE, "tahrik tipi");
+        registerHeaderAlias(aliases, HEADER_MACHINE_BRAND, HEADER_MACHINE_BRAND, TR_HEADER_MACHINE_BRAND, "marka");
+        registerHeaderAlias(aliases, HEADER_DOOR_TYPE, HEADER_DOOR_TYPE, TR_HEADER_DOOR_TYPE);
+        registerHeaderAlias(aliases, HEADER_INSTALLATION_YEAR, HEADER_INSTALLATION_YEAR, TR_HEADER_INSTALLATION_YEAR, "yapim yili");
+        registerHeaderAlias(aliases, HEADER_SERIAL_NUMBER, HEADER_SERIAL_NUMBER, TR_HEADER_SERIAL_NUMBER, "seri");
+        registerHeaderAlias(aliases, HEADER_CONTROL_SYSTEM, HEADER_CONTROL_SYSTEM, TR_HEADER_CONTROL_SYSTEM);
+        registerHeaderAlias(aliases, HEADER_ROPE, HEADER_ROPE, TR_HEADER_ROPE);
+        registerHeaderAlias(aliases, HEADER_MODERNIZATION, HEADER_MODERNIZATION, TR_HEADER_MODERNIZATION, "modernizasyon");
+        registerHeaderAlias(aliases, HEADER_INSPECTION_DATE, HEADER_INSPECTION_DATE, TR_HEADER_INSPECTION_DATE, "inspection date");
+        registerHeaderAlias(aliases, HEADER_LABEL_DATE, HEADER_LABEL_DATE, TR_HEADER_LABEL_DATE, "etiket baslangic tarihi");
+        registerHeaderAlias(aliases, HEADER_LABEL_TYPE, HEADER_LABEL_TYPE, TR_HEADER_LABEL_TYPE, "label type");
+        registerHeaderAlias(aliases, HEADER_EXPIRY_DATE, HEADER_EXPIRY_DATE, TR_HEADER_EXPIRY_DATE, "end date", "bitis tarihi");
+        registerHeaderAlias(aliases, HEADER_MANAGER_NAME, HEADER_MANAGER_NAME, TR_HEADER_MANAGER_NAME, "sorumlu ad soyad");
+        registerHeaderAlias(aliases, HEADER_MANAGER_TC_IDENTITY_NO, HEADER_MANAGER_TC_IDENTITY_NO, TR_HEADER_MANAGER_TC_IDENTITY_NO, "yonetici tc kimlik no", "sorumlu tc kimlik no");
+        registerHeaderAlias(aliases, HEADER_MANAGER_PHONE, HEADER_MANAGER_PHONE, TR_HEADER_MANAGER_PHONE, "sorumlu telefon");
+        registerHeaderAlias(aliases, HEADER_MANAGER_EMAIL, HEADER_MANAGER_EMAIL, TR_HEADER_MANAGER_EMAIL, "sorumlu eposta", "sorumlu e-mail");
+
+        return aliases;
+    }
+
+    private static void registerHeaderAlias(Map<String, String> aliases, String canonical, String... aliasValues) {
+        for (String alias : aliasValues) {
+            String normalized = normalizeImportHeader(alias);
+            if (StringUtils.hasText(normalized)) {
+                aliases.put(normalized, canonical);
+            }
+        }
+    }
+
+    private static String resolveCanonicalImportHeader(String rawHeader) {
+        if (!StringUtils.hasText(rawHeader)) {
+            return null;
+        }
+        String normalized = normalizeImportHeader(rawHeader);
+        if (!StringUtils.hasText(normalized)) {
+            return null;
+        }
+        return IMPORT_HEADER_ALIASES.get(normalized);
+    }
+
+    private static String normalizeImportHeader(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT)
+                .replace('ı', 'i')
+                .replace('ğ', 'g')
+                .replace('ü', 'u')
+                .replace('ş', 's')
+                .replace('ö', 'o')
+                .replace('ç', 'c');
+        normalized = normalized.replaceAll("[^a-z0-9]+", "");
+        return normalized;
     }
 
     private void validateImportHeaders(Map<String, Integer> headerMap) {
@@ -1188,13 +1269,8 @@ public class ElevatorService {
         if (!StringUtils.hasText(value)) {
             return null;
         }
-        String normalized = value.replace(',', '.').trim();
-        String integerToken = normalized.split("[^0-9\\-]")[0];
-        if (!StringUtils.hasText(integerToken)) {
-            throw new RuntimeException(columnName + " must be numeric");
-        }
         try {
-            return Integer.parseInt(integerToken);
+            return Integer.parseInt(value.replace(",", "").trim());
         } catch (NumberFormatException ex) {
             throw new RuntimeException(columnName + " must be numeric");
         }
@@ -1204,9 +1280,19 @@ public class ElevatorService {
         if (!StringUtils.hasText(value)) {
             return null;
         }
-        String normalized = value.replace(',', '.').trim();
         try {
-            return Double.parseDouble(normalized);
+            return Double.parseDouble(value.replace(",", ".").trim());
+        } catch (NumberFormatException ex) {
+            throw new RuntimeException(columnName + " must be numeric");
+        }
+    }
+
+    private Long parseLongValue(String value, String columnName) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.replace(",", "").trim());
         } catch (NumberFormatException ex) {
             throw new RuntimeException(columnName + " must be numeric");
         }
@@ -1240,41 +1326,40 @@ public class ElevatorService {
         throw new RuntimeException(header + " format is invalid");
     }
 
-    private String buildImportTechnicalNotes(String description,
-                                             String region,
-                                             String warrantyStatus,
-                                             String maintenanceType,
-                                             String maintenanceStaff,
-                                             String failureStaff) {
-        List<String> lines = new ArrayList<>();
-        if (StringUtils.hasText(description)) {
-            lines.add(description);
+    private LocalDate parseDateValueRequired(Row row, Map<String, Integer> headerMap, String header, DataFormatter formatter) {
+        LocalDate value = parseDateValue(row, headerMap, header, formatter);
+        if (value == null) {
+            throw new RuntimeException(header + " is required");
         }
-        if (StringUtils.hasText(region)) {
-            lines.add("Region: " + region);
-        }
-        if (StringUtils.hasText(warrantyStatus)) {
-            lines.add("Warranty Status: " + warrantyStatus);
-        }
-        if (StringUtils.hasText(maintenanceType)) {
-            lines.add("Maintenance Type: " + maintenanceType);
-        }
-        if (StringUtils.hasText(maintenanceStaff)) {
-            lines.add("Maintenance Staff: " + maintenanceStaff);
-        }
-        if (StringUtils.hasText(failureStaff)) {
-            lines.add("Failure Staff: " + failureStaff);
-        }
-        return lines.isEmpty() ? null : String.join(" | ", lines);
+        return value;
     }
 
-    private String joinNameParts(String firstName, String lastName) {
-        String joined = firstNonBlank(
-                StringUtils.hasText(firstName) && StringUtils.hasText(lastName) ? firstName + " " + lastName : null,
-                firstName,
-                lastName
-        );
-        return normalizeNullable(joined);
+    private String requireValidLabelType(String value) {
+        if (!StringUtils.hasText(value)) {
+            throw new RuntimeException(HEADER_LABEL_TYPE + " is required");
+        }
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        try {
+            LabelType.valueOf(normalized);
+            return normalized;
+        } catch (IllegalArgumentException ex) {
+            throw new RuntimeException(HEADER_LABEL_TYPE + " is invalid. Valid values: GREEN, YELLOW, RED, ORANGE, BLUE");
+        }
+    }
+
+    private void validateImportNumericRanges(ElevatorDto dto) {
+        if (dto.getFloorCount() != null && dto.getFloorCount() < 0) {
+            throw new RuntimeException(HEADER_FLOOR_COUNT + " must be zero or positive");
+        }
+        if (dto.getCapacity() != null && dto.getCapacity() < 0) {
+            throw new RuntimeException(HEADER_CAPACITY + " must be zero or positive");
+        }
+        if (dto.getSpeed() != null && dto.getSpeed() < 0) {
+            throw new RuntimeException(HEADER_SPEED + " must be zero or positive");
+        }
+        if (dto.getInstallationYear() != null && dto.getInstallationYear() < 0) {
+            throw new RuntimeException(HEADER_INSTALLATION_YEAR + " must be zero or positive");
+        }
     }
 
     private String firstNonBlank(String... values) {
