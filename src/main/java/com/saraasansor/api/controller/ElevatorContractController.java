@@ -7,16 +7,22 @@ import com.saraasansor.api.dto.ElevatorContractCreateRequest;
 import com.saraasansor.api.dto.ElevatorContractListItemResponse;
 import com.saraasansor.api.dto.ElevatorContractResponse;
 import com.saraasansor.api.dto.ElevatorContractUpdateRequest;
+import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.service.ElevatorContractService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 import jakarta.validation.Valid;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -51,6 +57,22 @@ public class ElevatorContractController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ElevatorContractResponse>> getContractById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(elevatorContractService.getById(id)));
+    }
+
+    @GetMapping({"/{id}/file", "/{id}/attachment"})
+    public ResponseEntity<?> downloadContractFile(@PathVariable Long id) {
+        try {
+            ElevatorContractService.ContractFileDownload file = elevatorContractService.getContractFile(id);
+            Resource resource = new FileSystemResource(file.filePath().toFile());
+            return ResponseEntity.ok()
+                    .contentType(resolveMediaType(file.contentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + sanitizeFileName(file.fileName()) + "\"")
+                    .body(resource);
+        } catch (NotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(ex.getMessage()));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+        }
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -131,6 +153,24 @@ public class ElevatorContractController {
             direction = Sort.Direction.ASC;
         }
         return Sort.by(direction, field);
+    }
+
+    private MediaType resolveMediaType(String contentType) {
+        if (!StringUtils.hasText(contentType)) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+        try {
+            return MediaType.parseMediaType(contentType);
+        } catch (Exception ignored) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+    }
+
+    private String sanitizeFileName(String fileName) {
+        if (!StringUtils.hasText(fileName)) {
+            return "contract-file";
+        }
+        return fileName.replace("\"", "");
     }
 
     private MultipartFields resolveMultipartFields(Long elevatorId,

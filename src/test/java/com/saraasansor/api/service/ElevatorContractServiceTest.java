@@ -3,6 +3,7 @@ package com.saraasansor.api.service;
 import com.saraasansor.api.dto.ElevatorContractCreateRequest;
 import com.saraasansor.api.dto.ElevatorContractResponse;
 import com.saraasansor.api.dto.ElevatorContractUpdateRequest;
+import com.saraasansor.api.exception.NotFoundException;
 import com.saraasansor.api.exception.ValidationException;
 import com.saraasansor.api.model.B2BUnit;
 import com.saraasansor.api.model.Elevator;
@@ -27,6 +28,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -108,8 +111,6 @@ class ElevatorContractServiceTest {
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
         when(elevatorContractRepository.findDetailById(1L)).thenReturn(Optional.of(existing));
         when(elevatorContractRepository.save(any(ElevatorContract.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(fileStorageService.getFileUrl("elevator_contract/1/original.pdf"))
-                .thenReturn("/api/files/elevator_contract/1/original.pdf");
 
         ElevatorContractUpdateRequest request = new ElevatorContractUpdateRequest();
         request.setContractHtml("<p>Updated</p>");
@@ -117,8 +118,10 @@ class ElevatorContractServiceTest {
         ElevatorContractResponse response = elevatorContractService.update(1L, request, null);
 
         assertThat(response.isAttachmentExists()).isTrue();
+        assertThat(response.isHasFile()).isTrue();
+        assertThat(response.getFileName()).isEqualTo("original.pdf");
         assertThat(response.getAttachmentOriginalFileName()).isEqualTo("original.pdf");
-        assertThat(response.getAttachmentUrl()).isEqualTo("/api/files/elevator_contract/1/original.pdf");
+        assertThat(response.getAttachmentUrl()).isEqualTo("/api/elevator-contracts/1/file");
     }
 
     @Test
@@ -143,8 +146,6 @@ class ElevatorContractServiceTest {
         when(elevatorContractRepository.save(any(ElevatorContract.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(fileStorageService.saveFile(eq(file), eq("ELEVATOR_CONTRACT"), eq(1L)))
                 .thenReturn("elevator_contract/1/new-contract.pdf");
-        when(fileStorageService.getFileUrl("elevator_contract/1/new-contract.pdf"))
-                .thenReturn("/api/files/elevator_contract/1/new-contract.pdf");
 
         ElevatorContractUpdateRequest request = new ElevatorContractUpdateRequest();
         request.setContractDate("2026-03-31");
@@ -152,8 +153,10 @@ class ElevatorContractServiceTest {
         ElevatorContractResponse response = elevatorContractService.update(1L, request, file);
 
         assertThat(response.isAttachmentExists()).isTrue();
+        assertThat(response.isHasFile()).isTrue();
+        assertThat(response.getFileName()).isEqualTo("new-contract.pdf");
         assertThat(response.getAttachmentOriginalFileName()).isEqualTo("new-contract.pdf");
-        assertThat(response.getAttachmentUrl()).isEqualTo("/api/files/elevator_contract/1/new-contract.pdf");
+        assertThat(response.getAttachmentUrl()).isEqualTo("/api/elevator-contracts/1/file");
         verify(fileStorageService).saveFile(eq(file), eq("ELEVATOR_CONTRACT"), eq(1L));
     }
 
@@ -166,8 +169,6 @@ class ElevatorContractServiceTest {
 
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
         when(elevatorContractRepository.findDetailById(3L)).thenReturn(Optional.of(existing));
-        when(fileStorageService.getFileUrl("elevator_contract/3/file.pdf"))
-                .thenReturn("/api/files/elevator_contract/3/file.pdf");
 
         ElevatorContractResponse response = elevatorContractService.getById(3L);
 
@@ -175,6 +176,46 @@ class ElevatorContractServiceTest {
         assertThat(response.getElevatorId()).isEqualTo(42L);
         assertThat(response.getFacilityName()).isEqualTo("Facility 42");
         assertThat(response.isAttachmentExists()).isTrue();
+        assertThat(response.isHasFile()).isTrue();
+        assertThat(response.getAttachmentUrl()).isEqualTo("/api/elevator-contracts/3/file");
+    }
+
+    @Test
+    void getContractFileShouldReturnFileMetadataForAccessibleContract() throws Exception {
+        authenticateAs("admin");
+        User admin = user("admin", User.Role.SYSTEM_ADMIN, null);
+        ElevatorContract existing = contract(3L, elevator(42L, 7L, "Facility 42"));
+        existing.setAttachmentStorageKey("elevator_contract/3/file.pdf");
+        existing.setAttachmentOriginalFileName("contract.pdf");
+        existing.setAttachmentContentType("application/pdf");
+
+        Path tempFile = Files.createTempFile("contract-", ".pdf");
+        Files.writeString(tempFile, "contract");
+
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(elevatorContractRepository.findDetailById(3L)).thenReturn(Optional.of(existing));
+        when(fileStorageService.resolveStoredPath("elevator_contract/3/file.pdf")).thenReturn(tempFile);
+
+        ElevatorContractService.ContractFileDownload result = elevatorContractService.getContractFile(3L);
+
+        assertThat(result.filePath()).isEqualTo(tempFile);
+        assertThat(result.fileName()).isEqualTo("contract.pdf");
+        assertThat(result.contentType()).isEqualTo("application/pdf");
+    }
+
+    @Test
+    void getContractFileShouldFailWhenAttachmentMissing() {
+        authenticateAs("admin");
+        User admin = user("admin", User.Role.SYSTEM_ADMIN, null);
+        ElevatorContract existing = contract(9L, elevator(77L, 7L, "Facility 77"));
+        existing.setAttachmentStorageKey(null);
+
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(elevatorContractRepository.findDetailById(9L)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> elevatorContractService.getContractFile(9L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessageContaining("file not found");
     }
 
     @Test

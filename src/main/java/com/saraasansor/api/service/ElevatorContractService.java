@@ -24,6 +24,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -84,6 +86,36 @@ public class ElevatorContractService {
                 .orElseThrow(() -> new NotFoundException("Elevator contract not found: " + id));
         ensureContractAccess(contract, currentUser);
         return toResponse(contract);
+    }
+
+    @Transactional(readOnly = true)
+    public ContractFileDownload getContractFile(Long id) {
+        User currentUser = getCurrentUser();
+        ElevatorContract contract = elevatorContractRepository.findDetailById(id)
+                .orElseThrow(() -> new NotFoundException("Elevator contract not found: " + id));
+        ensureContractAccess(contract, currentUser);
+
+        if (!StringUtils.hasText(contract.getAttachmentStorageKey())) {
+            throw new NotFoundException("Elevator contract file not found: " + id);
+        }
+
+        Path filePath;
+        try {
+            filePath = fileStorageService.resolveStoredPath(contract.getAttachmentStorageKey());
+        } catch (RuntimeException ex) {
+            throw new NotFoundException("Elevator contract file not found: " + id);
+        }
+
+        if (!Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+            throw new NotFoundException("Elevator contract file not found: " + id);
+        }
+
+        String fileName = StringUtils.hasText(contract.getAttachmentOriginalFileName())
+                ? contract.getAttachmentOriginalFileName()
+                : (filePath.getFileName() != null ? filePath.getFileName().toString() : ("contract-" + id));
+
+        String contentType = resolveContentType(filePath, contract.getAttachmentContentType());
+        return new ContractFileDownload(filePath, fileName, contentType);
     }
 
     public ElevatorContractResponse create(ElevatorContractCreateRequest request, MultipartFile file) {
@@ -264,7 +296,11 @@ public class ElevatorContractService {
                 : null);
         response.setContractDate(contract.getContractDate());
         response.setStatus(contract.getStatus());
-        response.setAttachmentExists(StringUtils.hasText(contract.getAttachmentStorageKey()));
+        boolean hasFile = StringUtils.hasText(contract.getAttachmentStorageKey());
+        response.setAttachmentExists(hasFile);
+        response.setHasFile(hasFile);
+        response.setFileName(contract.getAttachmentOriginalFileName());
+        response.setAttachmentUrl(hasFile ? "/api/elevator-contracts/" + contract.getId() + "/file" : null);
         response.setCreatedAt(contract.getCreatedAt());
         response.setUpdatedAt(contract.getUpdatedAt());
         return response;
@@ -287,13 +323,28 @@ public class ElevatorContractService {
         response.setAttachmentOriginalFileName(contract.getAttachmentOriginalFileName());
         response.setAttachmentContentType(contract.getAttachmentContentType());
         response.setAttachmentSize(contract.getAttachmentSize());
-        response.setAttachmentExists(StringUtils.hasText(contract.getAttachmentStorageKey()));
-        response.setAttachmentUrl(StringUtils.hasText(contract.getAttachmentStorageKey())
-                ? fileStorageService.getFileUrl(contract.getAttachmentStorageKey())
-                : null);
+        boolean hasFile = StringUtils.hasText(contract.getAttachmentStorageKey());
+        response.setAttachmentExists(hasFile);
+        response.setHasFile(hasFile);
+        response.setFileName(contract.getAttachmentOriginalFileName());
+        response.setAttachmentUrl(hasFile ? "/api/elevator-contracts/" + contract.getId() + "/file" : null);
         response.setCreatedAt(contract.getCreatedAt());
         response.setUpdatedAt(contract.getUpdatedAt());
         return response;
+    }
+
+    private String resolveContentType(Path filePath, String storedContentType) {
+        if (StringUtils.hasText(storedContentType)) {
+            return storedContentType;
+        }
+        try {
+            String detected = Files.probeContentType(filePath);
+            if (StringUtils.hasText(detected)) {
+                return detected;
+            }
+        } catch (Exception ignored) {
+        }
+        return "application/octet-stream";
     }
 
     private String resolveElevatorName(Elevator elevator) {
@@ -316,5 +367,8 @@ public class ElevatorContractService {
         }
         return userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public record ContractFileDownload(Path filePath, String fileName, String contentType) {
     }
 }

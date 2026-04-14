@@ -20,6 +20,8 @@ public class ElevatorContractResponse {
     private Long attachmentSize;
     private String attachmentUrl;
     private boolean attachmentExists;
+    private boolean hasFile;
+    private String fileName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -135,6 +137,22 @@ public class ElevatorContractResponse {
 
     public void setAttachmentExists(boolean attachmentExists) {
         this.attachmentExists = attachmentExists;
+    }
+
+    public boolean isHasFile() {
+        return hasFile;
+    }
+
+    public void setHasFile(boolean hasFile) {
+        this.hasFile = hasFile;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 
     public LocalDateTime getCreatedAt() {
