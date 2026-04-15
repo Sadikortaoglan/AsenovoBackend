@@ -60,6 +60,8 @@ class B2BUnitInvoiceControllerTenantIntegrationTest {
 
         InvoiceLineResponse line = new InvoiceLineResponse();
         line.setId(1L);
+        line.setStockId(2001L);
+        line.setStockName("Service A");
         line.setProductName("Service A");
         line.setQuantity(new BigDecimal("1.00"));
         line.setUnitPrice(new BigDecimal("100.00"));
@@ -90,6 +92,8 @@ class B2BUnitInvoiceControllerTenantIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(10))
+                .andExpect(jsonPath("$.data.lines[0].stockId").value(2001))
+                .andExpect(jsonPath("$.data.lines[0].stockName").value("Service A"))
                 .andExpect(jsonPath("$.data.lines[0].productName").value("Service A"));
 
         verify(invoiceService, times(1)).getInvoice(5L, 10L);
@@ -133,7 +137,7 @@ class B2BUnitInvoiceControllerTenantIntegrationTest {
                 3L,
                 "2026-03-05",
                 "Test",
-                List.of(new LinePayload("Item", "1", "50", "18"))
+                List.of(new LinePayload(1001L, "1", "50", "18"))
         ));
 
         mockMvc.perform(post("/b2b-units/5/invoices/purchase")
@@ -161,7 +165,7 @@ class B2BUnitInvoiceControllerTenantIntegrationTest {
                                    List<LinePayload> lines) {
     }
 
-    private record LinePayload(String productName,
+    private record LinePayload(Long stockId,
                                String quantity,
                                String unitPrice,
                                String vatRate) {

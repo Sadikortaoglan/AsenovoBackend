@@ -8,12 +8,14 @@ import com.saraasansor.api.model.B2BUnit;
 import com.saraasansor.api.model.B2BUnitInvoice;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.Facility;
+import com.saraasansor.api.model.Part;
 import com.saraasansor.api.model.User;
 import com.saraasansor.api.model.Warehouse;
 import com.saraasansor.api.repository.B2BUnitInvoiceRepository;
 import com.saraasansor.api.repository.B2BUnitRepository;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.FacilityRepository;
+import com.saraasansor.api.repository.PartRepository;
 import com.saraasansor.api.repository.UserRepository;
 import com.saraasansor.api.repository.WarehouseRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -61,6 +63,9 @@ class B2BUnitInvoiceServiceTest {
     private WarehouseRepository warehouseRepository;
 
     @Mock
+    private PartRepository partRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -76,6 +81,7 @@ class B2BUnitInvoiceServiceTest {
                 facilityRepository,
                 elevatorRepository,
                 warehouseRepository,
+                partRepository,
                 userRepository,
                 transactionService
         );
@@ -92,6 +98,7 @@ class B2BUnitInvoiceServiceTest {
         when(userRepository.findByUsername("staff-user")).thenReturn(Optional.of(staffUser("staff-user")));
         when(b2bUnitRepository.findByIdAndActiveTrue(10L)).thenReturn(Optional.of(activeB2BUnit(10L)));
         when(warehouseRepository.findByIdAndActiveTrue(7L)).thenReturn(Optional.of(warehouse(7L)));
+        when(partRepository.findByIdAndActiveTrue(1001L)).thenReturn(Optional.of(part(1001L, "Motor")));
         when(invoiceRepository.save(any(B2BUnitInvoice.class))).thenAnswer(invocation -> {
             B2BUnitInvoice invoice = invocation.getArgument(0);
             invoice.setId(101L);
@@ -106,7 +113,7 @@ class B2BUnitInvoiceServiceTest {
         request.setWarehouseId(7L);
         request.setInvoiceDate(LocalDate.of(2026, 3, 1));
         request.setDescription("purchase test");
-        request.setLines(List.of(line("Motor", "2", "100", "18")));
+        request.setLines(List.of(line(1001L, "2", "100", "18")));
 
         InvoiceResponse response = service.createPurchaseInvoice(10L, request);
 
@@ -115,6 +122,9 @@ class B2BUnitInvoiceServiceTest {
         assertThat(response.getVatTotal()).isEqualByComparingTo("36.00");
         assertThat(response.getGrandTotal()).isEqualByComparingTo("236.00");
         assertThat(response.getLines()).hasSize(1);
+        assertThat(response.getLines().get(0).getStockId()).isEqualTo(1001L);
+        assertThat(response.getLines().get(0).getStockName()).isEqualTo("Motor");
+        assertThat(response.getLines().get(0).getProductName()).isEqualTo("Motor");
 
         ArgumentCaptor<B2BUnitInvoice> invoiceCaptor = ArgumentCaptor.forClass(B2BUnitInvoice.class);
         verify(invoiceRepository, times(1)).save(invoiceCaptor.capture());
@@ -145,6 +155,8 @@ class B2BUnitInvoiceServiceTest {
         when(facilityRepository.findByIdAndActiveTrue(20L)).thenReturn(Optional.of(facility));
         when(elevatorRepository.findById(30L)).thenReturn(Optional.of(elevator));
         when(warehouseRepository.findByIdAndActiveTrue(9L)).thenReturn(Optional.of(warehouse(9L)));
+        when(partRepository.findByIdAndActiveTrue(2001L)).thenReturn(Optional.of(part(2001L, "Service A")));
+        when(partRepository.findByIdAndActiveTrue(2002L)).thenReturn(Optional.of(part(2002L, "Service B")));
         when(invoiceRepository.save(any(B2BUnitInvoice.class))).thenAnswer(invocation -> {
             B2BUnitInvoice invoice = invocation.getArgument(0);
             invoice.setId(202L);
@@ -158,8 +170,8 @@ class B2BUnitInvoiceServiceTest {
         request.setInvoiceDate(LocalDate.of(2026, 3, 2));
         request.setDescription("sales test");
         request.setLines(List.of(
-                line("Service A", "1", "50", "10"),
-                line("Service B", "3", "20", "20")
+                line(2001L, "1", "50", "10"),
+                line(2002L, "3", "20", "20")
         ));
 
         InvoiceResponse response = service.createSalesInvoice(5L, request);
@@ -171,6 +183,9 @@ class B2BUnitInvoiceServiceTest {
         assertThat(response.getFacilityId()).isEqualTo(20L);
         assertThat(response.getElevatorId()).isEqualTo(30L);
         assertThat(response.getWarehouseId()).isEqualTo(9L);
+        assertThat(response.getLines()).hasSize(2);
+        assertThat(response.getLines().get(0).getStockId()).isEqualTo(2001L);
+        assertThat(response.getLines().get(0).getStockName()).isEqualTo("Service A");
 
         verify(transactionService, times(1)).onSalesInvoicePosted(
                 eq(5L),
@@ -201,6 +216,29 @@ class B2BUnitInvoiceServiceTest {
     }
 
     @Test
+    void createPurchaseInvoiceShouldFailWhenStockIdMissing() {
+        authenticateAs("staff-user");
+        when(userRepository.findByUsername("staff-user")).thenReturn(Optional.of(staffUser("staff-user")));
+        when(b2bUnitRepository.findByIdAndActiveTrue(10L)).thenReturn(Optional.of(activeB2BUnit(10L)));
+        when(warehouseRepository.findByIdAndActiveTrue(7L)).thenReturn(Optional.of(warehouse(7L)));
+
+        PurchaseInvoiceCreateRequest request = new PurchaseInvoiceCreateRequest();
+        request.setWarehouseId(7L);
+        request.setInvoiceDate(LocalDate.of(2026, 3, 1));
+        InvoiceLineRequest line = new InvoiceLineRequest();
+        line.setQuantity(new BigDecimal("1"));
+        line.setUnitPrice(new BigDecimal("100"));
+        line.setVatRate(new BigDecimal("18"));
+        request.setLines(List.of(line));
+
+        assertThatThrownBy(() -> service.createPurchaseInvoice(10L, request))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("stockId is required");
+
+        verify(invoiceRepository, never()).save(any(B2BUnitInvoice.class));
+    }
+
+    @Test
     void createSalesInvoiceShouldFailWhenElevatorNotBelongsToFacility() {
         authenticateAs("staff-user");
         when(userRepository.findByUsername("staff-user")).thenReturn(Optional.of(staffUser("staff-user")));
@@ -219,7 +257,7 @@ class B2BUnitInvoiceServiceTest {
         request.setElevatorId(30L);
         request.setWarehouseId(9L);
         request.setInvoiceDate(LocalDate.of(2026, 3, 2));
-        request.setLines(List.of(line("Service A", "1", "50", "10")));
+        request.setLines(List.of(line(2001L, "1", "50", "10")));
 
         assertThatThrownBy(() -> service.createSalesInvoice(5L, request))
                 .isInstanceOf(RuntimeException.class)
@@ -241,7 +279,7 @@ class B2BUnitInvoiceServiceTest {
         PurchaseInvoiceCreateRequest request = new PurchaseInvoiceCreateRequest();
         request.setWarehouseId(7L);
         request.setInvoiceDate(LocalDate.of(2026, 3, 1));
-        request.setLines(List.of(line("Motor", "1", "100", "18")));
+        request.setLines(List.of(line(1001L, "1", "100", "18")));
 
         assertThatThrownBy(() -> service.createPurchaseInvoice(10L, request))
                 .isInstanceOf(AccessDeniedException.class)
@@ -298,9 +336,17 @@ class B2BUnitInvoiceServiceTest {
         return warehouse;
     }
 
-    private InvoiceLineRequest line(String productName, String quantity, String unitPrice, String vatRate) {
+    private Part part(Long id, String name) {
+        Part part = new Part();
+        part.setId(id);
+        part.setName(name);
+        part.setActive(true);
+        return part;
+    }
+
+    private InvoiceLineRequest line(Long stockId, String quantity, String unitPrice, String vatRate) {
         InvoiceLineRequest line = new InvoiceLineRequest();
-        line.setProductName(productName);
+        line.setStockId(stockId);
         line.setQuantity(new BigDecimal(quantity));
         line.setUnitPrice(new BigDecimal(unitPrice));
         line.setVatRate(new BigDecimal(vatRate));

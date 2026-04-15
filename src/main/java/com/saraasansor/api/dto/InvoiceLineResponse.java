@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 public class InvoiceLineResponse {
 
     private Long id;
+    private Long stockId;
+    private String stockName;
     private String productName;
     private BigDecimal quantity;
     private BigDecimal unitPrice;
@@ -21,6 +23,8 @@ public class InvoiceLineResponse {
     public static InvoiceLineResponse fromEntity(B2BUnitInvoiceLine line) {
         InvoiceLineResponse response = new InvoiceLineResponse();
         response.setId(line.getId());
+        response.setStockId(line.getStock() != null ? line.getStock().getId() : null);
+        response.setStockName(line.getStock() != null ? line.getStock().getName() : null);
         response.setProductName(line.getProductName());
         response.setQuantity(line.getQuantity());
         response.setUnitPrice(line.getUnitPrice());
@@ -37,6 +41,22 @@ public class InvoiceLineResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getStockId() {
+        return stockId;
+    }
+
+    public void setStockId(Long stockId) {
+        this.stockId = stockId;
+    }
+
+    public String getStockName() {
+        return stockName;
+    }
+
+    public void setStockName(String stockName) {
+        this.stockName = stockName;
     }
 
     public String getProductName() {

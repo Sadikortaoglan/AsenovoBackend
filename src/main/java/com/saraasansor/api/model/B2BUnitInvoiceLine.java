@@ -24,6 +24,10 @@ public class B2BUnitInvoiceLine {
     @JoinColumn(name = "invoice_id", nullable = false)
     private B2BUnitInvoice invoice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stock_id")
+    private Part stock;
+
     @Column(name = "product_name", nullable = false)
     private String productName;
 
@@ -73,6 +77,14 @@ public class B2BUnitInvoiceLine {
 
     public void setProductName(String productName) {
         this.productName = productName;
+    }
+
+    public Part getStock() {
+        return stock;
+    }
+
+    public void setStock(Part stock) {
+        this.stock = stock;
     }
 
     public BigDecimal getQuantity() {

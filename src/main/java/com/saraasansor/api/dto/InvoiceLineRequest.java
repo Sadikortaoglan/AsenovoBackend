@@ -1,14 +1,16 @@
 package com.saraasansor.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
 public class InvoiceLineRequest {
 
-    @NotBlank(message = "productName is required")
+    @JsonAlias({"partId", "productId"})
+    private Long stockId;
+
     private String productName;
 
     @NotNull(message = "quantity is required")
@@ -26,12 +28,20 @@ public class InvoiceLineRequest {
     public InvoiceLineRequest() {
     }
 
+    public Long getStockId() {
+        return stockId;
+    }
+
+    public void setStockId(Long stockId) {
+        this.stockId = stockId;
+    }
+
     public String getProductName() {
         return productName;
     }
 
     public void setProductName(String productName) {
-        this.productName = productName;
+        this.productName = productName != null ? productName.trim() : null;
     }
 
     public BigDecimal getQuantity() {

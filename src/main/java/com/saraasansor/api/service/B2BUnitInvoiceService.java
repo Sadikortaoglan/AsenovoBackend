@@ -10,6 +10,7 @@ import com.saraasansor.api.model.B2BUnitInvoiceLine;
 import com.saraasansor.api.model.Elevator;
 import com.saraasansor.api.model.Facility;
 import com.saraasansor.api.model.CurrentAccount;
+import com.saraasansor.api.model.Part;
 import com.saraasansor.api.model.RevisionOffer;
 import com.saraasansor.api.model.RevisionOfferItem;
 import com.saraasansor.api.model.User;
@@ -18,6 +19,7 @@ import com.saraasansor.api.repository.B2BUnitInvoiceRepository;
 import com.saraasansor.api.repository.B2BUnitRepository;
 import com.saraasansor.api.repository.ElevatorRepository;
 import com.saraasansor.api.repository.FacilityRepository;
+import com.saraasansor.api.repository.PartRepository;
 import com.saraasansor.api.repository.UserRepository;
 import com.saraasansor.api.repository.WarehouseRepository;
 import org.springframework.security.access.AccessDeniedException;
@@ -43,6 +45,7 @@ public class B2BUnitInvoiceService {
     private final FacilityRepository facilityRepository;
     private final ElevatorRepository elevatorRepository;
     private final WarehouseRepository warehouseRepository;
+    private final PartRepository partRepository;
     private final UserRepository userRepository;
     private final B2BUnitTransactionService transactionService;
 
@@ -51,6 +54,7 @@ public class B2BUnitInvoiceService {
                                  FacilityRepository facilityRepository,
                                  ElevatorRepository elevatorRepository,
                                  WarehouseRepository warehouseRepository,
+                                 PartRepository partRepository,
                                  UserRepository userRepository,
                                  B2BUnitTransactionService transactionService) {
         this.invoiceRepository = invoiceRepository;
@@ -58,6 +62,7 @@ public class B2BUnitInvoiceService {
         this.facilityRepository = facilityRepository;
         this.elevatorRepository = elevatorRepository;
         this.warehouseRepository = warehouseRepository;
+        this.partRepository = partRepository;
         this.userRepository = userRepository;
         this.transactionService = transactionService;
     }
@@ -79,7 +84,7 @@ public class B2BUnitInvoiceService {
         invoice.setStatus(B2BUnitInvoice.InvoiceStatus.POSTED);
         invoice.setCreatedBy(resolveCurrentUsername());
 
-        applyLinesAndTotals(invoice, lines);
+        applyLinesAndTotals(invoice, lines, true);
 
         B2BUnitInvoice saved = invoiceRepository.save(invoice);
         transactionService.onPurchaseInvoicePosted(
@@ -108,7 +113,8 @@ public class B2BUnitInvoiceService {
                 warehouse,
                 request.getInvoiceDate(),
                 request.getDescription(),
-                lines
+                lines,
+                true
         );
         return InvoiceResponse.fromEntity(saved);
     }
@@ -133,7 +139,8 @@ public class B2BUnitInvoiceService {
                 null,
                 LocalDate.now(),
                 description,
-                lines
+                lines,
+                false
         );
     }
 
@@ -145,16 +152,20 @@ public class B2BUnitInvoiceService {
         return InvoiceResponse.fromEntity(invoice);
     }
 
-    private void applyLinesAndTotals(B2BUnitInvoice invoice, List<InvoiceLineRequest> lineRequests) {
+    private void applyLinesAndTotals(B2BUnitInvoice invoice,
+                                     List<InvoiceLineRequest> lineRequests,
+                                     boolean requireStockReference) {
         BigDecimal subTotal = BigDecimal.ZERO;
         BigDecimal vatTotal = BigDecimal.ZERO;
         BigDecimal grandTotal = BigDecimal.ZERO;
         int sortOrder = 0;
 
         for (InvoiceLineRequest lineRequest : lineRequests) {
-            validateLine(lineRequest);
+            validateLine(lineRequest, requireStockReference);
+            Part stock = resolveStock(lineRequest.getStockId(), requireStockReference);
             B2BUnitInvoiceLine line = new B2BUnitInvoiceLine();
-            line.setProductName(normalizeRequired(lineRequest.getProductName(), "productName is required"));
+            line.setStock(stock);
+            line.setProductName(resolveLineProductName(lineRequest, stock, requireStockReference));
             line.setQuantity(scale(lineRequest.getQuantity()));
             line.setUnitPrice(scale(lineRequest.getUnitPrice()));
             line.setVatRate(scale(lineRequest.getVatRate()));
@@ -223,8 +234,11 @@ public class B2BUnitInvoiceService {
         return lines;
     }
 
-    private void validateLine(InvoiceLineRequest line) {
-        if (!StringUtils.hasText(line.getProductName())) {
+    private void validateLine(InvoiceLineRequest line, boolean requireStockReference) {
+        if (requireStockReference && line.getStockId() == null) {
+            throw new RuntimeException("stockId is required");
+        }
+        if (!requireStockReference && line.getStockId() == null && !StringUtils.hasText(line.getProductName())) {
             throw new RuntimeException("productName is required");
         }
         if (line.getQuantity() == null || line.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
@@ -236,6 +250,27 @@ public class B2BUnitInvoiceService {
         if (line.getVatRate() == null || line.getVatRate().compareTo(BigDecimal.ZERO) < 0) {
             throw new RuntimeException("vatRate must be zero or positive");
         }
+    }
+
+    private Part resolveStock(Long stockId, boolean required) {
+        if (stockId == null) {
+            return null;
+        }
+        if (required) {
+            return partRepository.findByIdAndActiveTrue(stockId)
+                    .orElseThrow(() -> new RuntimeException("Stock not found"));
+        }
+        return partRepository.findByIdAndActiveTrue(stockId).orElse(null);
+    }
+
+    private String resolveLineProductName(InvoiceLineRequest lineRequest, Part stock, boolean requireStockReference) {
+        if (stock != null) {
+            return normalizeRequired(stock.getName(), "stock name is required");
+        }
+        if (requireStockReference) {
+            throw new RuntimeException("stockId is required");
+        }
+        return normalizeRequired(lineRequest.getProductName(), "productName is required");
     }
 
     private LocalDate requireInvoiceDate(LocalDate invoiceDate) {
@@ -328,7 +363,8 @@ public class B2BUnitInvoiceService {
                                                     Warehouse warehouse,
                                                     LocalDate invoiceDate,
                                                     String description,
-                                                    List<InvoiceLineRequest> lines) {
+                                                    List<InvoiceLineRequest> lines,
+                                                    boolean requireStockReference) {
         validateElevatorFacilityConsistency(elevator, facility);
 
         B2BUnitInvoice invoice = new B2BUnitInvoice();
@@ -342,7 +378,7 @@ public class B2BUnitInvoiceService {
         invoice.setStatus(B2BUnitInvoice.InvoiceStatus.POSTED);
         invoice.setCreatedBy(resolveCurrentUsername());
 
-        applyLinesAndTotals(invoice, validateAndGetLines(lines));
+        applyLinesAndTotals(invoice, validateAndGetLines(lines), requireStockReference);
 
         B2BUnitInvoice saved = invoiceRepository.save(invoice);
         transactionService.onSalesInvoicePosted(
@@ -360,6 +396,7 @@ public class B2BUnitInvoiceService {
         if (offer.getItems() != null) {
             for (RevisionOfferItem item : offer.getItems()) {
                 lines.add(newInvoiceLine(
+                        item.getPart() != null ? item.getPart().getId() : null,
                         item.getPart() != null ? item.getPart().getName() : "Revision item",
                         BigDecimal.valueOf(item.getQuantity() != null ? item.getQuantity() : 0),
                         BigDecimal.valueOf(item.getUnitPrice() != null ? item.getUnitPrice() : 0D),
@@ -370,17 +407,19 @@ public class B2BUnitInvoiceService {
 
         BigDecimal laborTotal = offer.getLaborTotal() != null ? offer.getLaborTotal() : BigDecimal.ZERO;
         if (laborTotal.compareTo(BigDecimal.ZERO) > 0) {
-            lines.add(newInvoiceLine("Revision labor", BigDecimal.ONE, laborTotal, BigDecimal.ZERO));
+            lines.add(newInvoiceLine(null, "Revision labor", BigDecimal.ONE, laborTotal, BigDecimal.ZERO));
         }
 
         return lines;
     }
 
-    private InvoiceLineRequest newInvoiceLine(String productName,
+    private InvoiceLineRequest newInvoiceLine(Long stockId,
+                                              String productName,
                                               BigDecimal quantity,
                                               BigDecimal unitPrice,
                                               BigDecimal vatRate) {
         InvoiceLineRequest line = new InvoiceLineRequest();
+        line.setStockId(stockId);
         line.setProductName(productName);
         line.setQuantity(quantity);
         line.setUnitPrice(unitPrice);

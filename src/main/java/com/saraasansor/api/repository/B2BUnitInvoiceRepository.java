@@ -10,6 +10,6 @@ import java.util.Optional;
 @Repository
 public interface B2BUnitInvoiceRepository extends JpaRepository<B2BUnitInvoice, Long> {
 
-    @EntityGraph(attributePaths = {"b2bUnit", "facility", "elevator", "warehouse", "lines"})
+    @EntityGraph(attributePaths = {"b2bUnit", "facility", "elevator", "warehouse", "lines", "lines.stock"})
     Optional<B2BUnitInvoice> findByIdAndB2bUnitId(Long id, Long b2bUnitId);
 }
