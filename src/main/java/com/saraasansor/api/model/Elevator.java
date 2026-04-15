@@ -2,6 +2,7 @@ package com.saraasansor.api.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Where;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "elevators")
+@Where(clause = "(status is null or status <> 'DELETED')")
 public class Elevator {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -101,7 +103,7 @@ public class Elevator {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public enum Status {
-        ACTIVE, EXPIRED
+        ACTIVE, EXPIRED, DELETED
     }
 
     public Elevator() {

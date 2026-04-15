@@ -680,10 +680,13 @@ public class ElevatorService {
     }
     
     public void deleteElevator(Long id) {
-        if (!elevatorRepository.existsById(id)) {
+        Optional<Elevator> elevatorOpt = elevatorRepository.findById(id);
+        if (elevatorOpt.isEmpty()) {
             throw new RuntimeException("Elevator not found");
         }
-        elevatorRepository.deleteById(id);
+        Elevator elevator = elevatorOpt.get();
+        elevator.setStatus(Elevator.Status.DELETED);
+        elevatorRepository.save(elevator);
     }
     
     public ElevatorStatusDto getElevatorStatus(Long id) {
@@ -1530,6 +1533,7 @@ public class ElevatorService {
         return switch (status) {
             case ACTIVE -> "Aktif";
             case EXPIRED -> "Suresi Dolmus";
+            case DELETED -> "Silinmis";
         };
     }
 
