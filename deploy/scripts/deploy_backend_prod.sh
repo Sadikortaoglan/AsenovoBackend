@@ -8,6 +8,7 @@ ENV_FILE="${ENV_FILE:-.env.prod}"
 HEALTH_RETRIES="${HEALTH_RETRIES:-24}"
 HEALTH_SLEEP_SECONDS="${HEALTH_SLEEP_SECONDS:-5}"
 VERIFY_CONTROL_PLANE_TABLES="${VERIFY_CONTROL_PLANE_TABLES:-auto}"
+VERIFY_LOCATION_DATA_IMPORT="${VERIFY_LOCATION_DATA_IMPORT:-true}"
 
 if docker compose version >/dev/null 2>&1; then
   COMPOSE_CMD=(docker compose)
@@ -69,6 +70,15 @@ if "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200
   echo "Detected migration/startup errors in app logs. Showing recent logs..." >&2
   "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200 app
   exit 1
+fi
+
+if [[ "$VERIFY_LOCATION_DATA_IMPORT" == "true" ]]; then
+  echo "[7/8] Verify tenant location data import"
+  if "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=500 app | grep -Eqi "Location data loading failed|Location data tenant import summary:.*failures=[1-9][0-9]*"; then
+    echo "Detected location data import failures in app logs. Showing recent logs..." >&2
+    "${COMPOSE_CMD[@]}" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=500 app
+    exit 1
+  fi
 fi
 
 echo "[8/8] Deployment healthy"

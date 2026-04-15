@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,6 +25,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
     @Query("SELECT t FROM Tenant t JOIN FETCH t.plan WHERE t.id = :id")
     Optional<Tenant> findByIdWithPlan(@Param("id") Long id);
+
+    List<Tenant> findByActiveTrueAndStatusOrderByIdAsc(Tenant.TenantStatus status);
 
     Optional<Tenant> findFirstByOrderByIdAsc();
 

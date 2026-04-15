@@ -29,6 +29,10 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
         use_sql_comments: false
+        jdbc:
+          batch_size: ${HIBERNATE_JDBC_BATCH_SIZE:500}
+        order_inserts: true
+        order_updates: true
         physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
         implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
   
@@ -74,6 +78,14 @@ email:
     connect-timeout-seconds: ${EMAIL_RESEND_CONNECT_TIMEOUT_SECONDS:5}
     read-timeout-seconds: ${EMAIL_RESEND_READ_TIMEOUT_SECONDS:15}
 
+location:
+  load-on-startup: ${LOCATION_LOAD_ON_STARTUP:false}
+  data-resource: ${LOCATION_DATA_RESOURCE:data/cityData.json}
+  min-city-count: ${LOCATION_MIN_CITY_COUNT:50}
+  min-district-count: ${LOCATION_MIN_DISTRICT_COUNT:100}
+  min-neighborhood-count: ${LOCATION_MIN_NEIGHBORHOOD_COUNT:1000}
+  batch-size: ${LOCATION_LOAD_BATCH_SIZE:500}
+
 server:
   port: 8080
   servlet:
@@ -96,7 +108,7 @@ app:
     migration:
       enabled: ${TENANCY_MIGRATION_ENABLED:true}
       include-shared-schemas: ${TENANCY_MIGRATION_INCLUDE_SHARED_SCHEMAS:true}
-      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:true}
+      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:false}
       default-shared-schema: ${TENANCY_DEFAULT_SHARED_SCHEMA:public}
       history-table: ${TENANCY_FLYWAY_HISTORY_TABLE:flyway_schema_history}
       baseline-on-migrate: ${TENANCY_FLYWAY_BASELINE_ON_MIGRATE:true}

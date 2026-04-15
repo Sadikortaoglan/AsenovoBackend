@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS data_migration (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE,
+    executed_at TIMESTAMPTZ NOT NULL
+);

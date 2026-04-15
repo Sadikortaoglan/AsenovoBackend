@@ -21,6 +21,7 @@ import java.util.Map;
 @EnableJpaRepositories(
         basePackages = {
                 "com.saraasansor.api.repository",
+                "com.saraasansor.api.location.repository",
                 "com.saraasansor.api.tenant.repository"
         }
 )
@@ -53,7 +54,11 @@ public class TenantJpaConfig {
                                                                        CurrentTenantIdentifierResolver tenantIdentifierResolver) {
         LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
         emf.setDataSource(dataSource);
-        emf.setPackagesToScan("com.saraasansor.api.model", "com.saraasansor.api.tenant");
+        emf.setPackagesToScan(
+                "com.saraasansor.api.model",
+                "com.saraasansor.api.location.model",
+                "com.saraasansor.api.tenant"
+        );
 
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         emf.setJpaVendorAdapter(vendorAdapter);
