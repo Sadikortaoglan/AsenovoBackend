@@ -1,0 +1,21 @@
+[
+  {
+    "name": "ADANA",
+    "counties": [
+      {
+        "name": "ALADAĞ",
+        "districts": [
+          {
+            "name": "ALADAĞ",
+            "neighborhoods": [
+              {
+                "name": "AKPINAR MAH",
+                "code": "01720"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

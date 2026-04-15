@@ -29,6 +29,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+        jdbc:
+          batch_size: ${HIBERNATE_JDBC_BATCH_SIZE:500}
+        order_inserts: true
+        order_updates: true
   
   flyway:
     enabled: true
@@ -59,6 +63,14 @@ email:
     allowed-from-domain: ${EMAIL_ALLOWED_FROM_DOMAIN:mail.asenovo.com}
     connect-timeout-seconds: ${EMAIL_RESEND_CONNECT_TIMEOUT_SECONDS:5}
     read-timeout-seconds: ${EMAIL_RESEND_READ_TIMEOUT_SECONDS:15}
+
+location:
+  load-on-startup: ${LOCATION_LOAD_ON_STARTUP:false}
+  data-resource: ${LOCATION_DATA_RESOURCE:data/cityData.json}
+  min-city-count: ${LOCATION_MIN_CITY_COUNT:50}
+  min-district-count: ${LOCATION_MIN_DISTRICT_COUNT:100}
+  min-neighborhood-count: ${LOCATION_MIN_NEIGHBORHOOD_COUNT:1000}
+  batch-size: ${LOCATION_LOAD_BATCH_SIZE:500}
 
 server:
   port: 8080
@@ -95,7 +107,7 @@ app:
     migration:
       enabled: ${TENANCY_MIGRATION_ENABLED:true}
       include-shared-schemas: ${TENANCY_MIGRATION_INCLUDE_SHARED_SCHEMAS:true}
-      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:true}
+      include-dedicated-dbs: ${TENANCY_MIGRATION_INCLUDE_DEDICATED_DBS:false}
   
   jwt:
     secret: ${JWT_SECRET}
