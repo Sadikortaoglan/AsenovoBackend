@@ -129,6 +129,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 // Health check endpoint - permit all
                 .requestMatchers("/health").permitAll()
+                .requestMatchers(HttpMethod.GET, "/platform/setup-status", "/api/platform/setup-status").permitAll()
                 // Error endpoint - permit all (needed for exception handling)
                 .requestMatchers("/error").permitAll()
                 // Public tenant branding assets (tenant-scoped by controller checks)

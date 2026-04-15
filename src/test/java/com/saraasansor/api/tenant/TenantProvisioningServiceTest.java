@@ -9,6 +9,7 @@ import com.saraasansor.api.tenant.repository.SubscriptionRepository;
 import com.saraasansor.api.tenant.repository.TenantRepository;
 import com.saraasansor.api.tenant.service.SchemaManagementService;
 import com.saraasansor.api.tenant.service.TenantMigrationService;
+import com.saraasansor.api.tenant.service.TenantProvisioningDataCleanupService;
 import com.saraasansor.api.tenant.service.TenantProvisioningJobService;
 import com.saraasansor.api.tenant.service.TenantProvisioningService;
 import com.saraasansor.api.tenant.service.TenantRegistryService;
@@ -33,6 +34,7 @@ class TenantProvisioningServiceTest {
         SchemaManagementService schemaManagementService = mock(SchemaManagementService.class);
         TenantMigrationService tenantMigrationService = mock(TenantMigrationService.class);
         TenantSeedService tenantSeedService = mock(TenantSeedService.class);
+        TenantProvisioningDataCleanupService tenantProvisioningDataCleanupService = mock(TenantProvisioningDataCleanupService.class);
         TenantRegistryService tenantRegistryService = mock(TenantRegistryService.class);
 
         TenantProvisioningService service = new TenantProvisioningService(
@@ -42,6 +44,7 @@ class TenantProvisioningServiceTest {
                 schemaManagementService,
                 tenantMigrationService,
                 tenantSeedService,
+                tenantProvisioningDataCleanupService,
                 tenantRegistryService,
                 new ObjectMapper()
         );
@@ -97,6 +100,7 @@ class TenantProvisioningServiceTest {
         SchemaManagementService schemaManagementService = mock(SchemaManagementService.class);
         TenantMigrationService tenantMigrationService = mock(TenantMigrationService.class);
         TenantSeedService tenantSeedService = mock(TenantSeedService.class);
+        TenantProvisioningDataCleanupService tenantProvisioningDataCleanupService = mock(TenantProvisioningDataCleanupService.class);
         TenantRegistryService tenantRegistryService = mock(TenantRegistryService.class);
 
         TenantProvisioningService service = new TenantProvisioningService(
@@ -106,6 +110,7 @@ class TenantProvisioningServiceTest {
                 schemaManagementService,
                 tenantMigrationService,
                 tenantSeedService,
+                tenantProvisioningDataCleanupService,
                 tenantRegistryService,
                 new ObjectMapper()
         );

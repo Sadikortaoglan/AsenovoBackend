@@ -60,6 +60,20 @@ spring:
           starttls:
             enable: true
 
+email:
+  provider: ${EMAIL_PROVIDER:resend}
+  test-recipient: ${EMAIL_TEST_RECIPIENT:}
+  retry:
+    max-attempts: ${EMAIL_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff-millis: ${EMAIL_RETRY_INITIAL_BACKOFF_MILLIS:250}
+  resend:
+    api-key: ${RESEND_API_KEY:}
+    api-url: ${RESEND_API_URL:https://api.resend.com/emails}
+    from: ${EMAIL_FROM:noreply@mail.asenovo.com}
+    allowed-from-domain: ${EMAIL_ALLOWED_FROM_DOMAIN:mail.asenovo.com}
+    connect-timeout-seconds: ${EMAIL_RESEND_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${EMAIL_RESEND_READ_TIMEOUT_SECONDS:15}
+
 server:
   port: 8080
   servlet:
@@ -155,7 +169,7 @@ asenovo:
     app-url-template: ${ASENOVO_MARKETING_APP_URL_TEMPLATE:http://{tenant}.lvh.me:5173/login}
     mail-enabled: ${ASENOVO_MARKETING_MAIL_ENABLED:false}
     support-email: ${ASENOVO_MARKETING_SUPPORT_EMAIL:support@asenovo.com}
-    from-email: ${ASENOVO_MARKETING_FROM_EMAIL:no-reply@asenovo.com}
+    from-email: ${ASENOVO_MARKETING_FROM_EMAIL:noreply@mail.asenovo.com}
     trial-cleanup-grace-days: ${ASENOVO_MARKETING_TRIAL_CLEANUP_GRACE_DAYS:7}
     trial-expire-cron: ${ASENOVO_MARKETING_TRIAL_EXPIRE_CRON:0 0 4 * * *}
     trial-cleanup-cron: ${ASENOVO_MARKETING_TRIAL_CLEANUP_CRON:0 30 4 * * *}

@@ -5,22 +5,24 @@ import com.saraasansor.api.marketing.dto.DemoRequestDto;
 import com.saraasansor.api.marketing.dto.PlanRequestDto;
 import com.saraasansor.api.marketing.dto.TrialProvisionResponseDto;
 import com.saraasansor.api.marketing.dto.TrialRequestDto;
-import jakarta.mail.internet.MimeMessage;
+import com.saraasansor.api.mail.enums.EmailTemplateKey;
+import com.saraasansor.api.mail.model.EmailSendResult;
+import com.saraasansor.api.mail.service.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class MarketingEmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(MarketingEmailService.class);
 
-    private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final EmailService emailService;
 
     @Value("${asenovo.marketing.support-email:support@asenovo.com}")
     private String supportEmail;
@@ -34,61 +36,53 @@ public class MarketingEmailService {
     @Value("${asenovo.marketing.environment:local}")
     private String marketingEnvironment;
 
-    public MarketingEmailService(ObjectProvider<JavaMailSender> mailSenderProvider) {
-        this.mailSenderProvider = mailSenderProvider;
+    public MarketingEmailService(EmailService emailService) {
+        this.emailService = emailService;
     }
 
     public boolean sendContactMessage(ContactRequestDto request) {
         return sendEmail(
+                EmailTemplateKey.MARKETING_CONTACT_MESSAGE,
                 supportEmail,
                 request.getEmail(),
-                buildSubject(request),
-                buildBody(request)
+                variables(
+                        "companyOrName", defaultText(request.getCompany(), request.getName()),
+                        "name", request.getName(),
+                        "company", request.getCompany(),
+                        "phone", request.getPhone(),
+                        "email", request.getEmail(),
+                        "message", request.getMessage()
+                )
         );
     }
 
     public boolean sendDemoRequestNotification(DemoRequestDto request) {
         return sendEmail(
+                EmailTemplateKey.MARKETING_DEMO_REQUEST,
                 supportEmail,
                 request.getEmail(),
-                "ASENOVO Demo Talebi - " + defaultText(request.getCompany(), request.getName()),
-                """
-                Yeni demo talebi alindi.
-
-                Ad Soyad: %s
-                Sirket: %s
-                Telefon: %s
-                E-posta: %s
-                Sirket Buyuklugu: %s
-                """.formatted(
-                        defaultText(request.getName()),
-                        defaultText(request.getCompany()),
-                        defaultText(request.getPhone()),
-                        defaultText(request.getEmail()),
-                        defaultText(request.getCompanySize())
+                variables(
+                        "companyOrName", defaultText(request.getCompany(), request.getName()),
+                        "name", request.getName(),
+                        "company", request.getCompany(),
+                        "phone", request.getPhone(),
+                        "email", request.getEmail(),
+                        "companySize", request.getCompanySize()
                 )
         );
     }
 
     public boolean sendPlanRequestNotification(PlanRequestDto request) {
         return sendEmail(
+                EmailTemplateKey.MARKETING_PLAN_REQUEST,
                 supportEmail,
                 request.getEmail(),
-                "ASENOVO Plan Talebi - " + request.getPlan(),
-                """
-                Yeni plan talebi alindi.
-
-                Plan: %s
-                Ad Soyad: %s
-                Sirket: %s
-                Telefon: %s
-                E-posta: %s
-                """.formatted(
-                        defaultText(request.getPlan()),
-                        defaultText(request.getName()),
-                        defaultText(request.getCompany()),
-                        defaultText(request.getPhone()),
-                        defaultText(request.getEmail())
+                variables(
+                        "plan", request.getPlan(),
+                        "name", request.getName(),
+                        "company", request.getCompany(),
+                        "phone", request.getPhone(),
+                        "email", request.getEmail()
                 )
         );
     }
@@ -103,63 +97,43 @@ public class MarketingEmailService {
 
     private boolean sendTrialAccessEmail(String email, TrialProvisionResponseDto response, boolean existingDemo) {
         return sendEmail(
+                existingDemo ? EmailTemplateKey.MARKETING_TRIAL_REMINDER : EmailTemplateKey.MARKETING_TRIAL_READY,
                 email,
                 null,
-                existingDemo ? "ASENOVO Demo Erisim Bilgileriniz" : "ASENOVO Demo Ortaminiz Hazir",
-                """
-                %s
-
-                Giris adresi: %s
-                Kullanici adi: %s
-                Gecici sifre: %s
-                Bitis tarihi (UTC): %s
-                Tenant: %s
-                """.formatted(
-                        existingDemo
-                                ? "Bu e-posta ve sirket icin aktif bir demo ortaminiz zaten bulunuyor. Erişim bilgileriniz tekrar gonderildi."
-                                : "Demo ortaminiz hazirlandi.",
-                        defaultText(response.getLoginUrl()),
-                        defaultText(response.getUsername()),
-                        defaultText(response.getTemporaryPassword()),
-                        response.getExpiresAt(),
-                        defaultText(response.getTenantSlug())
+                variables(
+                        "loginUrl", response.getLoginUrl(),
+                        "username", response.getUsername(),
+                        "temporaryPassword", response.getTemporaryPassword(),
+                        "expiresAt", String.valueOf(response.getExpiresAt()),
+                        "tenantSlug", response.getTenantSlug()
                 )
         );
     }
 
-    private boolean sendEmail(String to, String replyTo, String subject, String body) {
+    private boolean sendEmail(EmailTemplateKey templateKey, String to, String replyTo, Map<String, String> variables) {
         if (!mailEnabled) {
             logger.info(
-                    "Marketing email skipped because mail is disabled for environment={}. to={} subject={}",
+                    "Marketing email skipped because mail is disabled for environment={}. to={} templateKey={}",
                     marketingEnvironment,
                     to,
-                    subject
+                    templateKey
             );
             return false;
         }
 
-        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
-        if (mailSender == null) {
-            logger.warn("Marketing email skipped because JavaMailSender is not configured. to={} subject={}", to, subject);
-            return false;
-        }
-
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-            helper.setTo(to);
-            helper.setFrom(fromEmail);
-            if (StringUtils.hasText(replyTo)) {
-                helper.setReplyTo(replyTo);
+            if (!isVerifiedFromAddress(fromEmail)) {
+                logger.warn("Marketing from email is not on verified Resend domain, falling back to global email.from. configuredFrom={}", fromEmail);
             }
-            helper.setSubject(subject);
-            helper.setText(body, false);
-            mailSender.send(message);
-            logger.info("Marketing email sent successfully to={} subject={}", to, subject);
-            return true;
-        } catch (Exception ex) {
+            EmailSendResult result = emailService.sendTemplate(templateKey, to, replyTo, variables, "marketing");
+            if (!result.isSuccess()) {
+                throw new RuntimeException(result.getMessage());
+            }
+            logger.info("Marketing email sent successfully to={} templateKey={}", to, templateKey);
+            return result.isSuccess();
+        } catch (RuntimeException ex) {
             String reason = describeMailFailure(ex);
-            logger.error("Failed to send marketing email to={} subject={} reason={}", to, subject, reason, ex);
+            logger.error("Failed to send marketing email to={} templateKey={} reason={}", to, templateKey, reason, ex);
             throw new RuntimeException(reason);
         }
     }
@@ -189,31 +163,8 @@ public class MarketingEmailService {
         return "Marketing email could not be sent";
     }
 
-    private String buildSubject(ContactRequestDto request) {
-        if (StringUtils.hasText(request.getCompany())) {
-            return "ASENOVO Iletisim Formu - " + request.getCompany();
-        }
-        return "ASENOVO Iletisim Formu - " + request.getName();
-    }
-
-    private String buildBody(ContactRequestDto request) {
-        return """
-                Yeni iletisim formu mesaji alindi.
-
-                Ad Soyad: %s
-                Sirket: %s
-                Telefon: %s
-                E-posta: %s
-
-                Mesaj:
-                %s
-                """.formatted(
-                defaultText(request.getName()),
-                defaultText(request.getCompany()),
-                defaultText(request.getPhone()),
-                defaultText(request.getEmail()),
-                defaultText(request.getMessage())
-        );
+    private boolean isVerifiedFromAddress(String value) {
+        return StringUtils.hasText(value) && value.trim().toLowerCase().endsWith("@mail.asenovo.com");
     }
 
     private String defaultText(String value) {
@@ -222,5 +173,13 @@ public class MarketingEmailService {
 
     private String defaultText(String preferred, String fallback) {
         return StringUtils.hasText(preferred) ? preferred : fallback;
+    }
+
+    private Map<String, String> variables(String... keyValues) {
+        Map<String, String> variables = new HashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            variables.put(keyValues[i], defaultText(keyValues[i + 1]));
+        }
+        return variables;
     }
 }
