@@ -26,6 +26,7 @@ public class TenantProvisioningService {
     private final SchemaManagementService schemaManagementService;
     private final TenantMigrationService tenantMigrationService;
     private final TenantSeedService tenantSeedService;
+    private final TenantLocationBootstrapService tenantLocationBootstrapService;
     private final TenantProvisioningDataCleanupService tenantProvisioningDataCleanupService;
     private final TenantRegistryService tenantRegistryService;
     private final ObjectMapper objectMapper;
@@ -36,6 +37,7 @@ public class TenantProvisioningService {
                                      SchemaManagementService schemaManagementService,
                                      TenantMigrationService tenantMigrationService,
                                      TenantSeedService tenantSeedService,
+                                     TenantLocationBootstrapService tenantLocationBootstrapService,
                                      TenantProvisioningDataCleanupService tenantProvisioningDataCleanupService,
                                      TenantRegistryService tenantRegistryService,
                                      ObjectMapper objectMapper) {
@@ -45,6 +47,7 @@ public class TenantProvisioningService {
         this.schemaManagementService = schemaManagementService;
         this.tenantMigrationService = tenantMigrationService;
         this.tenantSeedService = tenantSeedService;
+        this.tenantLocationBootstrapService = tenantLocationBootstrapService;
         this.tenantProvisioningDataCleanupService = tenantProvisioningDataCleanupService;
         this.tenantRegistryService = tenantRegistryService;
         this.objectMapper = objectMapper;
@@ -132,6 +135,10 @@ public class TenantProvisioningService {
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_SEED_STARTED", "Tenant seed started", actor);
         tenantSeedService.seedInitialAdmin(schemaName, initialAdminUsername, initialAdminPassword);
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_SEED_COMPLETED", "Tenant seed completed", actor);
+
+        tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_LOCATION_BOOTSTRAP_STARTED", "Tenant location bootstrap started", actor);
+        tenantLocationBootstrapService.bootstrapTenantLocationData(tenant);
+        tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_LOCATION_BOOTSTRAP_COMPLETED", "Tenant location bootstrap completed", actor);
 
         if (tenant.getLicenseEndDate() != null && LocalDate.now().isAfter(tenant.getLicenseEndDate())) {
             tenant.setStatus(Tenant.TenantStatus.EXPIRED);
@@ -230,6 +237,9 @@ public class TenantProvisioningService {
         schemaManagementService.createSchemaIfNotExists(schemaName);
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_REBUILD_SCHEMA_STARTED", "Schema rebuild started", actor);
         tenantMigrationService.migrateSchema(schemaName);
+        tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_REBUILD_LOCATION_BOOTSTRAP_STARTED", "Tenant rebuild location bootstrap started", actor);
+        tenantLocationBootstrapService.bootstrapTenantLocationData(tenant);
+        tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_REBUILD_LOCATION_BOOTSTRAP_COMPLETED", "Tenant rebuild location bootstrap completed", actor);
         tenantProvisioningJobService.writeAudit(tenant, job, "TENANT_REBUILD_SCHEMA_COMPLETED", "Schema rebuild completed", actor);
     }
 
